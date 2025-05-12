@@ -1,0 +1,110 @@
+// auth_check_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/notification_service.dart';
+import 'package:toplansin/ui/owner_views/owner_main_page.dart';
+import 'package:toplansin/ui/user_views/main_page.dart';
+import 'package:toplansin/ui/views/login_page.dart';
+
+/// Uygulama açıldığında:
+///  1. authStateChanges() > kullanıcı var mı?
+///  2. varsa Firestore’da rolü çek.
+///  3. rolüne göre ilgili ana sayfayı döndür.
+///
+/// Hata, boş veri, yükleniyor durumlarının hepsi tek yerde yönetilir.
+class AuthCheckScreen extends StatelessWidget {
+  const AuthCheckScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnap) {
+        /* ── 1. Auth bekleniyor ── */
+        if (authSnap.connectionState == ConnectionState.waiting) {
+          return const _Splash();
+        }
+
+        /* ── 2. Kullanıcı yoksa Login ── */
+        if (!authSnap.hasData || authSnap.data == null) {
+          return  LoginPage();
+        }
+
+        final uid = authSnap.data!.uid;
+
+        /* ── 3. Token’i kaydet – fire&forget ── */
+        NotificationService.I.saveTokenToFirestore();
+
+        /* ── 4. Rolü sunucudan çek ── */
+        return FutureBuilder<Person?>(
+          future: _fetchPersonWithRetry(uid),
+          builder: (context, personSnap) {
+            if (personSnap.connectionState == ConnectionState.waiting) {
+              return const _Splash();
+            }
+
+            if (personSnap.hasError ||
+                !personSnap.hasData ||
+                personSnap.data == null) {
+              return const _ErrorScreen('Kullanıcı bilgileri bulunamadı.');
+            }
+
+            final person = personSnap.data!;
+
+            switch (person.role) {
+              case 'owner':
+                return OwnerMainPage(currentOwner: person);
+              case 'user':
+                return MainPage(currentUser: person);
+              default:
+                return const _ErrorScreen('Bilinmeyen kullanıcı rolü.');
+            }
+          },
+        );
+      },
+    );
+  }
+
+  /* Sunucu verisini getir; rol null ise 300 ms sonra bir kez daha dene */
+  Future<Person?> _fetchPersonWithRetry(String uid) async {
+    Future<DocumentSnapshot<Map<String, dynamic>>> _getServer() =>
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get(const GetOptions(source: Source.server));
+
+    var snap = await _getServer();
+
+    if (!snap.exists || snap.data()?['role'] == null) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      snap = await _getServer();
+    }
+
+    if (!snap.exists || snap.data()?['role'] == null) return null;
+    return Person.fromMap(snap.data()!);
+  }
+}
+
+
+/* ——————————————————————— yardımcı lightweight widget'lar ——————————————————————— */
+
+class _Splash extends StatelessWidget {
+  const _Splash();
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(child: CircularProgressIndicator()),
+  );
+}
+
+class _ErrorScreen extends StatelessWidget {
+  const _ErrorScreen(this.message);
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Text(message)),
+  );
+}

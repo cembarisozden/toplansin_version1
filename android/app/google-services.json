@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "450679317964",
+    "project_id": "toplansin-e4363",
+    "storage_bucket": "toplansin-e4363.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450679317964:android:d46a158b9179c4e348e969",
+        "android_client_info": {
+          "package_name": "com.toplansin.toplansin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "450679317964-lotlj5m3ak8h8d84c3f379iu9pr90a53.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7ituuiwSzm37v2IY-Xwd4LEd_TFi8TH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "450679317964-lotlj5m3ak8h8d84c3f379iu9pr90a53.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
