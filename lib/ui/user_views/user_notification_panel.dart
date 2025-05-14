@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 
@@ -23,7 +24,7 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
 
   void listenReservations(String userId) {
     // 1) "YYYY-MM-DD" biçiminde 'bugün' string’i oluştur
-    var today = DateTime.now();
+    var today =TimeService.now();
     var todayString =
         "${today.year.toString().padLeft(4, '0')}-"
         "${today.month.toString().padLeft(2, '0')}-"

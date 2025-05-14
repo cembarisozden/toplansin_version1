@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/notification_service.dart';
+import 'package:toplansin/services/notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';

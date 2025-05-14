@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
-import 'package:toplansin/notification_service.dart';
+import 'package:toplansin/services/notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_add_halisaha.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
 import 'package:toplansin/ui/owner_views/owner_profile_settings.dart';

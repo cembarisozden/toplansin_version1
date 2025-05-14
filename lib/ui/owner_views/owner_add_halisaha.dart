@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:toplansin/services/time_service.dart';
 
 class OwnerAddHaliSaha extends StatefulWidget {
   @override
@@ -102,7 +103,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         bookedSlots: [" "],
         startHour: startHourController.text.trim(),
         endHour: endHourController.text.trim(),
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id:TimeService.now().millisecondsSinceEpoch.toString(),
         hasParking: hasParking,
         hasShowers: hasShowers,
         hasShoeRental: hasShoeRental,

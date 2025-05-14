@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 
 class OwnerNotificationPanel extends StatefulWidget {
   final HaliSaha currentHaliSaha;
@@ -24,7 +25,7 @@ class _OwnerNotificationPanelState extends State<OwnerNotificationPanel> {
   List<Reservation> haliSahaReservations = [];
 
   void listenReservations(String userId) {
-    var today = DateTime.now();
+    var today =TimeService.now();
     var todayString =
         "${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
     print("${widget.currentHaliSaha.id}");

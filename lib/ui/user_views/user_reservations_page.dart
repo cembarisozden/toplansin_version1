@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 
 class UserReservationsPage extends StatefulWidget {
@@ -41,7 +42,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
 
         // Status güncellemesi (eğer tarih geçmişse ve status hâlâ Tamamlandı/İptal değilse)
         if (reservationDateTime != null) {
-          if (reservationDateTime.isBefore(DateTime.now()) &&
+          if (reservationDateTime.isBefore(TimeService.now()) &&
               reservation.status != 'Tamamlandı' &&
               reservation.status != 'İptal Edildi') {
             // Firestore'da status güncellemesi

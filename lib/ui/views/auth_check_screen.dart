@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/notification_service.dart';
+import 'package:toplansin/services/notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -67,24 +67,30 @@ class AuthCheckScreen extends StatelessWidget {
     );
   }
 
-  /* Sunucu verisini getir; rol null ise 300 ms sonra bir kez daha dene */
   Future<Person?> _fetchPersonWithRetry(String uid) async {
-    Future<DocumentSnapshot<Map<String, dynamic>>> _getServer() =>
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .get(const GetOptions(source: Source.server));
+    const retries = 10;
+    const delay = Duration(milliseconds: 500);
 
-    var snap = await _getServer();
+    for (int i = 0; i < retries; i++) {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get(const GetOptions(source: Source.server));
 
-    if (!snap.exists || snap.data()?['role'] == null) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      snap = await _getServer();
+      final data = snap.data();
+      print('[RETRY $i] uid=$uid => data: $data');
+
+      if (snap.exists && data != null && data['role'] != null) {
+        return Person.fromMap(data);
+      }
+
+      await Future.delayed(delay);
     }
 
-    if (!snap.exists || snap.data()?['role'] == null) return null;
-    return Person.fromMap(snap.data()!);
+    print('Kullanıcı verisi 10 denemede de alınamadı');
+    return null;
   }
+
 }
 
 

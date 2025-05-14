@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/views/no_internet_screen.dart';
 
 class ReservationPage extends StatefulWidget {
@@ -24,7 +25,7 @@ class _ReservationPageState extends State<ReservationPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  DateTime selectedDate = DateTime.now();
+  DateTime selectedDate =TimeService.now();
   String? selectedTime;
   List<String> bookedSlots=[];
 
@@ -74,7 +75,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void _initSelectedDate() {
-    DateTime now = DateTime.now();
+    DateTime now =TimeService.now();
     if (!hasFreeSlotOnDay(now)) {
       DateTime? nextAvailableDay = findNextAvailableDay(now);
       if (nextAvailableDay != null) {
@@ -194,15 +195,76 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void handlePrevMonth() {
+    // Önceki aya git
     setState(() {
       selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
+
+      // Geçmiş tarihlerin seçilmesini önle
+      _updateToFirstValidDate();
     });
   }
 
   void handleNextMonth() {
-    setState(() {
-      selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
-    });
+    // 1 haftalık rezervasyon penceresi
+    DateTime today =TimeService.now();
+    DateTime bookingWindowEnd = today.add(Duration(days: 7));
+
+    // Şu anki ayın son günü
+    DateTime currentMonthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+
+    // Rezervasyon penceresi sonraki aya uzanıyor mu?
+    bool bookingWindowExtendToNextMonth = bookingWindowEnd.isAfter(currentMonthEnd);
+
+    if (bookingWindowExtendToNextMonth) {
+      // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
+      setState(() {
+        selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
+        _updateToFirstValidDate();
+      });
+    } else {
+      // Rezervasyon penceresi uzanmıyorsa, bilgi ver ve mevcut ayda kal
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - ${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
+          ),
+          duration: Duration(seconds: 3),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      // Ay değişikliği yapma - mevcut ayda kalır
+    }
+  }
+
+// Yardımcı fonksiyon: İlk geçerli tarihe güncelle
+  void _updateToFirstValidDate() {
+    DateTime now =TimeService.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+
+    // Seçili ay bugünün ayı ise ve seçili gün geçmişte kaldıysa, bugüne veya sonraki ilk uygun güne güncelle
+    if (selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day < now.day) {
+
+      // Bugün için müsait slot var mı kontrol et
+      if (hasFreeSlotOnDay(today)) {
+        selectedDate = today;
+      } else {
+        // Bugün için slot yoksa, sonraki ilk uygun günü bul
+        DateTime? nextAvailable = findNextAvailableDay(today);
+        if (nextAvailable != null) {
+          selectedDate = nextAvailable;
+        } else {
+          // Hiç uygun gün bulunamazsa bugüne ayarla (UI'da "müsait saat yok" gösterilecek)
+          selectedDate = today;
+        }
+      }
+    } else if (selectedDate.isBefore(today)) {
+      // Seçili tarih tamamen geçmişte kaldıysa (farklı ay/yıl), bugüne ayarla
+      selectedDate = today;
+    }
+
+    // Burada diğer ayların geçerlilik kontrolü de yapılabilir, ancak şimdilik geçmiş günler problemi çözüldü
   }
 
   bool isToday(DateTime day, DateTime now) {
@@ -216,7 +278,7 @@ class _ReservationPageState extends State<ReservationPage> {
     final firstDayOfMonth =
         DateTime(selectedDate.year, selectedDate.month, 1).weekday;
     final selectedMonthYear = DateFormat.yMMMM('tr_TR').format(selectedDate);
-    DateTime now = DateTime.now();
+    DateTime now =TimeService.now();
 
     final allSlots =
         timeSlots.where((slot) => !isSlotBooked(selectedDate, slot)).toList();
@@ -274,12 +336,12 @@ class _ReservationPageState extends State<ReservationPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (selectedDate.month == DateTime.now().month)
+                      if (selectedDate.month ==TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: null,
                             color: Colors.grey[300]),
-                      if (selectedDate.month != DateTime.now().month)
+                      if (selectedDate.month !=TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: handlePrevMonth),
@@ -313,6 +375,12 @@ class _ReservationPageState extends State<ReservationPage> {
                       final isPastDay = currentDay
                           .isBefore(DateTime(now.year, now.month, now.day));
 
+                      // Bugünden itibaren maksimum 7 gün ilerisi için rezervasyon yapılabilir
+                      final DateTime maxDate =TimeService.now().add(Duration(days: 7));
+
+                      // Ve takvim gösteriminde bu kontrolü ekleriz
+                      final bool isInBookingWindow = !currentDay.isAfter(maxDate);
+
                       // Tasarımsal değişiklikler
                       BoxDecoration dayDecoration;
 
@@ -342,6 +410,12 @@ class _ReservationPageState extends State<ReservationPage> {
                           color: Colors.grey.shade200,
                           shape: BoxShape.circle,
                         );
+                      }else if (!isInBookingWindow) {
+                        // Rezervasyon penceresi dışındaki günler: Daha soluk bir stil
+                        dayDecoration = BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        );
                       } else {
                         // Normal gün: İnce bir gri çerçeve
                         dayDecoration = BoxDecoration(
@@ -351,7 +425,7 @@ class _ReservationPageState extends State<ReservationPage> {
                       }
 
                       return GestureDetector(
-                        onTap: isPastDay ? null : () => handleDateClick(day),
+                        onTap: (isPastDay || !isInBookingWindow) ? null : () => handleDateClick(day),
                         child: Container(
                           margin: EdgeInsets.all(4),
                           decoration: dayDecoration,
@@ -642,7 +716,7 @@ class _ReservationPageState extends State<ReservationPage> {
         reservationDateTime: bookingString,
         status: 'Beklemede',
         // Başlangıç durumu
-        createdAt: DateTime.now(),
+        createdAt:TimeService.now(),
         userName: userName,
         userEmail: userEmail,
         userPhone: userPhone,

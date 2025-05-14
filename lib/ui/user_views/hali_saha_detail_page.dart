@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
 
 class HaliSahaDetailPage extends StatefulWidget {
@@ -34,7 +35,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     Reviews newReview = Reviews(
       comment: newComment,
       rating: newRating,
-      datetime: DateTime.now(),
+      datetime:TimeService.now(),
       user_id: userId,
       user_name: userName,
     );
