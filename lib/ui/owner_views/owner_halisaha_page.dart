@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/owner_views/owner_completed_reservation_page.dart';
 import 'package:toplansin/ui/owner_views/owner_notification_panel.dart';
@@ -2359,30 +2360,20 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         .get();
 
     try {
-      // Atomik güncelleme için transaction kullanımı
-      await _firestore.runTransaction((transaction) async {
-        DocumentReference haliSahaRef =
-            _firestore.collection('hali_sahalar').doc(widget.haliSaha.id);
+      final success = await ReservationRemoteService().reserveSlot(
+        haliSahaId: widget.haliSaha.id,
+        bookingString: bookingString,
+      );
 
-        // Belgeyi tekrar oku
-        DocumentSnapshot snapshot = await transaction.get(haliSahaRef);
-
-        if (!snapshot.exists) {
-          throw Exception("HaliSaha belgesi bulunamadı!");
-        }
-
-        List<dynamic> currentBookedSlots = snapshot['bookedSlots'];
-
-        // Slotun müsait olduğunu kontrol et
-        if (currentBookedSlots.contains(bookingString)) {
-          throw Exception("Seçilen saat zaten rezerve edilmiş!");
-        }
-
-        // bookedSlots listesine yeni slotu ekle
-        transaction.update(haliSahaRef, {
-          'bookedSlots': FieldValue.arrayUnion([bookingString]),
-        });
-      });
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return; // işlemi durdur
+      }
 
       DocumentReference docRef;
 
@@ -2432,24 +2423,31 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     print(bookingString);
 
     try {
-      // Firestore referansı
-      DocumentReference haliSahaRef =
-          _firestore.collection('hali_sahalar').doc(widget.haliSaha.id);
+      final success = await ReservationRemoteService().cancelSlot(
+        haliSahaId: widget.haliSaha.id,
+        bookingString: bookingString,
+      );
 
-      // bookedSlots'tan slotu kaldır
-      await haliSahaRef.update({
-        'bookedSlots': FieldValue.arrayRemove([bookingString]),
-      });
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-      // UI'yi güncelle
+// UI'den kaldır
       setState(() {
         widget.haliSaha.bookedSlots.remove(bookingString);
       });
 
-      // Başarılı mesajı göster
+// Başarılı mesaj
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Rezervasyonunuz başarıyla iptal edildi!")),
       );
+
     } catch (e) {
       // Hata mesajı göster
       ScaffoldMessenger.of(context).showSnackBar(

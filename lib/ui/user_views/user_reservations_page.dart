@@ -279,7 +279,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
 class ReservationCard extends StatelessWidget {
   final Reservation reservation;
 
-  ReservationCard({required this.reservation});
+  const ReservationCard({super.key, required this.reservation});
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -311,25 +311,41 @@ class ReservationCard extends StatelessWidget {
     }
   }
 
+  Widget _infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey.shade600, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Tarih ve saat ayrıştırma
-    List<String> dateTimeParts = reservation.reservationDateTime.split(' ');
-    String date = dateTimeParts.isNotEmpty ? dateTimeParts[0] : 'Tarih Yok';
-    String time = dateTimeParts.length > 1 ? dateTimeParts[1] : 'Saat Yok';
+    final dateTimeParts = reservation.reservationDateTime.split(' ');
+    final date = dateTimeParts.isNotEmpty ? dateTimeParts[0] : 'Tarih Yok';
+    final time = dateTimeParts.length > 1 ? dateTimeParts[1] : 'Saat Yok';
 
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       clipBehavior: Clip.antiAlias,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card Header
+          // Header
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.green.shade400, Colors.blue.shade500],
@@ -339,88 +355,37 @@ class ReservationCard extends StatelessWidget {
             ),
             child: Text(
               reservation.haliSahaName,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          // Card Content
+          // Content
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tarih
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today,
-                        color: Colors.grey.shade600, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      date,
-                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6),
-                // Saat
-                Row(
-                  children: [
-                    Icon(Icons.access_time, color: Colors.grey.shade600, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      time,
-                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6),
-                // Lokasyon
-                Row(
-                  children: [
-                    Icon(Icons.location_on,
-                        color: Colors.grey.shade600, size: 16),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        reservation.haliSahaLocation,
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6),
-                // Fiyat
-                Row(
-                  children: [
-                    Icon(Icons.attach_money,
-                        color: Colors.grey.shade600, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      '${reservation.haliSahaPrice} TL/saat',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                  ],
-                ),
+                _infoRow(Icons.calendar_today, date),
+                _infoRow(Icons.access_time, time),
+                _infoRow(Icons.location_on, reservation.haliSahaLocation),
+                _infoRow(Icons.attach_money,
+                    '${reservation.haliSahaPrice} TL/saat'),
               ],
             ),
           ),
-          // Card Footer
+          // Footer
           Container(
-            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+            color: Colors.grey.shade50,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Durum
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: getStatusColor(reservation.status),
                     borderRadius: BorderRadius.circular(20),
@@ -437,25 +402,23 @@ class ReservationCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Buton
                 ElevatedButton(
                   onPressed: () {
-                    // Detay sayfasına yönlendirme
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            UserReservationDetailPage(reservation: reservation),
+                        builder: (_) => UserReservationDetailPage(
+                            reservation: reservation),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                    reservation.status == 'Tamamlandı' ||
+                    backgroundColor: reservation.status == 'Tamamlandı' ||
                         reservation.status == 'İptal Edildi'
                         ? Colors.blue
                         : Colors.green,
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -465,7 +428,8 @@ class ReservationCard extends StatelessWidget {
                         reservation.status == 'İptal Edildi'
                         ? 'Detaylar'
                         : 'Düzenle',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],

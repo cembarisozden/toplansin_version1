@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/ui/user_views/abonelik_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_notification_panel.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
@@ -30,7 +31,7 @@ class HaliSahaPage extends StatefulWidget {
 class _HaliSahaPageState extends State<HaliSahaPage> {
   /// Firestore koleksiyon referansı
   final collectionHaliSaha =
-  FirebaseFirestore.instance.collection("hali_sahalar");
+      FirebaseFirestore.instance.collection("hali_sahalar");
 
   /// Tüm halı sahaları tutan liste (orijinal, filtrelenmemiş).
   List<HaliSaha> _allHaliSahalar = [];
@@ -106,9 +107,11 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     if (widget.user == null) return;
     final userId = widget.user!.uid;
     final doc =
-    await FirebaseFirestore.instance.collection('users').doc(userId).get();
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
-    if (doc.exists && doc.data() != null && doc.data()!.containsKey('favorites')) {
+    if (doc.exists &&
+        doc.data() != null &&
+        doc.data()!.containsKey('favorites')) {
       List<dynamic> favIds = doc.data()!['favorites'] ?? [];
       List<HaliSaha> userFavorites = [];
       Set<int> favIndexSet = {};
@@ -118,7 +121,8 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
       // Kolaylık için bu haliyle bırakıyoruz.
 
       for (var favId in favIds) {
-        int index = _allHaliSahalar.indexWhere((element) => element.id == favId);
+        int index =
+            _allHaliSahalar.indexWhere((element) => element.id == favId);
         if (index != -1) {
           userFavorites.add(_allHaliSahalar[index]);
           favIndexSet.add(index);
@@ -146,8 +150,8 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     final selectedHaliSaha = halisahalar[index];
 
     // Tüm halı sahalar içinde selectedHaliSaha'nın indeksi (favoriSet’i güncellemek için)
-    final realIndex =
-    _allHaliSahalar.indexWhere((element) => element.id == selectedHaliSaha.id);
+    final realIndex = _allHaliSahalar
+        .indexWhere((element) => element.id == selectedHaliSaha.id);
 
     if (favoriteHalisaha.contains(realIndex)) {
       // Zaten favori ise => Çıkart
@@ -331,6 +335,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
             ),
 
             /// Rezervasyonlarım
+
             ListTile(
               leading: Icon(Icons.calendar_today, color: Colors.green.shade700),
               title: Text("Rezervasyonlarım",
@@ -342,12 +347,24 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 );
               },
             ),
+            ListTile(
+              leading: Icon(Icons.event_repeat, color: Colors.blue.shade700,),
+              title: Text("Aboneliklerim",
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => AboneliklerimPage()),
+                );
+              },
+            ),
 
             /// Ayarlar
             ListTile(
               leading: Icon(Icons.settings, color: Colors.grey.shade700),
-              title:
-              Text("Ayarlar", style: TextStyle(fontWeight: FontWeight.w500)),
+              title: Text("Ayarlar",
+                  style: TextStyle(fontWeight: FontWeight.w500)),
               onTap: () {
                 Navigator.push(
                   context,
@@ -370,7 +387,10 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                       fontWeight: FontWeight.w500, color: Colors.red)),
               onTap: () async {
                 if (widget.user != null) {
-                  await FirebaseFirestore.instance.collection('users').doc(widget.user?.uid).update({
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(widget.user?.uid)
+                      .update({
                     'fcmToken': FieldValue.delete(),
                   });
                 }
@@ -419,11 +439,11 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
                   child: (halisaha.imagesUrl.isNotEmpty)
                       ? Image.asset(
-                    "assets/halisaha_images/${halisaha.imagesUrl.first}",
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  )
+                          "assets/halisaha_images/${halisaha.imagesUrl.first}",
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
                       : Container(height: 180, color: Colors.grey.shade300),
                 ),
                 // Bilgiler
@@ -454,7 +474,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                                   child: Text(
                                     halisaha.location,
                                     style:
-                                    TextStyle(color: Colors.grey.shade800),
+                                        TextStyle(color: Colors.grey.shade800),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -467,8 +487,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                                 SizedBox(width: 4),
                                 Text(
                                   '${halisaha.rating.toStringAsFixed(1)}',
-                                  style:
-                                  TextStyle(color: Colors.grey.shade800),
+                                  style: TextStyle(color: Colors.grey.shade800),
                                 ),
                               ],
                             ),
@@ -480,8 +499,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                                 SizedBox(width: 4),
                                 Text(
                                   '₺${halisaha.price}',
-                                  style:
-                                  TextStyle(color: Colors.grey.shade800),
+                                  style: TextStyle(color: Colors.grey.shade800),
                                 ),
                               ],
                             ),
@@ -495,13 +513,13 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                           // Gerçek index'i bulmak için
                           favoriteHalisaha.contains(
                             _allHaliSahalar.indexWhere(
-                                  (element) => element.id == halisaha.id,
+                              (element) => element.id == halisaha.id,
                             ),
                           )
                               ? Icons.favorite
                               : Icons.favorite_border,
                           color: favoriteHalisaha.contains(
-                              _allHaliSahalar.indexWhere(
+                                  _allHaliSahalar.indexWhere(
                                       (element) => element.id == halisaha.id))
                               ? Colors.redAccent
                               : Colors.grey.shade500,

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/views/no_internet_screen.dart';
 
@@ -662,26 +663,21 @@ class _ReservationPageState extends State<ReservationPage> {
 
 
     try {
-      // Atomik güncelleme için transaction kullanımı
-      await _firestore.runTransaction((transaction) async {
-        DocumentReference haliSahaRef =
-            _firestore.collection('hali_sahalar').doc(widget.haliSaha.id);
+      final success = await ReservationRemoteService().reserveSlot(
+        haliSahaId: widget.haliSaha.id,
+        bookingString: bookingString,
+      );
 
-        // Belgeyi tekrar oku
-        DocumentSnapshot snapshot = await transaction.get(haliSahaRef);
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return; // işlemi durdur
+      }
 
-        List<dynamic> currentBookedSlots = snapshot['bookedSlots'];
-
-        // Slotun müsait olduğunu kontrol et
-        if (currentBookedSlots.contains(bookingString)) {
-          throw Exception("Seçilen saat zaten rezerve edilmiş!");
-        }
-
-        // bookedSlots listesine yeni slotu ekle
-        transaction.update(haliSahaRef, {
-          'bookedSlots': FieldValue.arrayUnion([bookingString]),
-        });
-      });
 
       // Güncellenmiş bookedSlots listesini al
       setState(() {
@@ -722,6 +718,8 @@ class _ReservationPageState extends State<ReservationPage> {
         userPhone: userPhone,
         lastUpdatedBy: widget.currentUser.role,
       );
+      print("Firestore'a yazılacak veri: ${newReservation.toMap()}");
+
 
 // Reservation'ı Firestore'a ekleme
       await docRef.set(newReservation.toMap(),SetOptions(merge: false));
@@ -730,6 +728,9 @@ class _ReservationPageState extends State<ReservationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Rezervasyon isteği başarıyla gönderildi!")),
       );
+
+
+
       showDialog(
         context: context,
         builder: (BuildContext context) {

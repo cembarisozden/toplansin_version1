@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/reservation_remote_service.dart';
 
 class UserReservationDetailPage extends StatefulWidget {
   final Reservation reservation;
@@ -109,14 +110,22 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
           .collection('reservations')
           .doc(reservationId)
           .update({'status': 'İptal Edildi','lastUpdatedBy':'user'});
-      await FirebaseFirestore.instance
-          .collection('hali_sahalar')
-          .doc(widget.reservation.haliSahaId)
-          .update({
-        'bookedSlots':
-            FieldValue.arrayRemove([widget.reservation.reservationDateTime])
-      });
-      ;
+
+      final success = await ReservationRemoteService().cancelSlot(
+        haliSahaId: widget.reservation.haliSahaId,
+        bookingString: widget.reservation.reservationDateTime,
+      );
+
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Slot iptal edilemedi, lütfen tekrar deneyin."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return; // iptal başarısızsa durdur
+      }
+
 
       setState(() {
         widget.reservation.status = 'İptal Edildi';
@@ -163,183 +172,171 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    DateTime reservationDateTime =
-        DateTime.parse(widget.reservation.reservationDateTime);
-    String formattedDate =
-        "${reservationDateTime.day}/${reservationDateTime.month}/${reservationDateTime.year}";
-    String formattedTime =
-        "${reservationDateTime.hour.toString().padLeft(2, '0')}:${reservationDateTime.minute.toString().padLeft(2, '0')}";
+    final parts = widget.reservation.reservationDateTime.split(' '); // ["2025-05-15", "20:00-21:00"]
+    final datePart = parts[0]; // "2025-05-15"
+    final timePart = parts.length > 1 ? parts[1] : "00:00-01:00";
+
+    final dateParts = datePart.split('-'); // ["2025", "05", "15"]
+    final year = int.parse(dateParts[0]);
+    final month = int.parse(dateParts[1]);
+    final day = int.parse(dateParts[2]);
+
+// Saat aralığını doğrudan göster
+    final formattedTime = timePart; // "20:00-21:00"
+    final formattedDate = "$day/$month/$year";
+
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
           '${widget.reservation.haliSahaName} Rezervasyonu',
-          style: TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white),
         ),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: Colors.green.shade800,
         centerTitle: true,
+        elevation: 4,
       ),
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade300,
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              "assets/halisaha_images/${widget.reservation.haliSahaName.isNotEmpty ? 'halisaha1.jpg' : 'halisaha0.jpg'}",
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.reservation.haliSahaName,
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade700,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                _buildInfoRow(
-                                    Icons.calendar_today, formattedDate),
-                                _buildInfoRow(Icons.access_time, formattedTime),
-                                _buildInfoRow(Icons.attach_money,
-                                    "${widget.reservation.haliSahaPrice} TL/saat"),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                // 🎯 Üst Görsel Kart
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    "assets/halisaha_images/${widget.reservation.haliSahaName.isNotEmpty ? 'halisaha1.jpg' : 'halisaha0.jpg'}",
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
                   ),
                 ),
-                SizedBox(height: 25),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade300,
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Kullanıcı Bilgileri",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                      Divider(
-                        thickness: 1.5,
-                        color: Colors.green.shade700,
-                      ),
-                      SizedBox(height: 15),
-                      _buildInfoRow(Icons.person, widget.reservation.userName),
-                      _buildInfoRow(Icons.email, widget.reservation.userEmail),
-                      _buildInfoRow(Icons.phone, widget.reservation.userPhone),
-                    ],
-                  ),
+                const SizedBox(height: 20),
+
+                // 🗓️ Rezervasyon Bilgileri Kartı
+                _buildCard(
+                  children: [
+                    _buildDetailTitle("Rezervasyon Bilgileri"),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(Icons.calendar_month, formattedDate),
+                    _buildInfoRow(Icons.access_time, formattedTime),
+                    _buildInfoRow(Icons.attach_money,
+                        "${widget.reservation.haliSahaPrice} TL/Saat"),
+                  ],
                 ),
-                SizedBox(height: 25),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: getStatusColor(widget.reservation.status),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
+                const SizedBox(height: 20),
+
+                // 👤 Kullanıcı Bilgileri
+                _buildCard(
+                  children: [
+                    _buildDetailTitle("Kullanıcı Bilgileri"),
+                    const SizedBox(height: 12),
+                    _buildInfoRow(Icons.person, widget.reservation.userName),
+                    _buildInfoRow(Icons.email, widget.reservation.userEmail),
+                    _buildInfoRow(Icons.phone, widget.reservation.userPhone),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // 🔖 Durum Bilgisi
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: getStatusColor(widget.reservation.status)
+                          .withOpacity(0.15),
+                      border: Border.all(
                         color: getStatusTextColor(widget.reservation.status),
-                        width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        widget.reservation.status,
-                        style: TextStyle(
-                          color: getStatusTextColor(widget.reservation.status),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                        width: 1.2,
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      widget.reservation.status,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: getStatusTextColor(widget.reservation.status),
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(height: 35),
+                const SizedBox(height: 30),
+
+                // ❌ İptal Butonu
                 if (widget.reservation.status == 'Onaylandı' ||
                     widget.reservation.status == 'Beklemede')
                   Center(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: _showCancelConfirmationDialog,
+                      icon: const Icon(Icons.cancel, color: Colors.white),
+                      label: const Text(
+                        "Rezervasyonu İptal Et",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade600,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 5,
-                      ),
-                      child: Text(
-                        "Rezervasyonu İptal Et",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        elevation: 4,
                       ),
                     ),
                   ),
               ],
             ),
           ),
+
           if (isLoading)
             Container(
-              color: Colors.black54,
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              color: Colors.black38,
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
     );
   }
+  Widget _buildCard({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade300,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildDetailTitle(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.green.shade700,
+      ),
+    );
+  }
+
 }

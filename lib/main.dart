@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +35,10 @@ void main() async {
 
 
   try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.getIdToken(true); // Auth token'ı tazele
+    }
     await FirebaseFunctions.instance.httpsCallable('updateServerTime').call();
     print("✅ server_time güncellendi");
   } catch (e) {
