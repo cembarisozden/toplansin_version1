@@ -8,6 +8,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
+import 'package:toplansin/ui/user_views/subscribe_page.dart';
 
 class HaliSahaDetailPage extends StatefulWidget {
   final HaliSaha haliSaha;
@@ -26,16 +27,16 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   double _currentRating = 0;
 
   Future<void> addReview(
-      String haliSahaId,
-      String newComment,
-      double newRating,
-      String userId,
-      String userName,
-      ) async {
+    String haliSahaId,
+    String newComment,
+    double newRating,
+    String userId,
+    String userName,
+  ) async {
     Reviews newReview = Reviews(
       comment: newComment,
       rating: newRating,
-      datetime:TimeService.now(),
+      datetime: TimeService.now(),
       user_id: userId,
       user_name: userName,
     );
@@ -90,6 +91,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           .update({'rating': 0});
     }
   }
+
   Future<void> readReview(String haliSahaId) async {
     var collectionReviews = FirebaseFirestore.instance
         .collection("hali_sahalar")
@@ -112,8 +114,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     tempList.sort((a, b) {
       if (a.user_id == currentUserId && b.user_id != currentUserId) {
         return -1;
-      }
-      else if (b.user_id == currentUserId && a.user_id != currentUserId) {
+      } else if (b.user_id == currentUserId && a.user_id != currentUserId) {
         return 1;
       }
 
@@ -124,7 +125,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       reviewList = tempList;
     });
   }
-
 
   @override
   void initState() {
@@ -243,33 +243,65 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             color: Colors.grey[700], height: 1.4, fontSize: 14),
                       ),
                       SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ReservationPage(
-                                  haliSaha: haliSaha,
-                                  currentUser: widget.currentUser,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          SizedBox(
+                            width: 170,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReservationPage(
+                                      haliSaha: haliSaha,
+                                      currentUser: widget.currentUser,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              child: Text(
+                                "Rezervasyon Yap",
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.white),
+                              ),
                             ),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            elevation: 2,
                           ),
-                          child: Text(
-                            "Rezervasyon Yap",
-                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          SizedBox(
+                            width: 170,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SubscribePage(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade700,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
+                              ),
+                              child: Text(
+                                "Abone Ol",
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.white),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       SizedBox(height: 24),
                       _buildInfoAndFeaturesTabs(haliSaha),
@@ -405,8 +437,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _buildInfoColumn(Icons.access_time, "Saatler",
                 "${haliSaha.startHour}-${haliSaha.endHour}"),
-            _buildInfoColumn(Icons.monetization_on, "Ücret",
-                "${haliSaha.price} TL"),
+            _buildInfoColumn(
+                Icons.monetization_on, "Ücret", "${haliSaha.price} TL"),
           ]),
         ],
       ),
@@ -457,7 +489,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       children: [
         Icon(icon, size: 24, color: Colors.green),
         SizedBox(height: 4),
-        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(title,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         SizedBox(height: 4),
         Text(value, style: TextStyle(color: Colors.grey[700])),
       ],
@@ -468,7 +501,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Konum", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text("Konum",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         Container(
           height: 150,
@@ -517,13 +551,14 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
             child: ReviewItem(
               review: review,
               currentUserId: widget._auth.currentUser!.uid,
-              onDelete: () =>_deleteReview(review),
+              onDelete: () => _deleteReview(review),
             ),
           );
         },
       );
     }
   }
+
   Future<void> _deleteReview(Reviews review) async {
     try {
       if (review.docId == null) return; // Emniyet amaçlı
@@ -549,9 +584,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       );
     }
   }
-
-
-
 
   Widget _buildAddReviewSection() {
     return Column(
@@ -715,17 +747,18 @@ class ReviewItem extends StatelessWidget {
                                 ),
                               ),
                               if (isOwner)
-                               InkWell(
-                                    onTap: onDelete,
-                                    child: Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                      size: 22,
-                                    ),
+                                InkWell(
+                                  onTap: onDelete,
+                                  child: Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                    size: 22,
                                   ),
+                                ),
                             ],
                           ),
                           SizedBox(height: 6),
+
                           /// Yıldız Rating (örn. 5 üzerinden)
                           Row(
                             children: _buildStarIcons(review.rating),
@@ -749,7 +782,6 @@ class ReviewItem extends StatelessWidget {
               ],
             ),
           ),
-
         ],
       ),
     );
@@ -779,4 +811,3 @@ class ReviewItem extends StatelessWidget {
     return stars;
   }
 }
-

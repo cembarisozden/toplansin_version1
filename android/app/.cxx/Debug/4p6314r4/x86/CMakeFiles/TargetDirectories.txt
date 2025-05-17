@@ -1,0 +1,2 @@
+C:/Users/ydmbs/toplansin/android/app/.cxx/Debug/4p6314r4/x86/CMakeFiles/edit_cache.dir
+C:/Users/ydmbs/toplansin/android/app/.cxx/Debug/4p6314r4/x86/CMakeFiles/rebuild_cache.dir
