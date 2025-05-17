@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-class AboneliklerimPage extends StatefulWidget {
+
+class SubscriptionDetailPage extends StatefulWidget {
   @override
-  _AboneliklerimPageState createState() => _AboneliklerimPageState();
+  _SubscriptionDetailPageState createState() => _SubscriptionDetailPageState();
 }
 
-class _AboneliklerimPageState extends State<AboneliklerimPage> {
+class _SubscriptionDetailPageState extends State<SubscriptionDetailPage> {
   @override
   Widget build(BuildContext context) {
     final Color themeColor = Colors.blue.shade700;
@@ -117,7 +118,6 @@ class _AboneliklerimPageState extends State<AboneliklerimPage> {
           ),
         ),
       ),
-
     );
   }
 }
@@ -174,7 +174,6 @@ class AbonelikCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -195,12 +194,14 @@ class AbonelikCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined, size: 18, color: Colors.grey[600]),
+                          Icon(Icons.location_on_outlined,
+                              size: 18, color: Colors.grey[600]),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
                               location,
-                              style: TextStyle(fontSize: 15, color: Colors.black87),
+                              style: TextStyle(
+                                  fontSize: 15, color: Colors.black87),
                             ),
                           ),
                         ],
@@ -209,7 +210,8 @@ class AbonelikCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: bgBadgeColor,
                     borderRadius: BorderRadius.circular(20),
@@ -239,7 +241,6 @@ class AbonelikCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -270,14 +271,12 @@ class AbonelikCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 if (!isPast) ...[
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {},
-
                           label: Text(
                             'Bu Haftayı İptal Et',
                             style: TextStyle(
@@ -287,10 +286,12 @@ class AbonelikCard extends StatelessWidget {
                             ),
                           ),
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.orange.shade300, width: 1.5),
+                            side: BorderSide(
+                                color: Colors.orange.shade300, width: 1.5),
                             padding: EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: Colors.orange.withOpacity(0.05),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                             shadowColor: Colors.orange.withOpacity(0.2),
                             elevation: 0,
                           ),
@@ -300,7 +301,6 @@ class AbonelikCard extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {},
-
                           label: Text(
                             'Aboneliği İptal Et',
                             style: TextStyle(
@@ -310,10 +310,12 @@ class AbonelikCard extends StatelessWidget {
                             ),
                           ),
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                            side: BorderSide(
+                                color: Colors.red.shade300, width: 1.5),
                             padding: EdgeInsets.symmetric(vertical: 16),
                             backgroundColor: Colors.red.withOpacity(0.05),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                             shadowColor: Colors.red.withOpacity(0.2),
                             elevation: 0,
                           ),
@@ -321,11 +323,8 @@ class AbonelikCard extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 10),
                 ],
-
-
               ],
             ),
           ),
@@ -348,12 +347,11 @@ class AbonelikCard extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             text,
-            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: color),
+            style: TextStyle(
+                fontSize: 14.5, fontWeight: FontWeight.w500, color: color),
           ),
         ],
       ),
     );
   }
 }
-
-

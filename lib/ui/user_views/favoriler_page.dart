@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
+import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_notification_panel.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 import 'package:toplansin/ui/user_views/user_settings_page.dart';
@@ -58,7 +59,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
         var h = allHalisahalar.firstWhere((element) => element.id == favId,
             orElse: () => null as HaliSaha);
         userFavorites.add(h);
-            }
+      }
 
       widget.favoriteHaliSahalar = userFavorites;
 
@@ -224,6 +225,21 @@ class _FavorilerPageState extends State<FavorilerPage> {
                 },
               ),
               ListTile(
+                leading: Icon(
+                  Icons.event_repeat,
+                  color: Colors.blue.shade700,
+                ),
+                title: Text("Aboneliklerim",
+                    style: TextStyle(fontWeight: FontWeight.w500)),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => SubscriptionDetailPage()),
+                  );
+                },
+              ),
+              ListTile(
                 leading: Icon(Icons.settings, color: Colors.grey.shade700),
                 title: Text("Ayarlar",
                     style: TextStyle(fontWeight: FontWeight.w500)),
@@ -244,7 +260,10 @@ class _FavorilerPageState extends State<FavorilerPage> {
                         fontWeight: FontWeight.w500, color: Colors.red)),
                 onTap: () async {
                   if (user != null) {
-                    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user?.uid)
+                        .update({
                       'fcmToken': FieldValue.delete(),
                     });
                   }
@@ -350,7 +369,8 @@ class _FavorilerPageState extends State<FavorilerPage> {
                                             Icon(Icons.star,
                                                 color: Colors.amber, size: 16),
                                             SizedBox(width: 4),
-                                            Text('${halisaha.rating.toStringAsFixed(1)}',
+                                            Text(
+                                                '${halisaha.rating.toStringAsFixed(1)}',
                                                 style: TextStyle(
                                                     color:
                                                         Colors.grey.shade800)),
