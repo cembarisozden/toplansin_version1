@@ -720,10 +720,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
         ),
       );
     } else {
-      // 🔄 1. Listeyi sıralama
-      List<Reviews> sortedList = [
-        ...reviewList
-      ]; // orijinali değiştirmeden kopya al
+      List<Reviews> sortedList = [...reviewList];
 
       switch (selectedSort) {
         case ReviewSortOption.newest:
@@ -740,14 +737,11 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           break;
       }
 
-      // 🔄 2. Sadece ilk 3 veya tamamı
-      final visibleReviews =
-          showAllReviews ? sortedList : sortedList.take(3).toList();
+      final visibleReviews = showAllReviews ? sortedList : sortedList.take(3).toList();
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔽 3. Dropdown sıralama seçimi
           Row(
             children: [
               Text("Yorumlar",
@@ -755,22 +749,17 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
               Spacer(),
               TextButton.icon(
                 style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   minimumSize: Size.zero,
                   visualDensity: VisualDensity.compact,
                 ),
-                onPressed: () {
-                  // Seçim ekranı açılacak (şimdilik sadece dropdown)
-                },
+                onPressed: () {},
                 icon: Icon(Icons.sort, size: 18, color: Colors.black),
-                // ✅ yeşil ikon
                 label: DropdownButtonHideUnderline(
                   child: DropdownButton<ReviewSortOption>(
                     value: selectedSort,
-                    icon:
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black,
@@ -784,22 +773,10 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                       }
                     },
                     items: const [
-                      DropdownMenuItem(
-                        value: ReviewSortOption.newest,
-                        child: Text("En yeni"),
-                      ),
-                      DropdownMenuItem(
-                        value: ReviewSortOption.oldest,
-                        child: Text("En eski"),
-                      ),
-                      DropdownMenuItem(
-                        value: ReviewSortOption.bestRated,
-                        child: Text("En iyi"),
-                      ),
-                      DropdownMenuItem(
-                        value: ReviewSortOption.worstRated,
-                        child: Text("En kötü"),
-                      ),
+                      DropdownMenuItem(value: ReviewSortOption.newest, child: Text("En yeni")),
+                      DropdownMenuItem(value: ReviewSortOption.oldest, child: Text("En eski")),
+                      DropdownMenuItem(value: ReviewSortOption.bestRated, child: Text("En iyi")),
+                      DropdownMenuItem(value: ReviewSortOption.worstRated, child: Text("En kötü")),
                     ],
                   ),
                 ),
@@ -807,10 +784,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
               const SizedBox(width: 16),
             ],
           ),
-
           const SizedBox(height: 8),
-
-          // 🔽 4. Yorum listesi
           ListView.builder(
             shrinkWrap: true,
             physics: NeverScrollableScrollPhysics(),
@@ -827,10 +801,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
               );
             },
           ),
-
           const SizedBox(height: 8),
-
-          // 🔽 5. Tümünü göster/gizle butonu
           if (reviewList.length > 3)
             Center(
               child: TextButton(
@@ -850,18 +821,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                   ),
                 ),
               ),
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
-        itemCount: reviewList.length,
-        itemBuilder: (context, index) {
-          final review = reviewList[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: ReviewItem(
-              review: review,
-              currentUserId: widget._auth.currentUser!.uid,
-              onDelete: () => _deleteReview(review),
             ),
         ],
       );
