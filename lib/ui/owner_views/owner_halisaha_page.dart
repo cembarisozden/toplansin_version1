@@ -693,18 +693,18 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           fontWeight: FontWeight.bold,
                           color: Colors.green.shade800)),
                   SizedBox(height: 16),
-                  _buildTextField("Halı Saha Adı", nameController),
-                  _buildTextField("Konum", locationController),
+                  _buildTextField("Halı Saha Adı", nameController,maxLength: 100),
+                  _buildTextField("Konum", locationController,maxLength: 100),
                   _buildTextField("Saatlik Ücret (TL)", priceController,
-                      isNumber: true),
-                  _buildTextField("Saha Boyutu", sizeController),
-                  _buildTextField("Zemin Tipi", surfaceController),
+                      isNumber: true,maxLength: 20),
+                  _buildTextField("Saha Boyutu", sizeController,maxLength: 20),
+                  _buildTextField("Zemin Tipi", surfaceController,maxLength: 40),
                   _buildTextField("Maksimum Oyuncu", maxPlayersController,
-                      isNumber: true),
-                  _buildTextField("Açılış Saati", startHourController),
-                  _buildTextField("Kapanış Saati", endHourController),
+                      isNumber: true,maxLength: 20),
+                  _buildTextField("Açılış Saati", startHourController,maxLength: 5),
+                  _buildTextField("Kapanış Saati", endHourController,maxLength: 5),
                   _buildTextField("Açıklama", descriptionController,
-                      isMultiline: true),
+                      isMultiline: true,maxLength: 300),
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _updateHaliSaha,
@@ -813,14 +813,40 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool isNumber = false, bool isMultiline = false}) {
+  Widget _buildTextField(
+      String label,
+      TextEditingController controller, {
+        bool isNumber = false,
+        bool isMultiline = false,
+        int maxLength=300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
+      }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isNumber
+            ? TextInputType.number
+            : (isMultiline ? TextInputType.multiline : TextInputType.text),
         maxLines: isMultiline ? 4 : 1,
+        maxLength: maxLength, // ✅ karakter sınırı burada uygulanır
+        buildCounter: (
+            BuildContext context, {
+              required int currentLength,
+              required bool isFocused,
+              required int? maxLength,
+            }) {
+          return maxLength != null
+              ? Text(
+            "$currentLength / $maxLength",
+            style: TextStyle(
+              fontSize: 11,
+              color: currentLength > maxLength
+                  ? Colors.red
+                  : Colors.grey.shade600,
+            ),
+          )
+              : null;
+        },
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey.shade700),
@@ -833,6 +859,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
+
 
   // Güncelleme Fonksiyonu
   Future<void> _updateHaliSaha() async {

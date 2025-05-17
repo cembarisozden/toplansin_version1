@@ -143,13 +143,29 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
         isLoading = false;
       });
 
+      final errorMsg = getReservationErrorMessage(e);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Güncelleme sırasında bir hata oluştu: $e"),
+          content: Text("İptal işlemi başarısız: $errorMsg"),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  String getReservationErrorMessage(dynamic error) {
+    if (error.toString().contains('permission-denied')) {
+      return 'Bu işlemi yapmaya yetkiniz yok.';
+    }
+    if (error.toString().contains('network-request-failed')) {
+      return 'İnternet bağlantısı yok.';
+    }
+    if (error.toString().contains('not-found')) {
+      return 'Rezervasyon zaten silinmiş.';
+    }
+
+    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 
   Widget _buildInfoRow(IconData icon, String text) {

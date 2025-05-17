@@ -130,18 +130,43 @@ class _SignUpPageState extends State<SignUpPage> {
             .doc(userCredential.user?.uid)
             .set(newUser.toMap());
 
+        await _auth.signOut();
+
         _showVerificationDialog();
       } on FirebaseAuthException catch (e) {
+        final msg = getFirebaseErrorMessage(e.code);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kayıt başarısız: ${e.message}')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kayıt başarısız: $e')),
+          SnackBar(content: Text("Kayıt başarısız: $msg")),
         );
       }
+      catch (e) {
+        final msg = getFirebaseErrorMessage(e is FirebaseAuthException ? e.code : null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kayıt başarısız: $msg')),
+        );
+      }
+
     }
   }
+
+  String getFirebaseErrorMessage(String? code) {
+    switch (code) {
+      case 'invalid-email':
+        return 'Geçerli bir e-posta adresi girin.';
+      case 'email-already-in-use':
+        return 'Bu e-posta zaten kullanılıyor.';
+      case 'weak-password':
+        return 'Şifre çok zayıf. En az 6 karakter olmalı.';
+      case 'operation-not-allowed':
+        return 'E-posta ile kayıt şu anda devre dışı.';
+      case 'network-request-failed':
+        return 'İnternet bağlantısı yok.';
+      default:
+        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+    }
+  }
+
+
 
   // E-posta doğrulama uyarısı
   void _showVerificationDialog() {
@@ -228,6 +253,15 @@ class _SignUpPageState extends State<SignUpPage> {
                             label: 'Ad Soyad',
                             icon: Icons.person,
                             onSaved: (value) => name = value ?? '',
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Ad soyad boş olamaz";
+                              }
+                              if (value.trim().length < 2) {
+                                return "Lütfen geçerli bir ad girin";
+                              }
+                              return null;
+                            },
                           ),
                           SizedBox(height: 16),
 
@@ -480,3 +514,4 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
+
