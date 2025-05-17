@@ -244,24 +244,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           SizedBox(height: 16),
-                          if (showEmailVerifyBanner)
-                            Column(
-                              children: [
-                                SizedBox(height: 12),
-                                Text(
-                                  "E-postanızı doğrulamanız gerekiyor.",
-                                  style: TextStyle(color: Colors.orange),
-                                ),
-                                if (!canResendEmail)
-                                  Text("Tekrar göndermek için $resendCountdown saniye bekleyin.")
-                                else
-                                  TextButton(
-                                    onPressed: resendVerificationEmail,
-                                    child: Text("Tekrar Gönder"),
-                                  ),
-                                SizedBox(height: 12),
-                              ],
-                            ),
 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -288,7 +270,62 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 16),
+                          if (showEmailVerifyBanner)
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.orange.shade300),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "E-posta doğrulaması gerekiyor!",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: Colors.orange.shade800,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        if (!canResendEmail)
+                                          Text(
+                                            "Tekrar göndermek için $resendCountdown saniye bekleyin.",
+                                            style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                                          )
+                                        else
+                                          ElevatedButton.icon(
+                                            onPressed: resendVerificationEmail,
+                                            icon: Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                                            label: Text(
+                                              "E-postayı tekrar gönder",
+                                              style: TextStyle(color: Colors.white),
+                                            ),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.orange.shade400,
+                                              elevation: 0,
+                                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          SizedBox(height: 12),
                           ElevatedButton(
                             onPressed: _handleSubmit,
                             child: Row(
