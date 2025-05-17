@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,6 +23,12 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  bool showEmailVerifyBanner = false;
+  bool canResendEmail = false;
+  int resendCountdown = 30;
+  Timer? _timer;
+
+
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
@@ -31,31 +39,40 @@ class _LoginPageState extends State<LoginPage> {
         email: email.trim(),
         password: password,
       );
+      if (!cred.user!.emailVerified) {
+        await cred.user!.sendEmailVerification(); // e-posta gönder
+        setState(() {
+          showEmailVerifyBanner = true;
+        });
+        startCountdown(); // geri sayımı başlat
+        await _auth.signOut(); // kullanıcıyı çıkışa zorla
+        return;
+      }
+
       final uid = cred.user?.uid;
       if (uid == null) {
         _snack('Giriş başarısız: Kullanıcı bulunamadı.', Colors.red);
         return;
       }
 
+
       /* ───── 2) Firestore’dan role = owner/user zorunlu ───── */
       Person person = await _fetchPerson(uid);
 
-      /* ───── 3) Sadece user’da e-posta onayı kontrolü ───── */
-      if (person.role == 'user' && !cred.user!.emailVerified) {
-        _snack('Lütfen e-postanızı doğrulayın.', Colors.orange);
-        await _auth.signOut();
-        return;
+      /* ───── 4) FCM token arka planda kaydedilsin ───── */
+      if (FirebaseAuth.instance.currentUser?.emailVerified == true) {
+        await NotificationService.I.saveTokenToFirestore();
       }
 
-      /* ───── 4) FCM token arka planda kaydedilsin ───── */
-      NotificationService.I.saveTokenToFirestore();
+
 
       /* ───── 5) Yönlendirme ───── */
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => person.role == 'owner'
+          builder: (_) =>
+          person.role == 'owner'
               ? OwnerMainPage(currentOwner: person)
               : MainPage(currentUser: person),
         ),
@@ -64,7 +81,8 @@ class _LoginPageState extends State<LoginPage> {
 
     /* ───── 6) Hata yakalama ───── */
     on FirebaseAuthException catch (e) {
-      _snack('Giriş hatası: ${e.message}', Colors.red);
+      final msg = getFriendlyErrorMessage(e);
+      _snack('Giriş hatası: $msg', Colors.red);
     } on FirebaseException catch (e) {
       _snack('Firestore hatası: ${e.message}', Colors.red);
       await _auth.signOut();
@@ -110,6 +128,39 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  String getFriendlyErrorMessage(dynamic error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          return 'Geçerli bir e-posta adresi girin.';
+        case 'user-not-found':
+          return 'Bu e-posta adresine kayıtlı kullanıcı bulunamadı.';
+        case 'wrong-password':
+          return 'Şifre hatalı. Lütfen tekrar deneyin.';
+        case 'email-already-in-use':
+          return 'Bu e-posta zaten kayıtlı.';
+        case 'weak-password':
+          return 'Şifre çok zayıf. En az 6 karakter olmalı.';
+        case 'network-request-failed':
+          return 'İnternet bağlantı hatası. Lütfen tekrar deneyin.';
+        case 'too-many-requests':
+          return 'Çok fazla deneme yapıldı. Bir süre bekleyin.';
+        case 'requires-recent-login':
+          return 'Bu işlemi yapmak için yeniden giriş yapmanız gerekiyor.';
+        case 'invalid-credential':
+          return 'Geçersiz ya da süresi dolmuş giriş bilgisi. Lütfen tekrar giriş yapın.';
+        default:
+          return 'Bir hata oluştu: ${error.message ?? "Bilinmeyen hata."}';
+      }
+    }
+
+    // Firestore hataları veya diğer string içeren durumlar
+    if (error.toString().contains("permission-denied")) {
+      return "Bu işlem için yetkiniz yok.";
+    }
+
+    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+  }
 
 
   @override
@@ -118,7 +169,11 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.green[400]!, Colors.green[500]!, Colors.green[600]!],
+            colors: [
+              Colors.green[400]!,
+              Colors.green[500]!,
+              Colors.green[600]!
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -131,12 +186,15 @@ class _LoginPageState extends State<LoginPage> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.sports_soccer, color: Colors.green, size: 50),
+                  child: Icon(
+                      Icons.sports_soccer, color: Colors.green, size: 50),
                 ),
                 SizedBox(height: 16),
                 Text(
                   "Toplansın'a Hoş Geldiniz",
-                  style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 28,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
                 Text(
@@ -146,7 +204,8 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: 32),
                 Card(
                   margin: EdgeInsets.symmetric(horizontal: 24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   elevation: 4,
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
@@ -160,7 +219,8 @@ class _LoginPageState extends State<LoginPage> {
                             keyboardType: TextInputType.emailAddress,
                             onSaved: (value) => email = value!,
                             validator: (value) {
-                              if (value == null || value.isEmpty || !value.contains('@')) {
+                              if (value == null || value.isEmpty ||
+                                  !value.contains('@')) {
                                 return 'Lütfen geçerli bir e-posta giriniz';
                               }
                               return null;
@@ -174,14 +234,35 @@ class _LoginPageState extends State<LoginPage> {
                             onSaved: (value) => password = value!,
                             suffixIcon: IconButton(
                               icon: Icon(
-                                showPassword ? Icons.visibility_off : Icons.visibility,
+                                showPassword ? Icons.visibility_off : Icons
+                                    .visibility,
                               ),
-                              onPressed: () => setState(() {
-                                showPassword = !showPassword;
-                              }),
+                              onPressed: () =>
+                                  setState(() {
+                                    showPassword = !showPassword;
+                                  }),
                             ),
                           ),
                           SizedBox(height: 16),
+                          if (showEmailVerifyBanner)
+                            Column(
+                              children: [
+                                SizedBox(height: 12),
+                                Text(
+                                  "E-postanızı doğrulamanız gerekiyor.",
+                                  style: TextStyle(color: Colors.orange),
+                                ),
+                                if (!canResendEmail)
+                                  Text("Tekrar göndermek için $resendCountdown saniye bekleyin.")
+                                else
+                                  TextButton(
+                                    onPressed: resendVerificationEmail,
+                                    child: Text("Tekrar Gönder"),
+                                  ),
+                                SizedBox(height: 12),
+                              ],
+                            ),
+
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -201,9 +282,9 @@ class _LoginPageState extends State<LoginPage> {
                               TextButton(
                                 onPressed: () {
                                   _showChangePasswordDialog();
-
                                 },
-                                child: Text('Şifremi unuttum', style: TextStyle(color: Colors.green)),
+                                child: Text('Şifremi unuttum',
+                                    style: TextStyle(color: Colors.green)),
                               ),
                             ],
                           ),
@@ -215,11 +296,13 @@ class _LoginPageState extends State<LoginPage> {
                               children: [
                                 Icon(Icons.login, color: Colors.white),
                                 SizedBox(width: 8),
-                                Text('Giriş Yap', style: TextStyle(color: Colors.white)),
+                                Text('Giriş Yap',
+                                    style: TextStyle(color: Colors.white)),
                               ],
                             ),
                             style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 32),
                               backgroundColor: Colors.green,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -231,7 +314,9 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(height: 16),
                           TextButton(
                             onPressed: () {
-                              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>SignUpPage()));
+                              Navigator.pushReplacement(context,
+                                  MaterialPageRoute(
+                                      builder: (context) => SignUpPage()));
                             },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -379,14 +464,16 @@ class _LoginPageState extends State<LoginPage> {
                     // Kullanıcıya başarı mesajı göster
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("$email adresine şifre sıfırlama linki gönderildi."),
+                        content: Text(
+                            "$email adresine şifre sıfırlama linki gönderildi."),
                         backgroundColor: Colors.green.shade700,
                       ),
                     );
                   } catch (e) {
+                    final msg = getFriendlyErrorMessage(e);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("Hata oluştu: $e"),
+                        content: Text("Şifre sıfırlama başarısız: $msg"),
                         backgroundColor: Colors.red.shade700,
                       ),
                     );
@@ -444,18 +531,49 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _sendPasswordResetEmail(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-
     } catch (e) {
       // Gönderim hatası
+      final msg = getFriendlyErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("E-posta gönderilemedi: $e"),
+          content: Text("E-posta gönderilemedi: $msg"),
+          backgroundColor: Colors.red,
         ),
       );
     }
   }
 
+  void startCountdown() {
+    canResendEmail = false;
+    resendCountdown = 30;
+    _timer?.cancel();
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (resendCountdown == 0) {
+        timer.cancel();
+        setState(() {
+          canResendEmail = true;
+        });
+      } else {
+        setState(() {
+          resendCountdown--;
+        });
+      }
+    });
+  }
 
+  Future<void> resendVerificationEmail() async {
+    try {
+      await _auth.currentUser?.sendEmailVerification();
+      startCountdown();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Doğrulama e-postası tekrar gönderildi.")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("E-posta gönderilemedi: $e")),
+      );
+    }
+  }
 
 
 }

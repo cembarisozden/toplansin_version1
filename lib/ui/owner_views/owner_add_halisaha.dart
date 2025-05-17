@@ -187,21 +187,21 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
-            _buildTextField("Halı Saha Adı", nameController),
-            _buildTextField("Konum", locationController),
-            _buildTextField("Saatlik Ücret (TL)", priceController, isNumber: true),
-            _buildTextField("Saha Boyutu (örn. 25x40)", sizeController),
-            _buildTextField("Zemin Tipi (örn. Sentetik Çim)", surfaceController),
-            _buildTextField("Maksimum Oyuncu Sayısı", maxPlayersController, isNumber: true),
+            _buildTextField("Halı Saha Adı", nameController,maxLength: 10),
+            _buildTextField("Konum", locationController,maxLength: 100),
+            _buildTextField("Saatlik Ücret (TL)", priceController, isNumber: true,maxLength: 20),
+            _buildTextField("Saha Boyutu (örn. 25x40)", sizeController,maxLength: 20),
+            _buildTextField("Zemin Tipi (örn. Sentetik Çim)", surfaceController,maxLength: 40),
+            _buildTextField("Maksimum Oyuncu Sayısı", maxPlayersController, isNumber: true,maxLength: 20),
             _buildTextField("Fotoğraf Url",imagesController),
             Row(
               children: [
-                Expanded(child: _buildTextField("Açılış Saati (örn. 09:00)", startHourController)),
+                Expanded(child: _buildTextField("Açılış Saati (örn. 09:00)", startHourController,maxLength: 5)),
                 SizedBox(width: 16),
-                Expanded(child: _buildTextField("Kapanış Saati (örn. 23:00)", endHourController)),
+                Expanded(child: _buildTextField("Kapanış Saati (örn. 23:00)", endHourController,maxLength: 5)),
               ],
             ),
-            _buildTextField("Açıklama", descriptionController, isMultiline: true),
+            _buildTextField("Açıklama", descriptionController, isMultiline: true,maxLength: 300),
             SizedBox(height: 16),
 
             Text(
@@ -284,19 +284,49 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool isNumber = false, bool isMultiline = false}) {
+  Widget _buildTextField(
+      String label,
+      TextEditingController controller, {
+        bool isNumber = false,
+        bool isMultiline = false,
+        int maxLength=300, // ⚠️ Karakter sınırı opsiyonel
+      }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isNumber
+            ? TextInputType.number
+            : (isMultiline ? TextInputType.multiline : TextInputType.text),
         maxLines: isMultiline ? 4 : 1,
+        maxLength: maxLength,
+        buildCounter: (
+            BuildContext context, {
+              required int currentLength,
+              required bool isFocused,
+              required int? maxLength,
+            }) {
+          if (maxLength == null) return null;
+          return Text(
+            "$currentLength / $maxLength",
+            style: TextStyle(
+              fontSize: 11,
+              color: currentLength > maxLength
+                  ? Colors.red
+                  : Colors.grey.shade600,
+            ),
+          );
+        },
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.white,
         ),
       ),
     );
   }
+
 }

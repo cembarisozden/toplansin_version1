@@ -10,6 +10,15 @@ import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
 import 'package:toplansin/ui/user_views/subscribe_page.dart';
 
+enum ReviewSortOption {
+  newest,
+  oldest,
+  bestRated,
+  worstRated,
+}
+
+ReviewSortOption selectedSort = ReviewSortOption.newest;
+
 class HaliSahaDetailPage extends StatefulWidget {
   final HaliSaha haliSaha;
   final Person currentUser;
@@ -25,6 +34,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   List<Reviews> reviewList = [];
   final TextEditingController _commentController = TextEditingController();
   double _currentRating = 0;
+
+  bool showAllReviews = false;
 
   Future<void> addReview(
     String haliSahaId,
@@ -308,7 +319,14 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                       SizedBox(height: 24),
                       _buildMapSection(),
                       SizedBox(height: 24),
-                      _buildReviewsSectionContainer(),
+                      _buildReviewSummary(
+                        context: context,
+                        ratingCounts: _calculateRatingCounts(reviewList),
+                        totalReviews: reviewList.length,
+                        averageRating: widget.haliSaha.rating.toDouble(),
+                      ),
+                      SizedBox(height: 24),
+                      _buildReviewsSection(),
                       SizedBox(height: 24),
                       _buildAddReviewSection(),
                     ],
@@ -320,6 +338,180 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildReviewSummary({
+    required BuildContext context,
+    required Map<int, int> ratingCounts,
+    required int totalReviews,
+    required double averageRating,
+  }) {
+    // Tema renkleri
+    const primary = Color(0xFF2EAC5B); // canlı yeşil (futbol sahası rengi)
+    const secondary = Color(0xFFFFC107); // sarı-altın (yıldızlar için)
+    const surface = Colors.white; // kart arka planı
+    const onSurface = Colors.black; // yazılar
+    final mutedGrey = onSurface.withOpacity(0.6); // gri yazı
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text("Kullanıcı Değerlendirmesi",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 12), // araya boşluk koyar
+
+      // Asıl container burada
+      Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ───────────── Ortalama Puan ─────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Rakam + yıldızlar
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Büyük puan
+                    Text(
+                      averageRating.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 38,
+                        fontWeight: FontWeight.w700,
+                        color: primary,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Yıldız ikonları
+                    Row(
+                      children: List.generate(
+                        5,
+                        (i) {
+                          final diff = averageRating - i;
+                          IconData icon;
+                          if (diff >= 1) {
+                            icon = Icons.star_rounded;
+                          } else if (diff >= 0.5) {
+                            icon = Icons.star_half_rounded;
+                          } else {
+                            icon = Icons.star_border_rounded;
+                          }
+                          return Icon(icon, size: 20, color: secondary);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Toplam yorum
+                    Text(
+                      "$totalReviews yorum",
+                      style: TextStyle(fontSize: 13, color: mutedGrey),
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // Şık review ikonu
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: surface,
+                  ),
+                  child: Icon(Icons.reviews, size: 45, color: primary),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // ───────────── Dağılım Çubukları ─────────────
+            ...List.generate(5, (index) {
+              final star = 5 - index;
+              final count = ratingCounts[star] ?? 0;
+              final ratio = totalReviews == 0 ? 0.0 : count / totalReviews;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 28,
+                      child: Text(
+                        "$star★",
+                        style: TextStyle(fontSize: 13, color: mutedGrey),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+
+                    // Gradient bar
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          // Arka plan
+                          Container(
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: onSurface.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          // Dolgu
+                          FractionallySizedBox(
+                            widthFactor: ratio,
+                            child: Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    primary,
+                                    primary.withOpacity(0.6),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+                    Text(
+                      "$count",
+                      style: TextStyle(fontSize: 13, color: mutedGrey),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      )
+    ]);
+  }
+
+  Map<int, int> _calculateRatingCounts(List<Reviews> reviews) {
+    final Map<int, int> counts = {};
+    for (var review in reviews) {
+      counts[review.rating.toInt()] = (counts[review.rating] ?? 0) + 1;
+    }
+    return counts;
   }
 
   /// Galeri kısmını inşa ediyoruz.
@@ -519,18 +711,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     );
   }
 
-  Widget _buildReviewsSectionContainer() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Yorumlar",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        SizedBox(height: 16),
-        _buildReviewsSection(),
-      ],
-    );
-  }
-
   Widget _buildReviewsSection() {
     if (reviewList.isEmpty) {
       return Center(
@@ -540,6 +720,136 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
         ),
       );
     } else {
+      // 🔄 1. Listeyi sıralama
+      List<Reviews> sortedList = [
+        ...reviewList
+      ]; // orijinali değiştirmeden kopya al
+
+      switch (selectedSort) {
+        case ReviewSortOption.newest:
+          sortedList.sort((a, b) => b.datetime.compareTo(a.datetime));
+          break;
+        case ReviewSortOption.oldest:
+          sortedList.sort((a, b) => a.datetime.compareTo(b.datetime));
+          break;
+        case ReviewSortOption.bestRated:
+          sortedList.sort((a, b) => b.rating.compareTo(a.rating));
+          break;
+        case ReviewSortOption.worstRated:
+          sortedList.sort((a, b) => a.rating.compareTo(b.rating));
+          break;
+      }
+
+      // 🔄 2. Sadece ilk 3 veya tamamı
+      final visibleReviews =
+          showAllReviews ? sortedList : sortedList.take(3).toList();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 🔽 3. Dropdown sıralama seçimi
+          Row(
+            children: [
+              Text("Yorumlar",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Spacer(),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: Size.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () {
+                  // Seçim ekranı açılacak (şimdilik sadece dropdown)
+                },
+                icon: Icon(Icons.sort, size: 18, color: Colors.black),
+                // ✅ yeşil ikon
+                label: DropdownButtonHideUnderline(
+                  child: DropdownButton<ReviewSortOption>(
+                    value: selectedSort,
+                    icon:
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    onChanged: (ReviewSortOption? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          selectedSort = newValue;
+                        });
+                      }
+                    },
+                    items: const [
+                      DropdownMenuItem(
+                        value: ReviewSortOption.newest,
+                        child: Text("En yeni"),
+                      ),
+                      DropdownMenuItem(
+                        value: ReviewSortOption.oldest,
+                        child: Text("En eski"),
+                      ),
+                      DropdownMenuItem(
+                        value: ReviewSortOption.bestRated,
+                        child: Text("En iyi"),
+                      ),
+                      DropdownMenuItem(
+                        value: ReviewSortOption.worstRated,
+                        child: Text("En kötü"),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // 🔽 4. Yorum listesi
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: visibleReviews.length,
+            itemBuilder: (context, index) {
+              final review = visibleReviews[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ReviewItem(
+                  review: review,
+                  currentUserId: widget._auth.currentUser!.uid,
+                  onDelete: () => _deleteReview(review),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 8),
+
+          // 🔽 5. Tümünü göster/gizle butonu
+          if (reviewList.length > 3)
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    showAllReviews = !showAllReviews;
+                  });
+                },
+                child: Text(
+                  showAllReviews
+                      ? "Yorumları gizle"
+                      : "Tüm yorumları görüntüle (${reviewList.length})",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
       return ListView.builder(
         shrinkWrap: true,
         physics: NeverScrollableScrollPhysics(),
@@ -553,8 +863,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
               currentUserId: widget._auth.currentUser!.uid,
               onDelete: () => _deleteReview(review),
             ),
-          );
-        },
+        ],
       );
     }
   }
@@ -579,10 +888,32 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       );
     } catch (e) {
       print("Yorum silinirken hata: $e");
+
+      final errorMsg = getReviewErrorMessage(e);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Yorum silinirken hata oluştu: $e")),
+        SnackBar(
+          content: Text("Yorum silinemedi: $errorMsg"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
+  }
+
+  String getReviewErrorMessage(dynamic error) {
+    if (error.toString().contains('permission-denied')) {
+      return 'Bu yorumu silme yetkiniz yok.';
+    }
+
+    if (error.toString().contains('network-request-failed')) {
+      return 'İnternet bağlantısı yok.';
+    }
+
+    if (error.toString().contains('not-found')) {
+      return 'Yorum bulunamadı veya zaten silinmiş.';
+    }
+
+    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 
   Widget _buildAddReviewSection() {
@@ -686,7 +1017,6 @@ class ReviewItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isOwner = (review.user_id == currentUserId);
-
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(

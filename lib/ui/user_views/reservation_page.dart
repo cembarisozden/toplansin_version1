@@ -26,9 +26,9 @@ class _ReservationPageState extends State<ReservationPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  DateTime selectedDate =TimeService.now();
+  DateTime selectedDate = TimeService.now();
   String? selectedTime;
-  List<String> bookedSlots=[];
+  List<String> bookedSlots = [];
 
   bool isConnectedToInternet = false;
   StreamSubscription? _internetConnectionStreamSubscription;
@@ -54,9 +54,9 @@ class _ReservationPageState extends State<ReservationPage> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => NoInternetScreen()),
-                  (route) => false, // Bu, önceki tüm rotaların kaldırılmasını sağlar.
+              (route) =>
+                  false, // Bu, önceki tüm rotaların kaldırılmasını sağlar.
             );
-
           });
           break;
         default:
@@ -76,7 +76,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void _initSelectedDate() {
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
     if (!hasFreeSlotOnDay(now)) {
       DateTime? nextAvailableDay = findNextAvailableDay(now);
       if (nextAvailableDay != null) {
@@ -127,14 +127,12 @@ class _ReservationPageState extends State<ReservationPage> {
       }
 
       setState(() {
-        bookedSlots=newbookedSlots;
+        bookedSlots = newbookedSlots;
       });
 
       debugPrint("Dinlenen BookedSlots: $bookedSlots");
     });
   }
-
-
 
   List<String> get timeSlots {
     // Burada artık startHour ve endHour string tipinde olduğu için:
@@ -207,14 +205,16 @@ class _ReservationPageState extends State<ReservationPage> {
 
   void handleNextMonth() {
     // 1 haftalık rezervasyon penceresi
-    DateTime today =TimeService.now();
+    DateTime today = TimeService.now();
     DateTime bookingWindowEnd = today.add(Duration(days: 7));
 
     // Şu anki ayın son günü
-    DateTime currentMonthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    DateTime currentMonthEnd =
+        DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
     // Rezervasyon penceresi sonraki aya uzanıyor mu?
-    bool bookingWindowExtendToNextMonth = bookingWindowEnd.isAfter(currentMonthEnd);
+    bool bookingWindowExtendToNextMonth =
+        bookingWindowEnd.isAfter(currentMonthEnd);
 
     if (bookingWindowExtendToNextMonth) {
       // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
@@ -239,14 +239,13 @@ class _ReservationPageState extends State<ReservationPage> {
 
 // Yardımcı fonksiyon: İlk geçerli tarihe güncelle
   void _updateToFirstValidDate() {
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
     DateTime today = DateTime(now.year, now.month, now.day);
 
     // Seçili ay bugünün ayı ise ve seçili gün geçmişte kaldıysa, bugüne veya sonraki ilk uygun güne güncelle
     if (selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day < now.day) {
-
       // Bugün için müsait slot var mı kontrol et
       if (hasFreeSlotOnDay(today)) {
         selectedDate = today;
@@ -279,7 +278,7 @@ class _ReservationPageState extends State<ReservationPage> {
     final firstDayOfMonth =
         DateTime(selectedDate.year, selectedDate.month, 1).weekday;
     final selectedMonthYear = DateFormat.yMMMM('tr_TR').format(selectedDate);
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
 
     final allSlots =
         timeSlots.where((slot) => !isSlotBooked(selectedDate, slot)).toList();
@@ -337,12 +336,12 @@ class _ReservationPageState extends State<ReservationPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (selectedDate.month ==TimeService.now().month)
+                      if (selectedDate.month == TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: null,
                             color: Colors.grey[300]),
-                      if (selectedDate.month !=TimeService.now().month)
+                      if (selectedDate.month != TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: handlePrevMonth),
@@ -377,10 +376,12 @@ class _ReservationPageState extends State<ReservationPage> {
                           .isBefore(DateTime(now.year, now.month, now.day));
 
                       // Bugünden itibaren maksimum 7 gün ilerisi için rezervasyon yapılabilir
-                      final DateTime maxDate =TimeService.now().add(Duration(days: 7));
+                      final DateTime maxDate =
+                          TimeService.now().add(Duration(days: 7));
 
                       // Ve takvim gösteriminde bu kontrolü ekleriz
-                      final bool isInBookingWindow = !currentDay.isAfter(maxDate);
+                      final bool isInBookingWindow =
+                          !currentDay.isAfter(maxDate);
 
                       // Tasarımsal değişiklikler
                       BoxDecoration dayDecoration;
@@ -411,7 +412,7 @@ class _ReservationPageState extends State<ReservationPage> {
                           color: Colors.grey.shade200,
                           shape: BoxShape.circle,
                         );
-                      }else if (!isInBookingWindow) {
+                      } else if (!isInBookingWindow) {
                         // Rezervasyon penceresi dışındaki günler: Daha soluk bir stil
                         dayDecoration = BoxDecoration(
                           color: Colors.grey.shade200,
@@ -426,7 +427,9 @@ class _ReservationPageState extends State<ReservationPage> {
                       }
 
                       return GestureDetector(
-                        onTap: (isPastDay || !isInBookingWindow) ? null : () => handleDateClick(day),
+                        onTap: (isPastDay || !isInBookingWindow)
+                            ? null
+                            : () => handleDateClick(day),
                         child: Container(
                           margin: EdgeInsets.all(4),
                           decoration: dayDecoration,
@@ -661,7 +664,6 @@ class _ReservationPageState extends State<ReservationPage> {
         .where('status', isEqualTo: 'İptal Edildi')
         .get();
 
-
     try {
       final success = await ReservationRemoteService().reserveSlot(
         haliSahaId: widget.haliSaha.id,
@@ -671,13 +673,13 @@ class _ReservationPageState extends State<ReservationPage> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
+            content:
+                Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
             backgroundColor: Colors.red,
           ),
         );
         return; // işlemi durdur
       }
-
 
       // Güncellenmiş bookedSlots listesini al
       setState(() {
@@ -712,7 +714,7 @@ class _ReservationPageState extends State<ReservationPage> {
         reservationDateTime: bookingString,
         status: 'Beklemede',
         // Başlangıç durumu
-        createdAt:TimeService.now(),
+        createdAt: TimeService.now(),
         userName: userName,
         userEmail: userEmail,
         userPhone: userPhone,
@@ -720,16 +722,13 @@ class _ReservationPageState extends State<ReservationPage> {
       );
       print("Firestore'a yazılacak veri: ${newReservation.toMap()}");
 
-
 // Reservation'ı Firestore'a ekleme
-      await docRef.set(newReservation.toMap(),SetOptions(merge: false));
+      await docRef.set(newReservation.toMap(), SetOptions(merge: false));
 
       // Başarılı mesajı göster
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Rezervasyon isteği başarıyla gönderildi!")),
       );
-
-
 
       showDialog(
         context: context,
@@ -793,11 +792,39 @@ class _ReservationPageState extends State<ReservationPage> {
         },
       );
     } catch (e) {
-      // Hata mesajı göster
+      final errorMsg = getReservationErrorMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon başarısız: $e")),
+        SnackBar(
+          content: Text("Rezervasyon başarısız: $errorMsg"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
+  }
+
+  String getReservationErrorMessage(dynamic error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'user-disabled':
+          return 'Hesabınız devre dışı bırakılmış.';
+        case 'user-not-found':
+          return 'Kullanıcı bulunamadı.';
+        case 'requires-recent-login':
+          return 'Lütfen tekrar giriş yapın.';
+        default:
+          return 'Giriş yapmanız gerekiyor.';
+      }
+    }
+
+    if (error.toString().contains('already reserved')) {
+      return 'Bu saat zaten rezerve edilmiş.';
+    }
+
+    if (error.toString().contains('permission-denied')) {
+      return 'Bu işlem için yetkiniz yok.';
+    }
+
+    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 
   Future<void> _showConfirmationDialog(BuildContext context) async {
