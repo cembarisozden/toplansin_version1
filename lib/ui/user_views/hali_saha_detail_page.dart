@@ -8,6 +8,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
+import 'package:toplansin/ui/user_views/subscribe_page.dart';
 
 enum ReviewSortOption {
   newest,
@@ -253,33 +254,65 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             color: Colors.grey[700], height: 1.4, fontSize: 14),
                       ),
                       SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ReservationPage(
-                                  haliSaha: haliSaha,
-                                  currentUser: widget.currentUser,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          SizedBox(
+                            width: 170,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReservationPage(
+                                      haliSaha: haliSaha,
+                                      currentUser: widget.currentUser,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              child: Text(
+                                "Rezervasyon Yap",
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.white),
+                              ),
                             ),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            elevation: 2,
                           ),
-                          child: Text(
-                            "Rezervasyon Yap",
-                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          SizedBox(
+                            width: 170,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SubscribePage(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade700,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 2,
+                              ),
+                              child: Text(
+                                "Abone Ol",
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.white),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       SizedBox(height: 24),
                       _buildInfoAndFeaturesTabs(haliSaha),
@@ -817,6 +850,18 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                   ),
                 ),
               ),
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: reviewList.length,
+        itemBuilder: (context, index) {
+          final review = reviewList[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: ReviewItem(
+              review: review,
+              currentUserId: widget._auth.currentUser!.uid,
+              onDelete: () => _deleteReview(review),
             ),
         ],
       );

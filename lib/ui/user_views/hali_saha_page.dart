@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/ui/user_views/abonelik_page.dart';
+import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_notification_panel.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
@@ -343,19 +343,23 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => UserReservationsPage()),
+                  MaterialPageRoute(
+                      builder: (context) => UserReservationsPage()),
                 );
               },
             ),
             ListTile(
-              leading: Icon(Icons.event_repeat, color: Colors.blue.shade700,),
+              leading: Icon(
+                Icons.event_repeat,
+                color: Colors.blue.shade700,
+              ),
               title: Text("Aboneliklerim",
                   style: TextStyle(fontWeight: FontWeight.w500)),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => AboneliklerimPage()),
+                      builder: (context) => SubscriptionDetailPage()),
                 );
               },
             ),
