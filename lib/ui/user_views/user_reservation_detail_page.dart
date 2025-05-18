@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 
@@ -143,7 +144,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
         isLoading = false;
       });
 
-      final errorMsg = getReservationErrorMessage(e);
+      final errorMsg = AppErrorHandler.getMessage(e, context: 'reservation');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -154,19 +155,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
     }
   }
 
-  String getReservationErrorMessage(dynamic error) {
-    if (error.toString().contains('permission-denied')) {
-      return 'Bu işlemi yapmaya yetkiniz yok.';
-    }
-    if (error.toString().contains('network-request-failed')) {
-      return 'İnternet bağlantısı yok.';
-    }
-    if (error.toString().contains('not-found')) {
-      return 'Rezervasyon zaten silinmiş.';
-    }
-
-    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-  }
 
   Widget _buildInfoRow(IconData icon, String text) {
     return Padding(

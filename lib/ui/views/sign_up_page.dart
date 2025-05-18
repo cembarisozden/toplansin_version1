@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -92,6 +93,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _handleSubmit() async {
+    FocusScope.of(context).unfocus();
     // Form geçerli mi?
     if (_formKey.currentState!.validate()) {
       // Tüm onSaved fonksiyonlarını tetikler
@@ -133,14 +135,9 @@ class _SignUpPageState extends State<SignUpPage> {
         await _auth.signOut();
 
         _showVerificationDialog();
-      } on FirebaseAuthException catch (e) {
-        final msg = getFirebaseErrorMessage(e.code);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Kayıt başarısız: $msg")),
-        );
-      }
-      catch (e) {
-        final msg = getFirebaseErrorMessage(e is FirebaseAuthException ? e.code : null);
+      } catch (e) {
+        final msg = AppErrorHandler.getMessage(e, context: 'auth');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Kayıt başarısız: $msg')),
         );
@@ -148,24 +145,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
     }
   }
-
-  String getFirebaseErrorMessage(String? code) {
-    switch (code) {
-      case 'invalid-email':
-        return 'Geçerli bir e-posta adresi girin.';
-      case 'email-already-in-use':
-        return 'Bu e-posta zaten kullanılıyor.';
-      case 'weak-password':
-        return 'Şifre çok zayıf. En az 6 karakter olmalı.';
-      case 'operation-not-allowed':
-        return 'E-posta ile kayıt şu anda devre dışı.';
-      case 'network-request-failed':
-        return 'İnternet bağlantısı yok.';
-      default:
-        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-    }
-  }
-
 
 
   // E-posta doğrulama uyarısı

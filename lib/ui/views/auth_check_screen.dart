@@ -28,14 +28,20 @@ class AuthCheckScreen extends StatelessWidget {
         }
 
         /* ── 2. Kullanıcı yoksa Login ── */
-        if (!authSnap.hasData || authSnap.data == null) {
+        if (!authSnap.hasData || authSnap.data == null || !authSnap.data!.emailVerified) {
           return  LoginPage();
         }
 
         final uid = authSnap.data!.uid;
+        final user = authSnap.data!;
+        if (!user.emailVerified) {
+          return const _ErrorScreen("E-posta adresinizi doğrulamanız gerekiyor.");
+        }
 
-        /* ── 3. Token’i kaydet – fire&forget ── */
-        NotificationService.I.saveTokenToFirestore();
+        // Token sadece doğrulanmış kullanıcılar için kaydedilir
+        if (user.emailVerified) {
+          NotificationService.I.saveTokenToFirestore();
+        }
 
         /* ── 4. Rolü sunucudan çek ── */
         return FutureBuilder<Person?>(

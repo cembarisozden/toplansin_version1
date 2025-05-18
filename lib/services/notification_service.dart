@@ -94,7 +94,10 @@ class NotificationService {
   // ----- Token Kaydet -----
   Future<void> saveTokenToFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || !user.emailVerified) {
+      print("[TOKEN] Kullanıcı doğrulanmamış, token yazımı iptal edildi.");
+      return;
+    }
     final token = await messaging.getToken();
     if (token != null) {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({

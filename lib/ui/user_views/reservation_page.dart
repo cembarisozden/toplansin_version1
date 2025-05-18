@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:intl/intl.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
@@ -792,39 +793,16 @@ class _ReservationPageState extends State<ReservationPage> {
         },
       );
     } catch (e) {
-      final errorMsg = getReservationErrorMessage(e);
+      final errorMsg = AppErrorHandler.getMessage(e, context: 'reservation');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Rezervasyon başarısız: $errorMsg"),
           backgroundColor: Colors.red,
         ),
       );
-    }
-  }
 
-  String getReservationErrorMessage(dynamic error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'user-disabled':
-          return 'Hesabınız devre dışı bırakılmış.';
-        case 'user-not-found':
-          return 'Kullanıcı bulunamadı.';
-        case 'requires-recent-login':
-          return 'Lütfen tekrar giriş yapın.';
-        default:
-          return 'Giriş yapmanız gerekiyor.';
-      }
     }
-
-    if (error.toString().contains('already reserved')) {
-      return 'Bu saat zaten rezerve edilmiş.';
-    }
-
-    if (error.toString().contains('permission-denied')) {
-      return 'Bu işlem için yetkiniz yok.';
-    }
-
-    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 
   Future<void> _showConfirmationDialog(BuildContext context) async {
