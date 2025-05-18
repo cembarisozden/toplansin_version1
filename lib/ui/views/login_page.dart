@@ -184,6 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                             label: 'E-posta',
                             icon: Icons.email,
                             keyboardType: TextInputType.emailAddress,
+                            onChanged: (_) => _clearEmailWarningIfVisible(),
                             onSaved: (value) => email = value!,
                             validator: (value) {
                               if (value == null || value.isEmpty ||
@@ -199,6 +200,7 @@ class _LoginPageState extends State<LoginPage> {
                             icon: Icons.lock,
                             obscureText: !showPassword,
                             onSaved: (value) => password = value!,
+                            onChanged: (_) => _clearEmailWarningIfVisible(),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 showPassword ? Icons.visibility_off : Icons
@@ -365,6 +367,7 @@ class _LoginPageState extends State<LoginPage> {
     Widget? suffixIcon,
     Function(String?)? onSaved,
     String? Function(String?)? validator,
+    Function(String)? onChanged,
   }) {
     return TextFormField(
       decoration: InputDecoration(
@@ -382,8 +385,20 @@ class _LoginPageState extends State<LoginPage> {
       keyboardType: keyboardType,
       onSaved: onSaved,
       validator: validator,
+      onChanged: onChanged ?? (_) {},
     );
   }
+
+  void _clearEmailWarningIfVisible() {
+    if (showEmailVerifyBanner) {
+      setState(() {
+        showEmailVerifyBanner = false;
+        canResendEmail = false;
+        _timer?.cancel();
+      });
+    }
+  }
+
 
   void _showChangePasswordDialog() {
     TextEditingController emailController = TextEditingController();
