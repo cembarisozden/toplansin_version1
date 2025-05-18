@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/services/notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
@@ -30,6 +31,7 @@ class _LoginPageState extends State<LoginPage> {
 
 
   Future<void> _handleSubmit() async {
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
@@ -39,8 +41,10 @@ class _LoginPageState extends State<LoginPage> {
         email: email.trim(),
         password: password,
       );
-      if (!cred.user!.emailVerified) {
-        await cred.user!.sendEmailVerification(); // e-posta gönder
+      await cred.user!.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser!;
+      if (!refreshedUser.emailVerified) {
+        await refreshedUser.sendEmailVerification(); // e-posta gönder
         setState(() {
           showEmailVerifyBanner = true;
         });
@@ -65,7 +69,6 @@ class _LoginPageState extends State<LoginPage> {
       }
 
 
-
       /* ───── 5) Yönlendirme ───── */
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -80,14 +83,13 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     /* ───── 6) Hata yakalama ───── */
-    on FirebaseAuthException catch (e) {
-      final msg = getFriendlyErrorMessage(e);
-      _snack('Giriş hatası: $msg', Colors.red);
-    } on FirebaseException catch (e) {
-      _snack('Firestore hatası: ${e.message}', Colors.red);
+    on FirebaseException catch (e) {
+      final msg = AppErrorHandler.getMessage(e);
+      _snack('Hata: $msg', Colors.red);
       await _auth.signOut();
     } catch (e) {
-      _snack('Bilinmeyen hata: $e', Colors.red);
+      final msg = AppErrorHandler.getMessage(e);
+      _snack('Hata: $msg', Colors.red);
       await _auth.signOut();
     }
   }
@@ -127,41 +129,6 @@ class _LoginPageState extends State<LoginPage> {
       SnackBar(content: Text(msg), backgroundColor: c),
     );
   }
-
-  String getFriendlyErrorMessage(dynamic error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'invalid-email':
-          return 'Geçerli bir e-posta adresi girin.';
-        case 'user-not-found':
-          return 'Bu e-posta adresine kayıtlı kullanıcı bulunamadı.';
-        case 'wrong-password':
-          return 'Şifre hatalı. Lütfen tekrar deneyin.';
-        case 'email-already-in-use':
-          return 'Bu e-posta zaten kayıtlı.';
-        case 'weak-password':
-          return 'Şifre çok zayıf. En az 6 karakter olmalı.';
-        case 'network-request-failed':
-          return 'İnternet bağlantı hatası. Lütfen tekrar deneyin.';
-        case 'too-many-requests':
-          return 'Çok fazla deneme yapıldı. Bir süre bekleyin.';
-        case 'requires-recent-login':
-          return 'Bu işlemi yapmak için yeniden giriş yapmanız gerekiyor.';
-        case 'invalid-credential':
-          return 'Geçersiz ya da süresi dolmuş giriş bilgisi. Lütfen tekrar giriş yapın.';
-        default:
-          return 'Bir hata oluştu: ${error.message ?? "Bilinmeyen hata."}';
-      }
-    }
-
-    // Firestore hataları veya diğer string içeren durumlar
-    if (error.toString().contains("permission-denied")) {
-      return "Bu işlem için yetkiniz yok.";
-    }
-
-    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                             label: 'E-posta',
                             icon: Icons.email,
                             keyboardType: TextInputType.emailAddress,
+                            onChanged: (_) => _clearEmailWarningIfVisible(),
                             onSaved: (value) => email = value!,
                             validator: (value) {
                               if (value == null || value.isEmpty ||
@@ -232,6 +200,7 @@ class _LoginPageState extends State<LoginPage> {
                             icon: Icons.lock,
                             obscureText: !showPassword,
                             onSaved: (value) => password = value!,
+                            onChanged: (_) => _clearEmailWarningIfVisible(),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 showPassword ? Icons.visibility_off : Icons
@@ -292,15 +261,25 @@ class _LoginPageState extends State<LoginPage> {
                                           "E-posta doğrulaması gerekiyor!",
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 15,
+                                            fontSize: 16,
                                             color: Colors.orange.shade800,
                                           ),
                                         ),
-                                        SizedBox(height: 4),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          "Doğrulama e-postası gönderildi. Eğer ulaşmadıysa tekrar göndermek için butona basabilirsiniz.",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.normal,
+                                            fontSize: 13,
+                                            color: Colors.grey[800],
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        SizedBox(height: 10),
                                         if (!canResendEmail)
                                           Text(
                                             "Tekrar göndermek için $resendCountdown saniye bekleyin.",
-                                            style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                                            style: TextStyle(fontSize: 12.5, color: Colors.grey[800]),
                                           )
                                         else
                                           ElevatedButton.icon(
@@ -388,6 +367,7 @@ class _LoginPageState extends State<LoginPage> {
     Widget? suffixIcon,
     Function(String?)? onSaved,
     String? Function(String?)? validator,
+    Function(String)? onChanged,
   }) {
     return TextFormField(
       decoration: InputDecoration(
@@ -405,8 +385,20 @@ class _LoginPageState extends State<LoginPage> {
       keyboardType: keyboardType,
       onSaved: onSaved,
       validator: validator,
+      onChanged: onChanged ?? (_) {},
     );
   }
+
+  void _clearEmailWarningIfVisible() {
+    if (showEmailVerifyBanner) {
+      setState(() {
+        showEmailVerifyBanner = false;
+        canResendEmail = false;
+        _timer?.cancel();
+      });
+    }
+  }
+
 
   void _showChangePasswordDialog() {
     TextEditingController emailController = TextEditingController();
@@ -507,13 +499,15 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     );
                   } catch (e) {
-                    final msg = getFriendlyErrorMessage(e);
+                    final msg = AppErrorHandler.getMessage(e, context: 'auth');
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text("Şifre sıfırlama başarısız: $msg"),
                         backgroundColor: Colors.red.shade700,
                       ),
                     );
+
                   }
                 } else {
                   // 3) E-posta bulunamazsa kullanıcıya uyarı ver
@@ -570,7 +564,8 @@ class _LoginPageState extends State<LoginPage> {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
     } catch (e) {
       // Gönderim hatası
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e, context: 'auth');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("E-posta gönderilemedi: $msg"),

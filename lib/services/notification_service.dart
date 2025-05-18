@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -94,7 +93,10 @@ class NotificationService {
   // ----- Token Kaydet -----
   Future<void> saveTokenToFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || !user.emailVerified) {
+      print("[TOKEN] Kullanıcı doğrulanmamış, token yazımı iptal edildi.");
+      return;
+    }
     final token = await messaging.getToken();
     if (token != null) {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({

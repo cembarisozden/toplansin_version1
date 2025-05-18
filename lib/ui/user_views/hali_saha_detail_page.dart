@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
@@ -848,7 +849,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     } catch (e) {
       print("Yorum silinirken hata: $e");
 
-      final errorMsg = getReviewErrorMessage(e);
+      final errorMsg = AppErrorHandler.getMessage(e, context: 'review');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -856,24 +857,10 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           backgroundColor: Colors.red,
         ),
       );
+
     }
   }
 
-  String getReviewErrorMessage(dynamic error) {
-    if (error.toString().contains('permission-denied')) {
-      return 'Bu yorumu silme yetkiniz yok.';
-    }
-
-    if (error.toString().contains('network-request-failed')) {
-      return 'İnternet bağlantısı yok.';
-    }
-
-    if (error.toString().contains('not-found')) {
-      return 'Yorum bulunamadı veya zaten silinmiş.';
-    }
-
-    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-  }
 
   Widget _buildAddReviewSection() {
     return Column(

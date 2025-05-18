@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:toplansin/services/time_service.dart';
@@ -10,7 +11,6 @@ class OwnerAddHaliSaha extends StatefulWidget {
 }
 
 class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
-
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
@@ -42,7 +42,8 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
     if (user != null) {
       try {
         // Firestore'dan kullanıcı belgesini al
-        DocumentSnapshot<Map<String, dynamic>> userDoc = await FirebaseFirestore.instance
+        DocumentSnapshot<Map<String, dynamic>> userDoc = await FirebaseFirestore
+            .instance
             .collection('users')
             .doc(user.uid)
             .get();
@@ -99,11 +100,15 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         location: locationController.text.trim(),
         price: double.parse(priceController.text.trim()),
         rating: 0.0,
-        imagesUrl:imagesController.text.trim().split(',').map((url) => url.trim()).toList(),
+        imagesUrl: imagesController.text
+            .trim()
+            .split(',')
+            .map((url) => url.trim())
+            .toList(),
         bookedSlots: [" "],
         startHour: startHourController.text.trim(),
         endHour: endHourController.text.trim(),
-        id:TimeService.now().millisecondsSinceEpoch.toString(),
+        id: TimeService.now().millisecondsSinceEpoch.toString(),
         hasParking: hasParking,
         hasShowers: hasShowers,
         hasShoeRental: hasShoeRental,
@@ -124,20 +129,19 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         SnackBar(
           content: Text('Halı Saha başarıyla eklendi.'),
           backgroundColor: Colors.green,
-
         ),
-
       );
-
 
       _formTemizle();
       Navigator.pop(context, yeniSaha);
     } catch (e, stacktrace) {
       print("Hata: $e");
       print("Stacktrace: $stacktrace");
+      final msg = AppErrorHandler.getMessage(e, context: 'field');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Halı Saha eklenirken hata oluştu: $e'),
+          content: Text('Halı Saha eklenirken hata oluştu: $msg'),
           backgroundColor: Colors.red,
         ),
       );
@@ -170,7 +174,6 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text("Halı Saha Ekle"),
@@ -178,119 +181,132 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: Colors.green))
           : SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Yeni Halı Saha Ekle",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            _buildTextField("Halı Saha Adı", nameController,maxLength: 10),
-            _buildTextField("Konum", locationController,maxLength: 100),
-            _buildTextField("Saatlik Ücret (TL)", priceController, isNumber: true,maxLength: 20),
-            _buildTextField("Saha Boyutu (örn. 25x40)", sizeController,maxLength: 20),
-            _buildTextField("Zemin Tipi (örn. Sentetik Çim)", surfaceController,maxLength: 40),
-            _buildTextField("Maksimum Oyuncu Sayısı", maxPlayersController, isNumber: true,maxLength: 20),
-            _buildTextField("Fotoğraf Url",imagesController),
-            Row(
-              children: [
-                Expanded(child: _buildTextField("Açılış Saati (örn. 09:00)", startHourController,maxLength: 5)),
-                SizedBox(width: 16),
-                Expanded(child: _buildTextField("Kapanış Saati (örn. 23:00)", endHourController,maxLength: 5)),
-              ],
-            ),
-            _buildTextField("Açıklama", descriptionController, isMultiline: true,maxLength: 300),
-            SizedBox(height: 16),
-
-            Text(
-              "Özellikler",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            SwitchListTile(
-              title: Text("Otopark"),
-              value: hasParking,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                setState(() {
-                  hasParking = val;
-                });
-              },
-            ),
-            SwitchListTile(
-              title: Text("Duş"),
-              value: hasShowers,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                setState(() {
-                  hasShowers = val;
-                });
-              },
-            ),
-            SwitchListTile(
-              title: Text("Ayakkabı Kiralama"),
-              value: hasShoeRental,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                setState(() {
-                  hasShoeRental = val;
-                });
-              },
-            ),
-            SwitchListTile(
-              title: Text("Kafeterya"),
-              value: hasCafeteria,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                setState(() {
-                  hasCafeteria = val;
-                });
-              },
-            ),
-            SwitchListTile(
-              title: Text("Gece Aydınlatması"),
-              value: hasNightLighting,
-              activeColor: Colors.green,
-              onChanged: (val) {
-                setState(() {
-                  hasNightLighting = val;
-                });
-              },
-            ),
-
-            SizedBox(height: 24),
-            Center(
-              child: ElevatedButton(
-                onPressed: _kaydet,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Text(
-                    "Kaydet",
-                    style: TextStyle(fontSize: 16,color: Colors.white),
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Yeni Halı Saha Ekle",
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  SizedBox(height: 16),
+                  _buildTextField("Halı Saha Adı", nameController,
+                      maxLength: 10),
+                  _buildTextField("Konum", locationController, maxLength: 100),
+                  _buildTextField("Saatlik Ücret (TL)", priceController,
+                      isNumber: true, maxLength: 20),
+                  _buildTextField("Saha Boyutu (örn. 25x40)", sizeController,
+                      maxLength: 20),
+                  _buildTextField(
+                      "Zemin Tipi (örn. Sentetik Çim)", surfaceController,
+                      maxLength: 40),
+                  _buildTextField(
+                      "Maksimum Oyuncu Sayısı", maxPlayersController,
+                      isNumber: true, maxLength: 20),
+                  _buildTextField("Fotoğraf Url", imagesController),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: _buildTextField(
+                              "Açılış Saati (örn. 09:00)", startHourController,
+                              maxLength: 5)),
+                      SizedBox(width: 16),
+                      Expanded(
+                          child: _buildTextField(
+                              "Kapanış Saati (örn. 23:00)", endHourController,
+                              maxLength: 5)),
+                    ],
                   ),
-                ),
+                  _buildTextField("Açıklama", descriptionController,
+                      isMultiline: true, maxLength: 300),
+                  SizedBox(height: 16),
+                  Text(
+                    "Özellikler",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  SwitchListTile(
+                    title: Text("Otopark"),
+                    value: hasParking,
+                    activeColor: Colors.green,
+                    onChanged: (val) {
+                      setState(() {
+                        hasParking = val;
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text("Duş"),
+                    value: hasShowers,
+                    activeColor: Colors.green,
+                    onChanged: (val) {
+                      setState(() {
+                        hasShowers = val;
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text("Ayakkabı Kiralama"),
+                    value: hasShoeRental,
+                    activeColor: Colors.green,
+                    onChanged: (val) {
+                      setState(() {
+                        hasShoeRental = val;
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text("Kafeterya"),
+                    value: hasCafeteria,
+                    activeColor: Colors.green,
+                    onChanged: (val) {
+                      setState(() {
+                        hasCafeteria = val;
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text("Gece Aydınlatması"),
+                    value: hasNightLighting,
+                    activeColor: Colors.green,
+                    onChanged: (val) {
+                      setState(() {
+                        hasNightLighting = val;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 24),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _kaydet,
+                      child: Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        child: Text(
+                          "Kaydet",
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildTextField(
-      String label,
-      TextEditingController controller, {
-        bool isNumber = false,
-        bool isMultiline = false,
-        int maxLength=300, // ⚠️ Karakter sınırı opsiyonel
-      }) {
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+    bool isMultiline = false,
+    int maxLength = 300, // ⚠️ Karakter sınırı opsiyonel
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -301,19 +317,18 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         maxLines: isMultiline ? 4 : 1,
         maxLength: maxLength,
         buildCounter: (
-            BuildContext context, {
-              required int currentLength,
-              required bool isFocused,
-              required int? maxLength,
-            }) {
+          BuildContext context, {
+          required int currentLength,
+          required bool isFocused,
+          required int? maxLength,
+        }) {
           if (maxLength == null) return null;
           return Text(
             "$currentLength / $maxLength",
             style: TextStyle(
               fontSize: 11,
-              color: currentLength > maxLength
-                  ? Colors.red
-                  : Colors.grey.shade600,
+              color:
+                  currentLength > maxLength ? Colors.red : Colors.grey.shade600,
             ),
           );
         },
@@ -328,5 +343,4 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
       ),
     );
   }
-
 }

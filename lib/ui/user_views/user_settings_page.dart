@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -95,12 +96,12 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         _buildOptionItem(
             Icons.phone, "Telefon Numarası Değiştir", _showChangePhoneDialog),
         _buildSwitchOption(Icons.notifications, "Bildirimler", notifications,
-            (value) => setState(() => notifications = value)),
+                (value) => setState(() => notifications = value)),
         _buildSwitchOption(
             Icons.location_on,
             "Konum Paylaşımı",
             locationSharing,
-            (value) => setState(() => locationSharing = value)),
+                (value) => setState(() => locationSharing = value)),
       ],
     );
   }
@@ -188,7 +189,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           'isPassword': false
         }
       ],
-      () async {
+          () async {
         if (emailController.text == widget.currentUser.email) {
           try {
             await _sendPasswordResetEmail(emailController.text);
@@ -196,7 +197,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
               SnackBar(content: Text("Şifre sıfırlama e-postası gönderildi!")),
             );
           } catch (e) {
-            final msg = getFriendlyErrorMessage(e);
+            final msg = AppErrorHandler.getMessage(e);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text("İşlem başarısız: $msg"),
@@ -234,12 +235,12 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           'isPassword': true,
         },
       ],
-      () async {
+          () async {
         Navigator.pop(context);
         try {
           await _updateEmail(emailController.text, passwordController.text);
         } catch (e) {
-          final msg = getFriendlyErrorMessage(e);
+          final msg = AppErrorHandler.getMessage(e);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("E-posta güncellenemedi: $msg"),
@@ -264,7 +265,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           'isPassword': false,
         },
       ],
-      () async {
+          () async {
         Navigator.pop(context);
 
         try {
@@ -275,7 +276,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                     "Telefon numarası başarıyla güncellendi: ${phoneController.text}")),
           );
         } catch (e) {
-          final msg = getFriendlyErrorMessage(e);
+          final msg = AppErrorHandler.getMessage(e);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Telefon numarası güncellenemedi: $msg")),
           );
@@ -284,7 +285,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     );
   }
 
-  /// Hesabı ve Firestore verisini siler
   Future<void> deleteAccount(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -303,26 +303,20 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         return;
       }
 
-      // Önce login sayfasına yönlendir
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => LoginPage()),
-        (route) => false,
+            (route) => false,
       );
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Hesap Başarıyla Silindi")));
 
-      // Sonra silme işlemlerini başlat (async çalışır, context'e gerek kalmaz)
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .delete();
       await user.delete();
-
-      // Bu noktada kullanıcı zaten yönlendirilmiş olacak
-      // SnackBar mesajını yönlendirme yapılan sayfa içinde göstermek istersen,
-      // LoginPage içinde kontrol edebilirsin.
     } on FirebaseAuthException catch (e) {
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Hesap silinemedi: $msg"),
@@ -330,7 +324,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         ),
       );
     } catch (e) {
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Bir hata oluştu: $msg"),
@@ -340,7 +334,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     }
   }
 
-  /// Silme onay popup'ı gösterir
   void _showDeleteAccountDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -360,8 +353,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           ),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.pop(context); // Diyaloğu kapat
-              deleteAccount(context); // Silme işlemini başlat
+              Navigator.pop(context);
+              deleteAccount(context);
             },
             icon: Icon(Icons.delete_forever),
             style: ElevatedButton.styleFrom(
@@ -398,20 +391,20 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                       fontWeight: FontWeight.bold,
                       color: Colors.green[700])),
               ...fields.map((field) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: _buildTextField(
-                      field['label'],
-                      field['icon'],
-                      field['controller'],
-                      isPassword: field['isPassword'] ?? false,
-                    ),
-                  )),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: _buildTextField(
+                  field['label'],
+                  field['icon'],
+                  field['controller'],
+                  isPassword: field['isPassword'] ?? false,
+                ),
+              )),
               SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildDialogButton("İptal", Colors.grey[300]!, Colors.black87,
-                      () => Navigator.of(context).pop()),
+                          () => Navigator.of(context).pop()),
                   _buildDialogButton(
                       "Onayla", Colors.green[700]!, Colors.white, onConfirm),
                 ],
@@ -432,7 +425,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: TextField(
-        controller: controller, // Kullanıcı girdisi buraya bağlanır
+        controller: controller,
         obscureText: isPassword,
         decoration: InputDecoration(
           labelText: label,
@@ -470,7 +463,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => AuthCheckScreen()));
     } catch (e) {
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("E-posta gönderilemedi: $msg"),
@@ -511,7 +504,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => AuthCheckScreen()));
     } catch (e) {
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e, context: 'auth');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("E-posta güncelleme başarısız: $msg"),
@@ -541,7 +535,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         SnackBar(content: Text("Telefon numarası başarıyla güncellendi!")),
       );
     } catch (e) {
-      final msg = getFriendlyErrorMessage(e);
+      final msg = AppErrorHandler.getMessage(e, context: 'user');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Telefon numarası güncellenemedi: $msg"),
@@ -552,32 +547,4 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
 
   }
 
-  String getFriendlyErrorMessage(dynamic error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'wrong-password':
-          return 'Şifre yanlış. Lütfen tekrar deneyin.';
-        case 'invalid-email':
-          return 'Geçersiz e-posta adresi.';
-        case 'email-already-in-use':
-          return 'Bu e-posta adresi zaten kullanılıyor.';
-        case 'requires-recent-login':
-          return 'Bu işlemi yapabilmek için yeniden giriş yapmanız gerekiyor.';
-        case 'user-disabled':
-          return 'Bu hesap devre dışı bırakılmış.';
-        case 'user-not-found':
-          return 'Kullanıcı bulunamadı.';
-        case 'network-request-failed':
-          return 'İnternet bağlantısı hatası.';
-        default:
-          return 'Bir hata oluştu: ${error.message ?? error.toString()}';
-      }
-    }
-
-    if (error.toString().contains("permission-denied")) {
-      return "Bu işlem için yetkiniz yok.";
-    }
-
-    return "Bir hata oluştu. Lütfen tekrar deneyin.";
-  }
 }

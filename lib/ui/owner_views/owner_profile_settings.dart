@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 
 class OwnerProfileSettings extends StatefulWidget {
@@ -52,9 +53,11 @@ class _OwnerProfileSettingsState extends State<OwnerProfileSettings> {
           ),
         );
       } catch (e) {
+        final msg = AppErrorHandler.getMessage(e, context: 'user');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Hata: ${e.toString()}'),
+            content: Text('Profil güncellenemedi: $msg'),
             backgroundColor: Colors.red,
           ),
         );

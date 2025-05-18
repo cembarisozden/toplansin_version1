@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
@@ -30,7 +31,7 @@ class OwnerHalisahaPage extends StatefulWidget {
 }
 
 class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
-  DateTime selectedDate =TimeService.now();
+  DateTime selectedDate = TimeService.now();
   String? selectedTime;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -114,7 +115,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       // 2. Onaylanan ve Tamamlanan Rezervasyonları Dinleme (Bugün ve Saat Aralığı)
       // Bugünün tarihini al
-      DateTime now =TimeService.now();
+      DateTime now = TimeService.now();
       String todayDate =
           "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
@@ -693,18 +694,22 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           fontWeight: FontWeight.bold,
                           color: Colors.green.shade800)),
                   SizedBox(height: 16),
-                  _buildTextField("Halı Saha Adı", nameController,maxLength: 100),
-                  _buildTextField("Konum", locationController,maxLength: 100),
+                  _buildTextField("Halı Saha Adı", nameController,
+                      maxLength: 100),
+                  _buildTextField("Konum", locationController, maxLength: 100),
                   _buildTextField("Saatlik Ücret (TL)", priceController,
-                      isNumber: true,maxLength: 20),
-                  _buildTextField("Saha Boyutu", sizeController,maxLength: 20),
-                  _buildTextField("Zemin Tipi", surfaceController,maxLength: 40),
+                      isNumber: true, maxLength: 20),
+                  _buildTextField("Saha Boyutu", sizeController, maxLength: 20),
+                  _buildTextField("Zemin Tipi", surfaceController,
+                      maxLength: 40),
                   _buildTextField("Maksimum Oyuncu", maxPlayersController,
-                      isNumber: true,maxLength: 20),
-                  _buildTextField("Açılış Saati", startHourController,maxLength: 5),
-                  _buildTextField("Kapanış Saati", endHourController,maxLength: 5),
+                      isNumber: true, maxLength: 20),
+                  _buildTextField("Açılış Saati", startHourController,
+                      maxLength: 5),
+                  _buildTextField("Kapanış Saati", endHourController,
+                      maxLength: 5),
                   _buildTextField("Açıklama", descriptionController,
-                      isMultiline: true,maxLength: 300),
+                      isMultiline: true, maxLength: 300),
                   SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _updateHaliSaha,
@@ -814,12 +819,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 
   Widget _buildTextField(
-      String label,
-      TextEditingController controller, {
-        bool isNumber = false,
-        bool isMultiline = false,
-        int maxLength=300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
-      }) {
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+    bool isMultiline = false,
+    int maxLength = 300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -828,23 +833,24 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             ? TextInputType.number
             : (isMultiline ? TextInputType.multiline : TextInputType.text),
         maxLines: isMultiline ? 4 : 1,
-        maxLength: maxLength, // ✅ karakter sınırı burada uygulanır
+        maxLength: maxLength,
+        // ✅ karakter sınırı burada uygulanır
         buildCounter: (
-            BuildContext context, {
-              required int currentLength,
-              required bool isFocused,
-              required int? maxLength,
-            }) {
+          BuildContext context, {
+          required int currentLength,
+          required bool isFocused,
+          required int? maxLength,
+        }) {
           return maxLength != null
               ? Text(
-            "$currentLength / $maxLength",
-            style: TextStyle(
-              fontSize: 11,
-              color: currentLength > maxLength
-                  ? Colors.red
-                  : Colors.grey.shade600,
-            ),
-          )
+                  "$currentLength / $maxLength",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: currentLength > maxLength
+                        ? Colors.red
+                        : Colors.grey.shade600,
+                  ),
+                )
               : null;
         },
         decoration: InputDecoration(
@@ -859,7 +865,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
-
 
   // Güncelleme Fonksiyonu
   Future<void> _updateHaliSaha() async {
@@ -928,8 +933,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       print("Güncellenen veriler: $updateData");
 
-      DateTime startTime =TimeService.now();
-      DateTime endTime =TimeService.now();
+      DateTime startTime = TimeService.now();
+      DateTime endTime = TimeService.now();
 
       // Firestore'da sadece değiştirilen alanları güncelleme
       await FirebaseFirestore.instance
@@ -1149,14 +1154,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   void handleNextMonth() {
     // 1 haftalık rezervasyon penceresi
-    DateTime today =TimeService.now();
+    DateTime today = TimeService.now();
     DateTime bookingWindowEnd = today.add(Duration(days: 7));
 
     // Şu anki ayın son günü
-    DateTime currentMonthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    DateTime currentMonthEnd =
+        DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
     // Rezervasyon penceresi sonraki aya uzanıyor mu?
-    bool bookingWindowExtendToNextMonth = bookingWindowEnd.isAfter(currentMonthEnd);
+    bool bookingWindowExtendToNextMonth =
+        bookingWindowEnd.isAfter(currentMonthEnd);
 
     if (bookingWindowExtendToNextMonth) {
       // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
@@ -1181,14 +1188,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
 // Yardımcı fonksiyon: İlk geçerli tarihe güncelle
   void _updateToFirstValidDate() {
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
     DateTime today = DateTime(now.year, now.month, now.day);
 
     // Seçili ay bugünün ayı ise ve seçili gün geçmişte kaldıysa, bugüne veya sonraki ilk uygun güne güncelle
     if (selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day < now.day) {
-
       // Bugün için müsait slot var mı kontrol et
       if (hasFreeSlotOnDay(today)) {
         selectedDate = today;
@@ -1209,8 +1215,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
     // Burada diğer ayların geçerlilik kontrolü de yapılabilir, ancak şimdilik geçmiş günler problemi çözüldü
   }
-
-
 
   bool isToday(DateTime day, DateTime now) {
     return day.year == now.year && day.month == now.month && day.day == now.day;
@@ -1238,7 +1242,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
 
     // Aktif rezervasyon penceresi sınırı (7 gün)
-    DateTime bookingWindowLimit =TimeService.now().add(Duration(days: 7));
+    DateTime bookingWindowLimit = TimeService.now().add(Duration(days: 7));
 
     // Eğer rezervasyon penceresi mevcut ayı geçiyorsa
     if (bookingWindowLimit.isAfter(lastDayOfCurrentMonth)) {
@@ -1248,10 +1252,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         DateTime normalizedDate = DateTime(date.year, date.month, date.day);
 
         // Tarih, sonraki ay içinde mi kontrol et
-        bool isInNextMonth = normalizedDate.isAfter(firstDayOfNextMonth.subtract(Duration(days: 1))) &&
+        bool isInNextMonth = normalizedDate
+                .isAfter(firstDayOfNextMonth.subtract(Duration(days: 1))) &&
             normalizedDate.isBefore(lastDayOfNextMonth.add(Duration(days: 1)));
 
-        if (isInNextMonth && requestCountMap[normalizedDate] != null && requestCountMap[normalizedDate]! > 0) {
+        if (isInNextMonth &&
+            requestCountMap[normalizedDate] != null &&
+            requestCountMap[normalizedDate]! > 0) {
           return true; // Sonraki ayda bildirim var
         }
       }
@@ -1267,7 +1274,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     final firstDayOfMonth =
         DateTime(selectedDate.year, selectedDate.month, 1).weekday;
     final selectedMonthYear = DateFormat.yMMMM('tr_TR').format(selectedDate);
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
@@ -1301,10 +1308,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   children: [
                     IconButton(
                       icon: Icon(Icons.chevron_left),
-                      onPressed: selectedDate.month ==TimeService.now().month
+                      onPressed: selectedDate.month == TimeService.now().month
                           ? null
                           : handlePrevMonth,
-                      color: selectedDate.month ==TimeService.now().month
+                      color: selectedDate.month == TimeService.now().month
                           ? Colors.grey[300]
                           : null,
                     ),
@@ -1314,7 +1321,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Stack(
-                      clipBehavior: Clip.none, // Çocuk widget'ların taşmasına izin ver
+                      clipBehavior: Clip.none,
+                      // Çocuk widget'ların taşmasına izin ver
                       children: [
                         IconButton(
                           icon: Icon(Icons.chevron_right),
@@ -1367,7 +1375,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                     // Bugünden itibaren maksimum 7 gün ilerisi için rezervasyon yapılabilir
                     final DateTime maxDate =
-                       TimeService.now().add(Duration(days: 7));
+                        TimeService.now().add(Duration(days: 7));
 
                     // Ve takvim gösteriminde bu kontrolü ekleriz
                     final bool isInBookingWindow = !currentDay.isAfter(maxDate);
@@ -1403,13 +1411,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         color: Colors.grey.shade200,
                         shape: BoxShape.circle,
                       );
-                    }else if (!isInBookingWindow) {
+                    } else if (!isInBookingWindow) {
                       // Rezervasyon penceresi dışındaki günler: Daha soluk bir stil
                       dayDecoration = BoxDecoration(
                         color: Colors.grey.shade200,
                         shape: BoxShape.circle,
                       );
-                    }  else {
+                    } else {
                       dayDecoration = BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.grey.shade300),
@@ -1445,7 +1453,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                 fontSize: isSelected ? 16 : 14,
                               ),
                             ),
-
 
                             // Bildirim baloncuğu
                             if (!isPastDay && requestCount > 0)
@@ -1575,7 +1582,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               bool pending = hasPendingRequest(time);
               bool completed = isCompleted(time);
 
-              DateTime now =TimeService.now();
+              DateTime now = TimeService.now();
               bool isPastTimeToday = isTodaySelected() && slotHour <= now.hour;
 
               IconData statusIcon;
@@ -1661,7 +1668,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 
   bool isTodaySelected() {
-    DateTime now =TimeService.now();
+    DateTime now = TimeService.now();
     return selectedDate.year == now.year &&
         selectedDate.month == now.month &&
         selectedDate.day == now.day;
@@ -2395,7 +2402,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
+            content:
+                Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
             backgroundColor: Colors.red,
           ),
         );
@@ -2423,7 +2431,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         haliSahaPrice: widget.haliSaha.price,
         reservationDateTime: bookingString,
         status: "Onaylandı",
-        createdAt:TimeService.now(),
+        createdAt: TimeService.now(),
         userName: widget.currentOwner.name,
         userEmail: widget.currentOwner.email,
         userPhone: widget.currentOwner.phone,
@@ -2438,9 +2446,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         SnackBar(content: Text("Saat $time başarıyla rezerve edildi.")),
       );
     } catch (e) {
-      // Hata mesajı göster
+      final msg = AppErrorHandler.getMessage(e, context: 'reservation');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon başarısız: $e")),
+        SnackBar(
+          content: Text("Rezervasyon başarısız: $msg"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -2458,7 +2470,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
+            content:
+                Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
             backgroundColor: Colors.red,
           ),
         );
@@ -2474,11 +2487,14 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Rezervasyonunuz başarıyla iptal edildi!")),
       );
-
     } catch (e) {
-      // Hata mesajı göster
+      final msg = AppErrorHandler.getMessage(e, context: 'reservation');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon iptali başarısız: $e")),
+        SnackBar(
+          content: Text("Rezervasyon iptali başarısız: $msg"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
