@@ -1,8 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:toplansin/data/entitiy/hali_saha.dart';
+import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/data/entitiy/subscription.dart';
+import 'package:toplansin/services/subscription_service.dart';
+import 'package:toplansin/services/time_service.dart';
 
 class SubscribePage extends StatefulWidget {
-  const SubscribePage({Key? key}) : super(key: key);
-
+  HaliSaha halisaha;
+  Person user;
+  SubscribePage({required this.halisaha, required this.user});
   @override
   State<SubscribePage> createState() => _SubscribePageState();
 }
@@ -20,34 +27,55 @@ class _SubscribePageState extends State<SubscribePage> {
     {'short': 'Cmt', 'full': 'Cumartesi'},
     {'short': 'Paz', 'full': 'Pazar'},
   ];
+  List<String> get timeSlots {
+    // Start ve end saatlerini parçalama
+    final startParts = widget.halisaha.startHour.split(':');
+    final endParts = widget.halisaha.endHour.split(':');
 
-  final List<String> timeSlots = [
-    "09:00-10:00",
-    "10:00-11:00",
-    "11:00-12:00",
-    "12:00-13:00",
-    "13:00-14:00",
-    "14:00-15:00",
-    "15:00-16:00",
-    "16:00-17:00",
-    "17:00-18:00",
-    "18:00-19:00",
-    "19:00-20:00",
-    "20:00-21:00",
-  ];
+    int startHour = int.parse(startParts[0]);
+    int startMinute = int.parse(startParts[1]);
+    int endHour = int.parse(endParts[0]);
+    int endMinute = int.parse(endParts[1]);
+
+    // Eğer endHour startHour'dan küçükse, gece yarısını geçtiğini gösterir.
+    if (endHour < startHour ||
+        (endHour == startHour && endMinute < startMinute)) {
+      endHour += 24;
+    }
+
+    List<String> slots = [];
+    for (int hour = startHour; hour < endHour; hour++) {
+      int actualStartHour = hour % 24;
+      int actualEndHour = (hour + 1) % 24;
+      // 00:00 formatında yazmak için padLeft kullanıyoruz
+      slots.add(
+          '${actualStartHour.toString().padLeft(2, '0')}:00-${actualEndHour.toString().padLeft(2, '0')}:00');
+    }
+
+    // 00:00 slotunun en başta olması için sıralama ekleme
+    slots.sort((a, b) {
+      // Slotların başlangıç saatlerini al
+      int aHour = int.parse(a.split(':')[0]);
+      int bHour = int.parse(b.split(':')[0]);
+      return aHour.compareTo(bHour);
+    });
+
+    return slots;
+  }
 
   final List<Color> gradientColors = [
     Color(0xFF42A5F5),
     Color(0xFF64B5F6),
   ];
 
-  bool get canMakeReservation => selectedTime != null;
-  void _showSubscriptionConfirmationDialog(BuildContext context) {
+  bool get canMakeReservation => selectedDay != null && selectedTime != null;
+
+  void showSubscriptionConfirmationDialog(BuildContext contextt) {
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
 
     showDialog(
-      context: context,
+      context: contextt,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: Colors.white,
@@ -59,61 +87,174 @@ class _SubscribePageState extends State<SubscribePage> {
             fontSize: 18,
           ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Aşağıdaki gün ve saat için haftalık abonelik oluşturmak üzeresiniz. Onaylıyor musunuz?',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  '$selectedDayText $selectedTimeText',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+        content: _buildConfirmationContent(selectedDayText!, selectedTimeText),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'İptal',
-              style: TextStyle(color: Colors.black54),
-            ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal', style: TextStyle(color: Colors.black54)),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // TODO: Abonelik işlemini burada gerçekleştir
-            },
+            onPressed: () => _handleSubscriptionConfirmation(contextt),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade700,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text(
-              'Onayla',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Onayla', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildConfirmationContent(String dayText, String timeText) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Aşağıdaki gün ve saat için haftalık abonelik oluşturmak üzeresiniz. Onaylıyor musunuz?',
+          style: TextStyle(fontSize: 14),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              '$dayText $timeText',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSubscriptionConfirmation(BuildContext context) async {
+    Navigator.pop(context); // önce onay dialog’unu kapat
+
+    final selectedDayText = daysOfWeek[selectedDay]['full'];
+    final selectedTimeText = selectedTime!;
+    final createdAt = TimeService.now();
+    final startDate =
+    calculateFirstSession(createdAt, selectedDay + 1, selectedTimeText);
+    final sub = Subscription(
+      docId: '',
+      halisahaId: widget.halisaha.id,
+      userId: widget.user.id,
+      halisahaName: widget.halisaha.name,
+      location: widget.halisaha.location,
+      dayOfWeek: selectedDay + 1,
+      time: selectedTimeText,
+      price: widget.halisaha.price,
+      startDate: startDate,
+      endDate: "",
+      nextSession: startDate,
+      status: SubscriptionStatus.beklemede,
+    );
+
+    try {
+      await aboneOl(sub);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Abonelik isteğiniz gönderildi. Onay bekleniyor.'),
+        ),
+      );
+
+      await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Abonelik gönderilirken bir hata oluştu.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showSuccessDialog(
+      BuildContext context, String day, String time) {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Abonelik İsteği Gönderildi",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "$day günü, $time saatine yapılan abonelik isteğiniz alınmıştır.\nDurumu 'Aboneliklerim' sayfasından takip edebilirsiniz.",
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.4,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                      ),
+                      child: const Text(
+                        "Tamam",
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    print("START: ${widget.halisaha.startHour}");
+    print("END: ${widget.halisaha.endHour}");
+    final now = DateTime(2025, 5, 18); // Cumartesi
+    final result =
+    calculateFirstSession(now, 1, "20:00-21:00"); // Pazartesi için
+    print(result); // Beklenen: 2025-05-20 20:00-21:00
+
+    // TODO: implement initState
   }
 
   @override
@@ -171,24 +312,24 @@ class _SubscribePageState extends State<SubscribePage> {
                                 shape: BoxShape.circle,
                                 gradient: isSelected
                                     ? LinearGradient(
-                                        colors: gradientColors,
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
+                                  colors: gradientColors,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
                                     : LinearGradient(
-                                        colors: [
-                                          Colors.grey.shade200,
-                                          Colors.grey.shade100
-                                        ],
-                                      ),
+                                  colors: [
+                                    Colors.grey.shade200,
+                                    Colors.grey.shade100
+                                  ],
+                                ),
                                 boxShadow: isSelected
                                     ? [
-                                        BoxShadow(
-                                          color: Colors.blue.shade200,
-                                          blurRadius: 5,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
+                                  BoxShadow(
+                                    color: Colors.blue.shade200,
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
                                     : [],
                               ),
                               child: Center(
@@ -246,79 +387,107 @@ class _SubscribePageState extends State<SubscribePage> {
                             ],
                           ),
                           const SizedBox(height: 15),
-                          Expanded(
-                            child: GridView.count(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 3.8,
-                              physics: const BouncingScrollPhysics(),
-                              children: timeSlots.map((time) {
-                                final isSelected = selectedTime == time;
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    gradient: isSelected
-                                        ? LinearGradient(
+                          StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('subscriptions')
+                                  .where('halisahaId',
+                                  isEqualTo: widget.halisaha.id)
+                                  .where('dayOfWeek',
+                                  isEqualTo: selectedDay + 1)
+                                  .where('status', whereIn: [
+                                'Beklemede',
+                                'Aktif'
+                              ]).snapshots(), // 🔄 Bu bir stream!,
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData) {
+                                  return Center(
+                                      child: CircularProgressIndicator());
+                                }
+
+                                final blockedTimes = snapshot.data!.docs
+                                    .map((doc) => doc['time'])
+                                    .toList();
+
+                                final availableSlots = timeSlots
+                                    .where(
+                                        (slot) => !blockedTimes.contains(slot))
+                                    .toList();
+                                return Expanded(
+                                  child: GridView.count(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: 3.8,
+                                    physics: const BouncingScrollPhysics(),
+                                    children: availableSlots.map((time) {
+                                      final isSelected = selectedTime == time;
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          gradient: isSelected
+                                              ? LinearGradient(
                                             colors: gradientColors,
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           )
-                                        : null,
-                                    color: isSelected
-                                        ? null
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.transparent
-                                          : Colors.grey.shade300,
-                                    ),
-                                    boxShadow: isSelected
-                                        ? [
+                                              : null,
+                                          color: isSelected
+                                              ? null
+                                              : Colors.grey.shade100,
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? Colors.transparent
+                                                : Colors.grey.shade300,
+                                          ),
+                                          boxShadow: isSelected
+                                              ? [
                                             BoxShadow(
                                               color: Colors.blue.shade200,
                                               blurRadius: 5,
                                               offset: const Offset(0, 2),
                                             ),
                                           ]
-                                        : [],
-                                  ),
-                                  child: ElevatedButton.icon(
-                                    onPressed: () =>
-                                        setState(() => selectedTime = time),
-                                    icon: Icon(
-                                      Icons.access_time,
-                                      size: 16,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.blue.shade700,
-                                    ),
-                                    label: Text(
-                                      time,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.blue.shade700,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.transparent,
-                                      shadowColor: Colors.transparent,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
+                                              : [],
+                                        ),
+                                        child: ElevatedButton.icon(
+                                          onPressed: () => setState(
+                                                  () => selectedTime = time),
+                                          icon: Icon(
+                                            Icons.access_time,
+                                            size: 16,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.blue.shade700,
+                                          ),
+                                          label: Text(
+                                            time,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.blue.shade700,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            shadowColor: Colors.transparent,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                BorderRadius.circular(10)),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
                                 );
-                              }).toList(),
-                            ),
-                          ),
+                              }),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
-                    if (selectedTime != null)
+
+                    if (selectedDay != null && selectedTime != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16.0, vertical: 12),
@@ -337,7 +506,7 @@ class _SubscribePageState extends State<SubscribePage> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  '${daysOfWeek[selectedDay]['full']} günü, $selectedTime saatine abone olacaksınız.',
+                                  '${daysOfWeek[selectedDay!]['full']} günü, $selectedTime saatine abone olacaksınız.',
                                   style: const TextStyle(
                                     color: Colors.black87,
                                     fontSize: 14,
@@ -353,7 +522,7 @@ class _SubscribePageState extends State<SubscribePage> {
                       padding: const EdgeInsets.all(16.0),
                       child: ElevatedButton.icon(
                         onPressed: canMakeReservation
-                            ? () => _showSubscriptionConfirmationDialog(context)
+                            ? () => showSubscriptionConfirmationDialog(context)
                             : null,
                         icon: const Icon(
                           Icons.calendar_today,
@@ -381,3 +550,4 @@ class _SubscribePageState extends State<SubscribePage> {
         ));
   }
 }
+

@@ -255,65 +255,72 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             color: Colors.grey[700], height: 1.4, fontSize: 14),
                       ),
                       SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          SizedBox(
-                            width: 170,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ReservationPage(
-                                      haliSaha: haliSaha,
-                                      currentUser: widget.currentUser,
+                      Center(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.9,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ReservationPage(
+                                        haliSaha: haliSaha,
+                                        currentUser: widget.currentUser,
+                                      ),
                                     ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  elevation: 2,
                                 ),
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                elevation: 2,
-                              ),
-                              child: Text(
-                                "Rezervasyon Yap",
-                                style: TextStyle(
-                                    fontSize: 18, color: Colors.white),
+                                child: Text(
+                                  "Rezervasyon Yap",
+                                  style: TextStyle(
+                                      fontSize: 18, color: Colors.white),
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(
-                            width: 170,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => SubscribePage(),
+                            SizedBox(height: 12), // Düğmeler arası boşluk
+
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.9,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SubscribePage(
+                                        halisaha: haliSaha,
+                                        user: widget.currentUser,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue.shade700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade700,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  elevation: 2,
                                 ),
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                elevation: 2,
-                              ),
-                              child: Text(
-                                "Abone Ol",
-                                style: TextStyle(
-                                    fontSize: 18, color: Colors.white),
+                                child: Text(
+                                  "Abone Ol",
+                                  style: TextStyle(
+                                      fontSize: 18, color: Colors.white),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       SizedBox(height: 24),
                       _buildInfoAndFeaturesTabs(haliSaha),

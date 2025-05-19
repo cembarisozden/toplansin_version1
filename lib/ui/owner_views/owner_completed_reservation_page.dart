@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
+
+enum DateFilter { all, today, last7Days, thisMonth }
 
 class OwnerCompletedReservationsPage extends StatefulWidget {
   final String haliSahaId;
+
   OwnerCompletedReservationsPage({required this.haliSahaId});
 
   @override
@@ -17,6 +21,7 @@ class _OwnerCompletedReservationsPageState
   String searchTerm = '';
   List<Reservation> mockReservations = [];
   bool isLoading = true;
+  DateFilter selectedFilter = DateFilter.all;
 
   @override
   void initState() {
@@ -49,7 +54,7 @@ class _OwnerCompletedReservationsPageState
         if (dateA == null && dateB == null) return 0;
         if (dateA == null) return 1;
         if (dateB == null) return -1;
-        return dateA.compareTo(dateB);
+        return dateB.compareTo(dateA);
       });
 
       setState(() {
@@ -80,19 +85,36 @@ class _OwnerCompletedReservationsPageState
 
   // Rezervasyonları filtreleme
   List<Reservation> _filterReservations(List<Reservation> reservations) {
-    if (searchTerm.isEmpty) {
-      return reservations;
+    final now = TimeService.now();
+    DateTime? filterStart;
+
+    switch (selectedFilter) {
+      case DateFilter.today:
+        filterStart = DateTime(now.year, now.month, now.day);
+        break;
+      case DateFilter.last7Days:
+        filterStart = now.subtract(Duration(days: 7));
+        break;
+      case DateFilter.thisMonth:
+        filterStart = DateTime(now.year, now.month, 1);
+        break;
+      case DateFilter.all:
+        filterStart = null;
+        break;
     }
 
     return reservations.where((reservation) {
-      final fieldLower = reservation.haliSahaName.toLowerCase();
-      final dateLower = reservation.reservationDateTime.toLowerCase();
-      final statusLower = reservation.status.toLowerCase();
-      final searchLower = searchTerm.toLowerCase();
+      final date = _parseReservationDateTime(reservation.reservationDateTime);
+      if (date == null) return false;
 
-      return fieldLower.contains(searchLower) ||
-          dateLower.contains(searchLower) ||
-          statusLower.contains(searchLower);
+      final matchesFilter = filterStart == null || date.isAfter(filterStart);
+
+      final matchesSearch = reservation.userName
+              ?.toLowerCase()
+              .contains(searchTerm.toLowerCase()) ??
+          false;
+
+      return matchesFilter && matchesSearch;
     }).toList();
   }
 
@@ -102,10 +124,10 @@ class _OwnerCompletedReservationsPageState
     int crossAxisCount = screenWidth > 1200
         ? 4
         : screenWidth > 800
-        ? 3
-        : screenWidth > 600
-        ? 2
-        : 1;
+            ? 3
+            : screenWidth > 600
+                ? 2
+                : 1;
     double childAspectRatio = 3 / 2;
 
     var filteredReservations = _filterReservations(mockReservations);
@@ -149,52 +171,76 @@ class _OwnerCompletedReservationsPageState
             ),
             SizedBox(height: 20),
             // Arama Çubuğu
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Rezervasyon ara...',
-                prefixIcon: Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Rezervasyon ara...',
+                    prefixIcon: Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      searchTerm = value;
+                    });
+                  },
                 ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchTerm = value;
-                });
-              },
-            ),
-            SizedBox(height: 20),
+              SizedBox(width: 12),
+              DropdownButton<DateFilter>(
+                value: selectedFilter,
+                items: [
+                  DropdownMenuItem(value: DateFilter.all, child: Text('Tümü')),
+                  DropdownMenuItem(
+                      value: DateFilter.today, child: Text('Bugün')),
+                  DropdownMenuItem(
+                      value: DateFilter.last7Days, child: Text('Son 7 Gün')),
+                  DropdownMenuItem(
+                      value: DateFilter.thisMonth, child: Text('Bu Ay')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      selectedFilter = value;
+                    });
+                  }
+                },
+              ),
+            ]),
+            SizedBox(height: 12),
+
             Expanded(
               child: isLoading
                   ? Center(child: CircularProgressIndicator())
                   : filteredReservations.isNotEmpty
-                  ? GridView.builder(
-                padding: EdgeInsets.all(8),
-                gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  childAspectRatio: childAspectRatio,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: filteredReservations.length,
-                itemBuilder: (context, index) {
-                  final reservation = filteredReservations[index];
-                  return ReservationCard(reservation: reservation);
-                },
-              )
-                  : Center(
-                child: Text(
-                  'Tamamlanmış rezervasyon bulunamadı.',
-                  style: TextStyle(
-                      color: Colors.grey.shade700, fontSize: 16),
-                ),
-              ),
+                      ? GridView.builder(
+                          padding: EdgeInsets.all(8),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            childAspectRatio: childAspectRatio,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                          itemCount: filteredReservations.length,
+                          itemBuilder: (context, index) {
+                            final reservation = filteredReservations[index];
+                            return ReservationCard(reservation: reservation);
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            'Tamamlanmış rezervasyon bulunamadı.',
+                            style: TextStyle(
+                                color: Colors.grey.shade700, fontSize: 16),
+                          ),
+                        ),
             ),
           ],
         ),
@@ -331,7 +377,7 @@ class ReservationCard extends StatelessWidget {
                     Text(
                       date,
                       style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                          TextStyle(color: Colors.grey.shade700, fontSize: 14),
                     ),
                   ],
                 ),
@@ -344,7 +390,7 @@ class ReservationCard extends StatelessWidget {
                     Text(
                       time,
                       style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                          TextStyle(color: Colors.grey.shade700, fontSize: 14),
                     ),
                   ],
                 ),
@@ -388,7 +434,7 @@ class ReservationCard extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: reservation.status == 'Tamamlandı' ||
-                        reservation.status == 'İptal Edildi'
+                            reservation.status == 'İptal Edildi'
                         ? Colors.blue
                         : Colors.green,
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),

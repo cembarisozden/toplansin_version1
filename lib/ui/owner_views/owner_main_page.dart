@@ -8,7 +8,7 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/ui/owner_views/owner_add_halisaha.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
 import 'package:toplansin/ui/owner_views/owner_profile_settings.dart';
-import 'package:toplansin/ui/views/notification_provider.dart';
+import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 import 'package:badges/badges.dart' as badges;
 

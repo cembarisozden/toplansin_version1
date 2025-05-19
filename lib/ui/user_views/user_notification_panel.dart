@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
@@ -23,8 +25,12 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
   List<Reservation> userReservations = [];
 
   void listenReservations(String userId) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final provider = Provider.of<UserNotificationProvider>(
+        context, listen: false);
+
     // 1) "YYYY-MM-DD" biçiminde 'bugün' string’i oluştur
-    var today =TimeService.now();
+    var today = TimeService.now();
     var todayString =
         "${today.year.toString().padLeft(4, '0')}-"
         "${today.month.toString().padLeft(2, '0')}-"
@@ -35,48 +41,59 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
         .collection("reservations")
         .where("userId", isEqualTo: userId)
         .where("status", whereIn: ['Onaylandı', 'İptal Edildi'])
+        .where("lastUpdatedBy", isEqualTo: "owner")
         .where(
       "reservationDateTime",
       isGreaterThanOrEqualTo: todayString, // "2024-12-21" gibi
     )
-        .snapshots();
+        .snapshots()
+        .listen((snapshot) {
+      final count = snapshot.docs.length;
+      provider.setCount(count);
+    });
+
 
     // 3) Dinleme (subscription) başlat
-    _reservationsSubscription = reservationsStream.listen((snapshot) async {
+    _reservationsSubscription = FirebaseFirestore.instance
+        .collection("reservations")
+        .where("userId", isEqualTo: userId)
+        .where("status", whereIn: ['Onaylandı', 'İptal Edildi'])
+        .where("lastUpdatedBy", isEqualTo: "owner")
+        .where("reservationDateTime", isGreaterThanOrEqualTo: todayString)
+        .snapshots()
+        .listen((snapshot) {
+      final count = snapshot.docs.length;
+      provider.setCount(count);
+
       List<Reservation> reservations = [];
-      for (var document in snapshot.docs) {
-        var reservation = Reservation.fromDocument(document);
+      List<Map<String, String>> notifications = [];
+
+      for (var doc in snapshot.docs) {
+        var reservation = Reservation.fromDocument(doc);
         reservations.add(reservation);
+
+        notifications.add({
+          "title": reservation.status == "Onaylandı"
+              ? "Rezervasyon Onaylandı"
+              : "Rezervasyon İptal Edildi",
+          "subtitle":
+          "${reservation
+              .reservationDateTime} tarihli halı saha rezervasyonunuz ${reservation
+              .status.toLowerCase()}.",
+        });
       }
 
-      // 4) Ekranda göstereceğimiz listeyi güncelle
       setState(() {
         userReservations = reservations;
-
-        // Bildirimleri güncellemeden önce mevcut listeyi temizleyin
-        _notifications.clear();
-
-        // 5) Bildirimleri yeniden ekleyin
-        for (var reservation in userReservations) {
-          if (reservation.status == "Onaylandı") {
-            _notifications.add({
-              "title": "Rezarvasyon Onaylandı",
-              "subtitle":
-              "${reservation.reservationDateTime} tarihli halı saha rezervasyonunuz onaylandı."
-            });
-          } else if (reservation.status == "İptal Edildi") {
-            _notifications.add({
-              "title": "Rezarvasyon İptal Edildi",
-              "subtitle":
-              "${reservation.reservationDateTime} tarihli halı saha rezervasyonunuz iptal edildi."
-            });
-          }
-        }
+        _notifications
+          ..clear()
+          ..addAll(notifications);
       });
     });
   }
 
-  @override
+
+    @override
   void initState() {
     super.initState();
     // Kullanıcı oturum açmış olmalı, null kontrolü yapabilirsiniz
