@@ -1,330 +1,539 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:toplansin/data/entitiy/person.dart';
+import 'package:flutter/services.dart';
+import 'package:toplansin/data/entitiy/subscription.dart';
+import 'package:toplansin/services/subscription_service.dart';
 
 class SubscriptionDetailPage extends StatefulWidget {
+  final Person currentUser;
+  SubscriptionDetailPage({required this.currentUser});
   @override
   _SubscriptionDetailPageState createState() => _SubscriptionDetailPageState();
 }
 
-class _SubscriptionDetailPageState extends State<SubscriptionDetailPage> {
+class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    // Durum çubuğunu şeffaf yap
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color themeColor = Colors.blue.shade700;
+    // Ana mavi renk - uygulamanın diğer sayfalarındaki mavi ile uyumlu
+    final Color primaryBlue = Color(0xFF1976D2);
+    final Color lightBgColor = Color(0xFFE3F2FD);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFe0f7fa), Color(0xFFb2ebf2)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      backgroundColor: lightBgColor,
+      appBar: AppBar(
+        backgroundColor: primaryBlue,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Aboneliklerim',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              SizedBox(height: 25),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: themeColor),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Aboneliklerim',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: themeColor,
-                      ),
-                      textAlign: TextAlign.center,
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          // Tab bar
+          Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              indicatorColor: primaryBlue,
+              labelColor: primaryBlue,
+              unselectedLabelColor: Colors.grey.shade500,
+              labelStyle: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
+              tabs: [
+                Tab(text: 'Aktif Abonelikler'),
+                Tab(text: 'Geçmiş Abonelikler'),
+              ],
+            ),
+          ),
+
+          // İçerik
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('subscriptions')
+                  .where('userId', isEqualTo: widget.currentUser.id)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: primaryBlue,
+                      strokeWidth: 2,
                     ),
-                  ),
-                  SizedBox(width: 48),
-                ],
-              ),
-              const SizedBox(height: 16),
-              DefaultTabController(
-                length: 2,
-                child: Expanded(
-                  child: Column(
-                    children: [
-                      Container(
-                        child: TabBar(
-                          indicatorColor: themeColor,
-                          labelColor: themeColor,
-                          unselectedLabelColor: Colors.grey,
-                          labelStyle: TextStyle(fontSize: 16),
-                          unselectedLabelStyle: TextStyle(fontSize: 14),
-                          tabs: const [
-                            Tab(text: 'Aktif Abonelikler'),
-                            Tab(text: 'Geçmiş Abonelikler'),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            ListView(
-                              children: [
-                                AbonelikCard(
-                                  title: 'Karşıyaka Halı Saha',
-                                  location: 'Karşıyaka/İzmir',
-                                  day: 'Her Çarşamba',
-                                  time: '20:00-21:00',
-                                  price: '300.0 TL/hafta',
-                                  remaining: '8 kalan seans',
-                                  nextSession: '22.05.2025 - 20:00-21:00',
-                                ),
-                                AbonelikCard(
-                                  title: 'Göztepe Halısaha',
-                                  location: 'Göztepe/İzmir',
-                                  day: 'Her Cumartesi',
-                                  time: '18:00-19:00',
-                                  price: '600.0 TL/hafta',
-                                  remaining: '20 kalan seans',
-                                  nextSession: '18.05.2025 - 18:00-19:00',
-                                ),
-                              ],
-                            ),
-                            ListView(
-                              children: [
-                                AbonelikCard(
-                                  title: 'Bornova Halı Saha',
-                                  location: 'Bornova/İzmir',
-                                  day: 'Her Pazartesi',
-                                  time: '19:00-20:00',
-                                  price: '250.0 TL/hafta',
-                                  remaining: '12 tamamlanan seans',
-                                  nextSession: '28.04.2025',
-                                  isPast: true,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                  );
+                }
+
+                final allDocs = snapshot.data!.docs;
+
+                final activeSubs = allDocs.where((doc) {
+                  final status = doc['status'];
+                  return status == 'Aktif' || status == 'Beklemede';
+                }).toList();
+
+                final pastSubs = allDocs.where((doc) {
+                  final status = doc['status'];
+                  return status == 'Sona Erdi' || status == 'İptal Edildi';
+                }).toList();
+
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    activeSubs.isEmpty
+                        ? _buildEmptyState(
+                        'Aktif aboneliğiniz bulunmamaktadır.')
+                        : ListView.builder(
+                      physics: BouncingScrollPhysics(),
+                      padding: EdgeInsets.all(16),
+                      itemCount: activeSubs.length,
+                      itemBuilder: (context, index) {
+                        final data = activeSubs[index].data()
+                        as Map<String, dynamic>;
+                        final sub = Subscription.fromMap(
+                            data, activeSubs[index].id);
+                        return AbonelikCard(sub: sub);
+                      },
+                    ),
+                    pastSubs.isEmpty
+                        ? _buildEmptyState(
+                        'Geçmiş aboneliğiniz bulunmamaktadır.')
+                        : ListView.builder(
+                      physics: BouncingScrollPhysics(),
+                      padding: EdgeInsets.all(16),
+                      itemCount: pastSubs.length,
+                      itemBuilder: (context, index) {
+                        final data = pastSubs[index].data()
+                        as Map<String, dynamic>;
+                        final sub = Subscription.fromMap(
+                            data, pastSubs[index].id);
+
+                        return AbonelikCard(sub: sub);
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 60,
+            color: Colors.grey.shade400,
+          ),
+          SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 }
 
-class AbonelikCard extends StatelessWidget {
-  final String title, location, day, time, price, remaining, nextSession;
-  final bool isPast;
-
-  const AbonelikCard({
+class AbonelikCard extends StatefulWidget {
+  final Subscription sub;
+  AbonelikCard({
     super.key,
-    required this.title,
-    required this.location,
-    required this.day,
-    required this.time,
-    required this.price,
-    required this.remaining,
-    required this.nextSession,
-    this.isPast = false,
+    required this.sub,
   });
+  @override
+  State<AbonelikCard> createState() => _AbonelikCardState();
+}
+
+class _AbonelikCardState extends State<AbonelikCard> {
+  String _convertDayNumberToText(int day) {
+    const days = [
+      'Pazartesi',
+      'Salı',
+      'Çarşamba',
+      'Perşembe',
+      'Cuma',
+      'Cumartesi',
+      'Pazar'
+    ];
+    if (day >= 1 && day <= 7) return 'Her ${days[day - 1]}';
+    return 'Bilinmeyen Gün';
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Aktif':
+        return Color(0xFF4CAF50); // Yeşil
+      case 'Sona Erdi':
+        return Colors.grey.shade600;
+      case 'Beklemede':
+        return Color(0xFFFFA000); // Amber
+      case 'İptal Edildi':
+        return Color(0xFFE53935); // Kırmızı
+      default:
+        return Colors.black;
+    }
+  }
+
+  Future<void> showSuccessDialog(
+      BuildContext context, String title, String description) async {
+    if (!context.mounted) return;
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green.shade700),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(description),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void showSafeSnackBar(BuildContext context, String message,
+      {Color backgroundColor = Colors.blue}) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).clearSnackBars(); // önceki varsa temizle
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      ),
+    );
+  }
+
+  Future<void> _showSuccessSnackbar(String message) async {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = Colors.blue.shade700;
-    final Color bgBadgeColor = isPast ? Colors.grey : primaryColor;
+    String status = widget.sub.status;
+    String title = widget.sub.halisahaName;
+    String day = _convertDayNumberToText(widget.sub.dayOfWeek - 1);
+    String time = widget.sub.time;
+    num price = widget.sub.price;
+    String location = widget.sub.location;
+    String nextSession = widget.sub.nextSession;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withOpacity(0.05),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
+    final Color statusColor = _statusColor(status);
+    final isActive = status == 'Aktif';
+    final isPending = status == 'Beklemede';
+    final isEnded = status == 'Sona Erdi';
+    final Color primaryBlue = Color(0xFF1976D2);
+    final Color primaryGreen = Color(0xFF4CAF50);
+
+    // Tüm kart için border radius değeri
+    final double cardBorderRadius = 12.0;
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(cardBorderRadius),
       ),
+      clipBehavior: Clip.antiAlias, // İçeriğin köşeleri taşmasını engeller
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// Üst görsel alanı gibi mavi bir header + durum etiketi
+          // Başlık kısmı - gradient ile (rezervasyon sayfasındaki gibi)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.blue.shade700.withOpacity(0.2),
-                  Colors.blue.shade300.withOpacity(0.1),
-                  Colors.white.withOpacity(0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                colors: [primaryGreen, primaryBlue],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.sports_soccer, size: 36, color: primaryColor),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_outlined,
-                              size: 18, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              location,
-                              style: TextStyle(
-                                  fontSize: 15, color: Colors.black87),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: bgBadgeColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Text(
-                    isPast ? 'Sona Erdi' : 'Aktif',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          /// İçerik bölümü
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+// İçerik kısmı - beyaz arka plan
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
+                // Tarih, saat, konum ve fiyat bilgileri
+                Row(
                   children: [
-                    infoBadge(Icons.calendar_today, day, primaryColor),
-                    infoBadge(Icons.access_time, time, primaryColor),
-                    infoBadge(Icons.monetization_on, price, primaryColor),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: Colors.grey.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      day,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: primaryColor.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.event, color: primaryColor),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isPast ? 'Bitiş Tarihi' : 'Sonraki Seans',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: primaryColor,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(nextSession, style: TextStyle(fontSize: 14)),
-                        ],
+                SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 16,
+                      color: Colors.grey.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                if (!isPast) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {},
-                          label: Text(
-                            'Bu Haftayı İptal Et',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.orange.shade700,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color: Colors.orange.shade300, width: 1.5),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: Colors.orange.withOpacity(0.05),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            shadowColor: Colors.orange.withOpacity(0.2),
-                            elevation: 0,
-                          ),
+                SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: Colors.grey.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        location,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade800,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {},
-                          label: Text(
-                            'Aboneliği İptal Et',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red.shade700,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color: Colors.red.shade300, width: 1.5),
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: Colors.red.withOpacity(0.05),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            shadowColor: Colors.red.withOpacity(0.2),
-                            elevation: 0,
-                          ),
-                        ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    Icon(
+                      Icons.monetization_on_outlined,
+                      size: 16,
+                      color: Colors.grey.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      price.toString(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+
+                // Sonraki seans bilgisi - beyaz arka plan
+                if (isActive || isEnded) ...[
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.event,
+                          color: primaryBlue,
+                          size: 20,
+                        ),
+                        SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEnded ? 'Bitiş Tarihi' : 'Sonraki Seans',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade800,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              nextSession,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
                 ],
+
+                // Durum etiketi
+                SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: status == 'Beklemede'
+                            ? Color(0xFFFFF8E1) // Amber light
+                            : (status == 'Aktif'
+                            ? Color(0xFFE8F5E9) // Green light
+                            : Color(0xFFEEEEEE)), // Grey light
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: statusColor.withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                    // Butonlar
+                    if (isActive)
+                      Row(
+                        children: [
+                          _buildButton(
+                            onPressed: () {},
+                            label: 'Bu Haftayı İptal Et',
+                            color: Color(0xFFFFA000)
+                                .withOpacity(0.8), // Amber daha soft
+                          ),
+                          SizedBox(width: 8),
+                          _buildButton(
+                            onPressed: () {},
+                            label: 'Aboneliği İptal Et',
+                            color: Color(0xFFE53935)
+                                .withOpacity(0.8), // Kırmızı daha soft
+                          ),
+                        ],
+                      )
+                    else if (isPending)
+                      _buildButton(
+                        onPressed: () async {
+                          await aboneIstegiIptalEt(widget.sub.docId);
+                          await _showSuccessSnackbar(
+                              "Abonelik isteği iptal edildi.");
+                        },
+
+                        label: 'Abonelik İsteğini İptal Et',
+                        color: Color(0xFF5C6BC0)
+                            .withOpacity(0.8), // Indigo daha soft
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -333,25 +542,31 @@ class AbonelikCard extends StatelessWidget {
     );
   }
 
-  Widget infoBadge(IconData icon, String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+  Widget _buildButton({
+    required VoidCallback onPressed,
+    required String label,
+    required Color color,
+  }) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        backgroundColor: Colors.transparent,
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: color, width: 1),
+        ),
+        minimumSize: Size(0, 32),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-                fontSize: 14.5, fontWeight: FontWeight.w500, color: color),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
 }
+

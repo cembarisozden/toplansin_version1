@@ -359,7 +359,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => SubscriptionDetailPage()),
+                      builder: (context) => SubscriptionDetailPage(currentUser: widget.currentUser,)),
                 );
               },
             ),

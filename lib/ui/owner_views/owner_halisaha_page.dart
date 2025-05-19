@@ -11,10 +11,9 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/owner_views/owner_completed_reservation_page.dart';
-import 'package:toplansin/ui/owner_views/owner_notification_panel.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
-import 'package:toplansin/ui/views/notification_provider.dart';
+import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -50,6 +49,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   int todaysReservation = 0;
   int occupancyRate = 0;
   int totalOpenHours = 0;
+
+  String selectedDay = "Pzt";
 
   void listenToReservations(String haliSahaId) {
     try {
@@ -343,7 +344,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
@@ -383,12 +384,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 );
               },
             ),
-            IconButton(
-              icon: Icon(Icons.notifications, color: Colors.white),
-              onPressed: () {
-                _showNotificationPanel(context, widget.haliSaha);
-              },
-            ),
           ],
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(48),
@@ -399,9 +394,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: TabBar(
-                isScrollable: false,
+                isScrollable: true,
                 labelColor: Colors.green.shade800,
                 unselectedLabelColor: Colors.grey.shade600,
+                tabAlignment: TabAlignment.start,
                 indicatorSize: TabBarIndicatorSize.tab,
                 // Sekme genişliği kadar olacak
                 indicator: BoxDecoration(
@@ -411,63 +407,63 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 labelStyle:
                     TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 tabs: [
-                  Tab(text: "Genel Bakış"),
-                  Tab(text: "Saha Bilgileri"),
                   Tab(
-                    child: Consumer<NotificationProvider>(
-                      builder: (context, provider, child) {
-                        int notificationCount =
-                            provider.getNotificationCount(widget.haliSaha.id);
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 4), // ✅ Sekme içi denge
+                        child: Text("Genel Bakış"),
+                      )),
+                  Tab(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text("Saha Bilgileri"),
+                      )),
+                  Tab(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4),
+                      child: Consumer<NotificationProvider>(
+                        builder: (context, provider, child) {
+                          int notificationCount = provider
+                              .getNotificationCount(widget.haliSaha.id);
 
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 3.0),
-                              child: Text("Rezervasyonlar",
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                            if (notificationCount > 0)
-                              Positioned(
-                                right: -15,
-                                top: -5,
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.red.withOpacity(0.5),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  constraints: BoxConstraints(
-                                    minWidth: 18,
-                                    minHeight: 18,
-                                  ),
-                                  child: Text(
-                                    '$notificationCount',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Text("Rezervasyonlar"),
+                              if (notificationCount > 0)
+                                Positioned(
+                                  right: -12,
+                                  top: -6,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    textAlign: TextAlign.center,
+                                    child: Text(
+                                      '$notificationCount',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        );
-                      },
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
+                  Tab(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Text("Abonelikler"),
+                      )),
                 ],
+
               ),
             ),
           ),
@@ -479,6 +475,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 _buildGenelBakisTab(context),
                 _buildSahaBilgileriTab(),
                 _buildRezervasyonlarTab(),
+                _buildAboneliklerTab(),
               ],
             ),
             if (_isLoading)
@@ -491,6 +488,263 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  final List<Map<String, String>> days = [
+    {'id': 'Pzt', 'label': 'Pzt'},
+    {'id': 'Sal', 'label': 'Salı'},
+    {'id': 'Çar', 'label': 'Çar'},
+    {'id': 'Per', 'label': 'Per'},
+    {'id': 'Cum', 'label': 'Cum'},
+    {'id': 'Cmt', 'label': 'Cmt'},
+    {'id': 'Paz', 'label': 'Paz'},
+  ];
+
+  final List<Map<String, String>> mockSlots = [
+    {"time": "00:00-01:00", "status": "abone", "statusText": "Abone"},
+    {"time": "01:00-02:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "17:00-18:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "18:00-19:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "19:00-20:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "20:00-21:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "21:00-22:00", "status": "musait", "statusText": "Müsait"},
+    {"time": "22:00-23:00", "status": "istek", "statusText": "İstek Var"},
+    {"time": "23:00-00:00", "status": "musait", "statusText": "Müsait"},
+  ];
+
+  String getDayName(String id) {
+    const dayMap = {
+      "Pzt": "Pazartesi",
+      "Sal": "Salı",
+      "Çar": "Çarşamba",
+      "Per": "Perşembe",
+      "Cum": "Cuma",
+      "Cmt": "Cumartesi",
+      "Paz": "Pazar",
+    };
+    return dayMap[id] ?? id;
+  }
+
+  Widget statusBadge(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(text,
+              style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildAboneliklerTab() {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Abonelik Yönetimi",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 14,
+                    ),
+                    // Günler
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: days.map((day) {
+                          final isSelected = selectedDay == day['id'];
+                          return GestureDetector(
+                            onTap: () =>
+                                setState(() => selectedDay = day['id']!),
+                            child: Container(
+                              height: 48,
+                              width: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Colors.blue
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(999),
+                                boxShadow: isSelected
+                                    ? [
+                                  BoxShadow(
+                                      color: Colors.blue.shade200,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2))
+                                ]
+                                    : [],
+                              ),
+                              child: Text(
+                                day['label']!,
+                                style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.black),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Durum Özeti
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        statusBadge("1 Abone", Icons.check_circle, Colors.blue),
+                        statusBadge(
+                            "1 İstek", Icons.error_outline, Colors.orange),
+                        statusBadge(
+                            "7 Müsait", Icons.circle_outlined, Colors.grey),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Saatlik tablo
+                    Container(
+                      decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.calendar_today,
+                                color: Colors.blue),
+                            title: Text(getDayName(selectedDay),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: const Text("Günlük Abonelikler",
+                                style: TextStyle(fontSize: 13)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            color: Colors.blue.shade50,
+                            child: Row(
+                              children: const [
+                                Expanded(
+                                    child: Text("Saat",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w500))),
+                                Expanded(
+                                    child: Text("Durum",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w500))),
+                                Expanded(
+                                    child: Text("İşlem",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w500))),
+                              ],
+                            ),
+                          ),
+                          ...mockSlots.map((slot) {
+                            final status = slot["status"];
+                            final statusText = slot["statusText"]!;
+                            final icon = status == "abone"
+                                ? Icons.check_circle
+                                : status == "istek"
+                                ? Icons.error_outline
+                                : Icons.circle_outlined;
+                            final iconColor = status == "abone"
+                                ? Colors.blue
+                                : status == "istek"
+                                ? Colors.orange
+                                : Colors.grey;
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 12),
+                              decoration: const BoxDecoration(
+                                border: Border(
+
+                                    top: BorderSide(
+                                        color: Colors.grey, width: 0.2),
+                                    bottom: BorderSide(
+                                        color: Colors.grey, width: 0.2)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Text(slot["time"]!)),
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Icon(icon, color: iconColor, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(statusText,
+                                            style: TextStyle(color: iconColor)),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: () {},
+                                      style: ElevatedButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(8)),
+                                        backgroundColor: status == "abone"
+                                            ? Colors.green
+                                            : status == "istek"
+                                            ? Colors.orange
+                                            : Colors.blue,
+                                        minimumSize: const Size.fromHeight(36),
+                                      ),
+                                      child: Text(
+                                        status == "abone"
+                                            ? "Detaylar"
+                                            : status == "istek"
+                                            ? "Görüntüle"
+                                            : "Abone Gir",
+                                        style: const TextStyle(
+                                            fontSize: 13, color: Colors.white),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -2530,22 +2784,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 }
-
-void _showNotificationPanel(BuildContext context, HaliSaha haliSaha) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (BuildContext context) {
-      return OwnerNotificationPanel(
-        currentHaliSaha: haliSaha,
-      );
-    },
-  );
-}
-
 // HaliSaha sınıfında copyWith metodu eklenmeli
 extension HaliSahaCopyWith on HaliSaha {
   HaliSaha copyWith({

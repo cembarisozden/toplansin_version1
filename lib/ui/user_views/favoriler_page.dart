@@ -235,7 +235,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => SubscriptionDetailPage()),
+                        builder: (context) => SubscriptionDetailPage(currentUser: widget.currentUser, )),
                   );
                 },
               ),

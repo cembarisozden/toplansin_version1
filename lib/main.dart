@@ -7,10 +7,11 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/firebase_options.dart';
 import 'package:toplansin/services/time_service.dart';
 
-import 'package:toplansin/ui/views/notification_provider.dart';
+import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
 import 'package:toplansin/ui/views/splash_screen.dart';
 import 'package:toplansin/services/notification_service.dart';   // <-- yeni servis
 
@@ -57,6 +58,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
       ],
       child: const MyApp(),
     ),
