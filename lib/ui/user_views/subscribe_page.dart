@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
@@ -27,41 +28,6 @@ class _SubscribePageState extends State<SubscribePage> {
     {'short': 'Cmt', 'full': 'Cumartesi'},
     {'short': 'Paz', 'full': 'Pazar'},
   ];
-  List<String> get timeSlots {
-    // Start ve end saatlerini parçalama
-    final startParts = widget.halisaha.startHour.split(':');
-    final endParts = widget.halisaha.endHour.split(':');
-
-    int startHour = int.parse(startParts[0]);
-    int startMinute = int.parse(startParts[1]);
-    int endHour = int.parse(endParts[0]);
-    int endMinute = int.parse(endParts[1]);
-
-    // Eğer endHour startHour'dan küçükse, gece yarısını geçtiğini gösterir.
-    if (endHour < startHour ||
-        (endHour == startHour && endMinute < startMinute)) {
-      endHour += 24;
-    }
-
-    List<String> slots = [];
-    for (int hour = startHour; hour < endHour; hour++) {
-      int actualStartHour = hour % 24;
-      int actualEndHour = (hour + 1) % 24;
-      // 00:00 formatında yazmak için padLeft kullanıyoruz
-      slots.add(
-          '${actualStartHour.toString().padLeft(2, '0')}:00-${actualEndHour.toString().padLeft(2, '0')}:00');
-    }
-
-    // 00:00 slotunun en başta olması için sıralama ekleme
-    slots.sort((a, b) {
-      // Slotların başlangıç saatlerini al
-      int aHour = int.parse(a.split(':')[0]);
-      int bHour = int.parse(b.split(':')[0]);
-      return aHour.compareTo(bHour);
-    });
-
-    return slots;
-  }
 
   final List<Color> gradientColors = [
     Color(0xFF42A5F5),
@@ -148,9 +114,9 @@ class _SubscribePageState extends State<SubscribePage> {
     calculateFirstSession(createdAt, selectedDay + 1, selectedTimeText);
     final sub = Subscription(
       docId: '',
-      halisahaId: widget.halisaha.id,
+      haliSahaId: widget.halisaha.id,
       userId: widget.user.id,
-      halisahaName: widget.halisaha.name,
+      haliSahaName: widget.halisaha.name,
       location: widget.halisaha.location,
       dayOfWeek: selectedDay + 1,
       time: selectedTimeText,
@@ -158,18 +124,19 @@ class _SubscribePageState extends State<SubscribePage> {
       startDate: startDate,
       endDate: "",
       nextSession: startDate,
-      status: SubscriptionStatus.beklemede,
+      lastUpdatedBy: 'user',
+      status: 'Beklemede',
+      userName: widget.user.name,
+      userEmail: widget.user.email,
+      userPhone: widget.user.phone,
     );
 
     try {
-      await aboneOl(sub);
+      await aboneOl(context,sub);
+      print("userName: ${widget.user.name}");
+      print("userPhone: ${widget.user.phone}");
+      print("userEmail: ${widget.user.email}");
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Abonelik isteğiniz gönderildi. Onay bekleniyor.'),
-        ),
-      );
 
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
     } catch (e) {
@@ -180,6 +147,7 @@ class _SubscribePageState extends State<SubscribePage> {
           backgroundColor: Colors.red,
         ),
       );
+      print("Abone olma hatası: $e");
     }
   }
 
@@ -243,10 +211,20 @@ class _SubscribePageState extends State<SubscribePage> {
     );
   }
 
-
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = FirebaseAuth.instance.currentUser;
+      print("🛂 initState → currentUser: ${user?.uid ?? 'null'}");
+
+      if (user != null) {
+        // Örneğin readReview() çağrısı varsa burada yap
+        // readReview(widget.halisaha.id);
+      }
+    });
+
     print("START: ${widget.halisaha.startHour}");
     print("END: ${widget.halisaha.endHour}");
     final now = DateTime(2025, 5, 18); // Cumartesi
@@ -259,6 +237,9 @@ class _SubscribePageState extends State<SubscribePage> {
 
   @override
   Widget build(BuildContext context) {
+    print("📆 selectedDay: $selectedDay");
+    print("🧑‍💻 currentUser: ${FirebaseAuth.instance.currentUser?.uid}");
+
     return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
@@ -399,6 +380,11 @@ class _SubscribePageState extends State<SubscribePage> {
                                 'Aktif'
                               ]).snapshots(), // 🔄 Bu bir stream!,
                               builder: (context, snapshot) {
+                                print("📢 StreamBuilder tetiklendi:");
+                                print(" - hasData: ${snapshot.hasData}");
+                                print(" - hasError: ${snapshot.hasError}");
+                                print(
+                                    " - connectionState: ${snapshot.connectionState}");
                                 if (!snapshot.hasData) {
                                   return Center(
                                       child: CircularProgressIndicator());
@@ -407,12 +393,17 @@ class _SubscribePageState extends State<SubscribePage> {
                                 final blockedTimes = snapshot.data!.docs
                                     .map((doc) => doc['time'])
                                     .toList();
-
+                                print("⏰ Engellenmiş saatler: $blockedTimes");
+                                final timeSlots = generateTimeSlots(
+                                    widget.halisaha.startHour,
+                                    widget.halisaha.endHour);
                                 final availableSlots = timeSlots
                                     .where(
                                         (slot) => !blockedTimes.contains(slot))
                                     .toList();
-                                return Expanded(
+
+                                return SizedBox(
+                                  height: screenHeight * 0.4,
                                   child: GridView.count(
                                     crossAxisCount: 2,
                                     crossAxisSpacing: 12,
@@ -550,4 +541,3 @@ class _SubscribePageState extends State<SubscribePage> {
         ));
   }
 }
-

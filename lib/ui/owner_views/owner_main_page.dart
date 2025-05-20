@@ -70,7 +70,7 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
           haliSahaReservationsRequests = reservations;
         });
 
-        Provider.of<NotificationProvider>(context, listen: false)
+        Provider.of<OwnerNotificationProvider>(context, listen: false)
             .setNotificationCount(haliSahaId, reservations.length);
 
         debugPrint(
@@ -109,7 +109,7 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notificationProvider = context.watch<NotificationProvider>();
+    final notificationProvider = context.watch<OwnerNotificationProvider>();
 
     return Scaffold(
       appBar: AppBar(
