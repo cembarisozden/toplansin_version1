@@ -148,8 +148,8 @@ Future<void> ownerRejectSubscription(
 
 Future<void> addOwnerSubscription({
   required BuildContext context,
-  required String halisahaId,
-  required String halisahaName,
+  required String haliSahaId,
+  required String haliSahaName,
   required String location,
   required int dayOfWeek,
   required String time,
@@ -166,9 +166,9 @@ Future<void> addOwnerSubscription({
 
     final subscription = Subscription(
       docId: '',
-      haliSahaId: halisahaId,
+      haliSahaId: haliSahaId,
       userId: ownerUserId,
-      haliSahaName: halisahaName,
+      haliSahaName: haliSahaName,
       location: location,
       dayOfWeek: dayOfWeek,
       time: time,
@@ -186,7 +186,7 @@ Future<void> addOwnerSubscription({
 
     // Aynı saha-gün-saat için iptal / sona ermiş eski kayıt var mı?
     final existing = await col
-        .where('halisahaId', isEqualTo: halisahaId)
+        .where('haliSahaId', isEqualTo: haliSahaId)
         .where('dayOfWeek', isEqualTo: dayOfWeek)
         .where('time', isEqualTo: time)
         .where('status', whereIn: ['İptal Edildi', 'Sona Erdi'])

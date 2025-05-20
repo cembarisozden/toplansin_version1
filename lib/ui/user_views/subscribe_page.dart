@@ -371,7 +371,7 @@ class _SubscribePageState extends State<SubscribePage> {
                           StreamBuilder<QuerySnapshot>(
                               stream: FirebaseFirestore.instance
                                   .collection('subscriptions')
-                                  .where('halisahaId',
+                                  .where('haliSahaId',
                                       isEqualTo: widget.halisaha.id)
                                   .where('dayOfWeek',
                                       isEqualTo: selectedDay + 1)

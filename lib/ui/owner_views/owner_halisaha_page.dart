@@ -640,7 +640,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('subscriptions')
-                            .where('halisahaId', isEqualTo: widget.haliSaha.id)
+                            .where('haliSahaId', isEqualTo: widget.haliSaha.id)
                             .where('dayOfWeek',
                             isEqualTo: getDayOfWeekNumber(selectedDay))
                             .snapshots(),
@@ -780,9 +780,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                                   if (matchingDoc == null) {
                                                     await addOwnerSubscription(
                                                       context: context,
-                                                      halisahaId:
+                                                      haliSahaId:
                                                       widget.haliSaha.id,
-                                                      halisahaName:
+                                                      haliSahaName:
                                                       widget.haliSaha.name,
                                                       location: widget
                                                           .haliSaha.location,
