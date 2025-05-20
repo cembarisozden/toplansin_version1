@@ -6,58 +6,114 @@ import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 
 class UserReservationsPage extends StatefulWidget {
+  const UserReservationsPage({super.key});
   @override
-  _UserReservationsPageState createState() => _UserReservationsPageState();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  State<UserReservationsPage> createState() => _UserReservationsPageState();
 }
 
 class _UserReservationsPageState extends State<UserReservationsPage>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String searchTerm = '';
+  final _auth = FirebaseAuth.instance;
+  late final TabController _tabController;
+  String _searchTerm = '';
 
-  Stream<List<Reservation>> readReservations(String userId) {
-    return FirebaseFirestore.instance
-        .collection("reservations")
-        .where("userId", isEqualTo: userId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      // Firestore’dan gelen her değişiklikte bu kısım çalışır
-      List<Reservation> reservations = [];
+  // ───────────────────────── CLOUD STREAMLER ─────────────────────────
 
-      for (var document in snapshot.docs) {
-        var reservation = Reservation.fromDocument(document);
+  //// Aktif + beklemede rezervasyonlar (ana koleksiyon)
+  Stream<List<Reservation>> _activeStream(String uid) => FirebaseFirestore
+      .instance
+      .collection('reservations')
+      .where('userId', isEqualTo: uid)
+      .snapshots()
+      .asyncMap((s) async {
+    final list = <Reservation>[];
 
-        // Tarih ve saat kontrolü
-        DateTime? reservationDateTime;
-        try {
-          var rawDateTime = reservation.reservationDateTime;
-          var datePart = rawDateTime.split(' ')[0];
-          var timePart = rawDateTime.split(' ')[1].split('-')[0];
-          var formattedDateTime = '$datePart $timePart';
-          reservationDateTime = DateTime.parse(formattedDateTime);
-                } catch (e) {
-          debugPrint("Tarih formatı hatası: ${reservation.reservationDateTime}");
+    for (final doc in s.docs) {
+      final res = Reservation.fromDocument(doc);
+
+      // ⏰ tarih kontrolü
+      try {
+        final dt = _parse(res.reservationDateTime);
+        if (dt.isBefore(TimeService.now()) &&
+            res.status != 'Tamamlandı' &&
+            res.status != 'İptal Edildi') {
+          await doc.reference.update({'status': 'Tamamlandı'});
+          res.status = 'Tamamlandı';
         }
-
-        // Status güncellemesi (eğer tarih geçmişse ve status hâlâ Tamamlandı/İptal değilse)
-        if (reservationDateTime != null) {
-          if (reservationDateTime.isBefore(TimeService.now()) &&
-              reservation.status != 'Tamamlandı' &&
-              reservation.status != 'İptal Edildi') {
-            // Firestore'da status güncellemesi
-            await document.reference.update({'status': 'Tamamlandı'});
-            // reservation nesnesinin status’unu da yerelde güncelleyebiliriz
-            reservation.status = 'Tamamlandı';
-          }
-        }
-
-        reservations.add(reservation);
+      } catch (_) {
+        debugPrint('Tarih formatı hatası: ${res.reservationDateTime}');
       }
 
-      return reservations;
-    });
+      list.add(res);
+    }
+
+    // 🔹 aktif + beklemede
+    final active = list
+        .where((r) => r.status == 'Onaylandı' || r.status == 'Beklemede')
+        .toList();
+
+    // 🔹 EN YENİ ÖNDE
+    active.sort(
+            (a, b) => _parse(b.reservationDateTime).compareTo(_parse(a.reservationDateTime)));
+
+    return active;
+  });
+
+  /// Geçmiş rezervasyonlar (log koleksiyonu)
+  Stream<List<Reservation>> _pastStream(String uid) => FirebaseFirestore
+      .instance
+      .collection('reservation_logs')
+      .where('userId', isEqualTo: uid)
+      .where('newStatus', whereIn: ['Tamamlandı', 'İptal Edildi'])
+      .orderBy('reservationDateTime', descending: true)
+      .snapshots()
+      .map((s) => s.docs.map(Reservation.fromDocument).toList());
+
+  // ───────────────────────── YARDIMCI METODLAR ─────────────────────────
+
+  List<Reservation> _filter(List<Reservation> list) {
+    if (_searchTerm.isEmpty) return list;
+    final q = _searchTerm.toLowerCase();
+    return list.where((r) {
+      final name = r.haliSahaName.toLowerCase();
+      final date = r.reservationDateTime.toLowerCase();
+      final st   = r.status.toLowerCase();
+      return name.contains(q) || date.contains(q) || st.contains(q);
+    }).toList();
   }
+
+  DateTime _parse(String reservationDateTime) {
+    // "2025-05-20 18:00-19:00" → 2025-05-20 18:00
+    final parts = reservationDateTime.split(' ');
+    final date = parts[0];
+    final time = parts[1].split('-').first;
+    return DateTime.parse('$date $time');
+  }
+
+
+  Widget _buildGrid(List<Reservation> items,
+      {required int columns, required double aspect, required String emptyMsg}) {
+    if (items.isEmpty) {
+      return Center(child: Text(emptyMsg,
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 16)));
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        childAspectRatio: aspect,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: items.length,
+      itemBuilder: (_, i) => ReservationCard(reservation: items[i]),
+    );
+  }
+
+
+
+
+  // ───────────────────────── LIFECYCLE ─────────────────────────
 
   @override
   void initState() {
@@ -71,54 +127,22 @@ class _UserReservationsPageState extends State<UserReservationsPage>
     super.dispose();
   }
 
-  // Rezervasyonları filtreleme
-  List<Reservation> _filterReservations(List<Reservation> reservations) {
-    if (searchTerm.isEmpty) {
-      return reservations;
-    }
-    return reservations.where((reservation) {
-      final fieldLower = reservation.haliSahaName.toLowerCase();
-      final dateLower = reservation.reservationDateTime.toLowerCase();
-      final statusLower = reservation.status.toLowerCase();
-      final searchLower = searchTerm.toLowerCase();
 
-      return fieldLower.contains(searchLower) ||
-          dateLower.contains(searchLower) ||
-          statusLower.contains(searchLower);
-    }).toList();
-  }
 
-  // Aktif ve Geçmiş rezervasyonları ayırma
-  List<Reservation> getActiveReservations(List<Reservation> all) {
-    return _filterReservations(all)
-        .where((r) => r.status == 'Onaylandı' || r.status == 'Beklemede')
-        .toList();
-  }
-
-  List<Reservation> getPastReservations(List<Reservation> all) {
-    return _filterReservations(all)
-        .where((r) => r.status == 'Tamamlandı' || r.status == 'İptal Edildi')
-        .toList();
-  }
+  // ───────────────────────── UI ─────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    int crossAxisCount = screenWidth > 1200
-        ? 4
-        : screenWidth > 800
-        ? 3
-        : screenWidth > 600
-        ? 2
-        : 1;
-    double childAspectRatio = 3 / 2;
+    final w = MediaQuery.of(context).size.width;
+    final columns = w > 1200 ? 4 : w > 800 ? 3 : w > 600 ? 2 : 1;
+    const aspect = 3 / 2;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFFe0f7fa), Color(0xFFb2ebf2)],
             begin: Alignment.topLeft,
@@ -127,146 +151,98 @@ class _UserReservationsPageState extends State<UserReservationsPage>
         ),
         child: Column(
           children: [
-            SizedBox(height: 15),
-            // Başlık ve Geri Dön Butonu
+            const SizedBox(height: 15),
+            // başlık
             Row(
               children: [
                 IconButton(
                   icon: Icon(Icons.arrow_back, color: Colors.green.shade800),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
-                  child: Text(
-                    'Rezervasyonlarım',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade800,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('Rezervasyonlarım',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade800)),
                 ),
-                SizedBox(width: 48),
+                const SizedBox(width: 48), // simetri boşluğu
               ],
             ),
-            SizedBox(height: 20),
-            // Arama Çubuğu
+            const SizedBox(height: 20),
+            // arama
             TextField(
               decoration: InputDecoration(
                 hintText: 'Rezervasyon ara...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding:
-                EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide.none),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchTerm = value;
-                });
-              },
+              onChanged: (v) => setState(() => _searchTerm = v),
             ),
-            SizedBox(height: 20),
-            // Sekmeler
+            const SizedBox(height: 20),
+            // sekmeler
             TabBar(
               controller: _tabController,
               labelColor: Colors.green.shade800,
               unselectedLabelColor: Colors.grey.shade600,
               indicatorColor: Colors.green.shade800,
-              tabs: [
+              tabs: const [
                 Tab(text: 'Aktif Rezervasyonlar'),
                 Tab(text: 'Geçmiş Rezervasyonlar'),
               ],
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-            // ---- 2) STREAMBUILDER ile veriyi canlı dinliyoruz ----
+            // içerik
             Expanded(
-              child: StreamBuilder<List<Reservation>>(
-                stream: readReservations(widget._auth.currentUser!.uid),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Bir hata oluştu: ${snapshot.error}',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData) {
-                    return Center(child: CircularProgressIndicator());
-                  }
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // ── Aktif ──
+                  StreamBuilder<List<Reservation>>(
+                    stream: _activeStream(_auth.currentUser!.uid),
+                    builder: (_, snap) {
+                      if (snap.hasError) {
+                        return Center(child: Text('Hata: ${snap.error}',
+                            style: const TextStyle(color: Colors.red)));
+                      }
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final list = _filter(snap.data!);
+                      return _buildGrid(list,
+                          columns: columns,
+                          aspect: aspect,
+                          emptyMsg: 'Aktif rezervasyonunuz yok.');
+                    },
+                  ),
 
-                  // Tüm rezervasyonlar
-                  final allReservations = snapshot.data!;
-                  // Filtrelenmiş listeler
-                  final activeReservations = getActiveReservations(allReservations);
-                  final pastReservations = getPastReservations(allReservations);
-
-                  return TabBarView(
-                    controller: _tabController,
-                    children: [
-                      // Aktif Rezervasyonlar
-                      activeReservations.isNotEmpty
-                          ? GridView.builder(
-                        padding: EdgeInsets.all(8),
-                        gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: childAspectRatio,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: activeReservations.length,
-                        itemBuilder: (context, index) {
-                          final reservation = activeReservations[index];
-                          return ReservationCard(reservation: reservation);
-                        },
-                      )
-                          : Center(
-                        child: Text(
-                          'Aktif rezervasyonunuz yok.',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      // Geçmiş Rezervasyonlar
-                      pastReservations.isNotEmpty
-                          ? GridView.builder(
-                        padding: EdgeInsets.all(8),
-                        gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: childAspectRatio,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: pastReservations.length,
-                        itemBuilder: (context, index) {
-                          final reservation = pastReservations[index];
-                          return ReservationCard(reservation: reservation);
-                        },
-                      )
-                          : Center(
-                        child: Text(
-                          'Geçmiş rezervasyonunuz yok.',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                  // ── Geçmiş ──
+                  StreamBuilder<List<Reservation>>(
+                    stream: _pastStream(_auth.currentUser!.uid),
+                    builder: (_, snap) {
+                      if (snap.hasError) {
+                        return Center(child: Text('Hata: ${snap.error}',
+                            style: const TextStyle(color: Colors.red)));
+                      }
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final list = _filter(snap.data!);
+                      return _buildGrid(list,
+                          columns: columns,
+                          aspect: aspect,
+                          emptyMsg: 'Geçmiş rezervasyonunuz yok.');
+                    },
+                  ),
+                ],
               ),
             ),
           ],
@@ -276,13 +252,13 @@ class _UserReservationsPageState extends State<UserReservationsPage>
   }
 }
 
+// ───────────────────────── KART WIDGET'I ─────────────────────────
 class ReservationCard extends StatelessWidget {
+  const ReservationCard({super.key, required this.reservation});
   final Reservation reservation;
 
-  const ReservationCard({super.key, required this.reservation});
-
-  Color getStatusColor(String status) {
-    switch (status) {
+  Color _bg(String s) {
+    switch (s) {
       case 'Onaylandı':
         return Colors.green.shade100;
       case 'Beklemede':
@@ -296,8 +272,8 @@ class ReservationCard extends StatelessWidget {
     }
   }
 
-  Color getStatusTextColor(String status) {
-    switch (status) {
+  Color _fg(String s) {
+    switch (s) {
       case 'Onaylandı':
         return Colors.green.shade800;
       case 'Beklemede':
@@ -311,29 +287,26 @@ class ReservationCard extends StatelessWidget {
     }
   }
 
-  Widget _infoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey.shade600, size: 16),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _row(IconData icn, String txt) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Icon(icn, color: Colors.grey.shade600, size: 16),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(txt,
+              style:
+              TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final dateTimeParts = reservation.reservationDateTime.split(' ');
-    final date = dateTimeParts.isNotEmpty ? dateTimeParts[0] : 'Tarih Yok';
-    final time = dateTimeParts.length > 1 ? dateTimeParts[1] : 'Saat Yok';
+    final parts = reservation.reservationDateTime.split(' ');
+    final date = parts[0];
+    final time = parts.length > 1 ? parts[1] : '';
 
     return Card(
       elevation: 4,
@@ -342,7 +315,7 @@ class ReservationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -353,83 +326,74 @@ class ReservationCard extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
             ),
-            child: Text(
-              reservation.haliSahaName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: Text(reservation.haliSahaName,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
           ),
-          // Content
+          // content
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _infoRow(Icons.calendar_today, date),
-                _infoRow(Icons.access_time, time),
-                _infoRow(Icons.location_on, reservation.haliSahaLocation),
-                _infoRow(Icons.attach_money,
+                _row(Icons.calendar_today, date),
+                _row(Icons.access_time, time),
+                _row(Icons.location_on, reservation.haliSahaLocation),
+                _row(Icons.attach_money,
                     '${reservation.haliSahaPrice} TL/saat'),
               ],
             ),
           ),
-          // Footer
+          // footer
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
             color: Colors.grey.shade50,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // status badge
                 Container(
                   padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: getStatusColor(reservation.status),
+                    color: _bg(reservation.status),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: getStatusTextColor(reservation.status),
-                    ),
+                    border: Border.all(color: _fg(reservation.status)),
                   ),
-                  child: Text(
-                    reservation.status,
-                    style: TextStyle(
-                      color: getStatusTextColor(reservation.status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+                  child: Text(reservation.status,
+                      style: TextStyle(
+                          color: _fg(reservation.status),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12)),
                 ),
+                // detay / düzenle
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => UserReservationDetailPage(
-                            reservation: reservation),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            UserReservationDetailPage(reservation: reservation)),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: reservation.status == 'Tamamlandı' ||
-                        reservation.status == 'İptal Edildi'
+                    backgroundColor:
+                    (reservation.status == 'Tamamlandı' ||
+                        reservation.status == 'İptal Edildi')
                         ? Colors.blue
                         : Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: Text(
-                    reservation.status == 'Tamamlandı' ||
-                        reservation.status == 'İptal Edildi'
+                    (reservation.status == 'Tamamlandı' ||
+                        reservation.status == 'İptal Edildi')
                         ? 'Detaylar'
                         : 'Düzenle',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 12),
+                    style:
+                    const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ),
               ],

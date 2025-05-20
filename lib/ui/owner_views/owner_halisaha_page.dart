@@ -10,7 +10,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
-import 'package:toplansin/ui/owner_views/owner_completed_reservation_page.dart';
+import 'package:toplansin/ui/owner_views/owner_past_reservation_page.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
@@ -379,7 +379,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => OwnerCompletedReservationsPage(
+                      builder: (context) => OwnerPastReservationsPage(
                           haliSahaId: widget.haliSaha.id)),
                 );
               },
