@@ -10,7 +10,11 @@ class Subscription {
   final String startDate;
   final String endDate;
   final String nextSession;
+  final String lastUpdatedBy;
   final String status;
+  final String userName;
+  final String userPhone;
+  final String userEmail;
 
   Subscription({
     required this.docId,
@@ -24,23 +28,31 @@ class Subscription {
     required this.startDate,
     required this.endDate,
     required this.nextSession,
+    required this.lastUpdatedBy,
     required this.status,
+    required this.userName,
+    required this.userPhone,
+    required this.userEmail,
   });
 
   factory Subscription.fromMap(Map<String, dynamic> map, String docId) {
     return Subscription(
       docId: docId,
-      halisahaId: map['halisahaId'],
-      userId: map['userId'],
+      halisahaId: map['halisahaId'] ?? '',
+      userId: map['userId'] ?? '',
       halisahaName: map['halisahaName'] ?? 'Bilinmiyor',
       location: map['location'] ?? 'Bilinmiyor',
       dayOfWeek: map['dayOfWeek'] ?? 1,
       price: map['price'] ?? 0,
       time: map['time'] ?? '00:00-01:00',
-      startDate: map['startDate'],
-      endDate: map['endDate'],
+      startDate: map['startDate'] ?? '',
+      endDate: map['endDate'] ?? '',
       nextSession: map['nextSession'] ?? 'Bekleniyor',
+      lastUpdatedBy: map['lastUpdatedBy'] ?? '',
       status: map['status'] ?? 'Bilinmiyor',
+      userName: map['userName'] ?? '',
+      userPhone: map['userPhone'] ?? '',
+      userEmail: map['userEmail'] ?? '',
     );
   }
 
@@ -57,14 +69,11 @@ class Subscription {
       'startDate': startDate,
       'endDate': endDate,
       'nextSession': nextSession,
+      'lastUpdatedBy': lastUpdatedBy,
       'status': status,
+      'userName': userName,
+      'userPhone': userPhone,
+      'userEmail': userEmail,
     };
   }
-}
-
-class SubscriptionStatus {
-  static const String beklemede = "Beklemede";
-  static const String aktif = "Aktif";
-  static const String iptal = "İptal Edildi";
-  static const String sonaErdi = "Sona Erdi";
 }

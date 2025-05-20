@@ -117,35 +117,35 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                   children: [
                     activeSubs.isEmpty
                         ? _buildEmptyState(
-                        'Aktif aboneliğiniz bulunmamaktadır.')
+                            'Aktif aboneliğiniz bulunmamaktadır.')
                         : ListView.builder(
-                      physics: BouncingScrollPhysics(),
-                      padding: EdgeInsets.all(16),
-                      itemCount: activeSubs.length,
-                      itemBuilder: (context, index) {
-                        final data = activeSubs[index].data()
-                        as Map<String, dynamic>;
-                        final sub = Subscription.fromMap(
-                            data, activeSubs[index].id);
-                        return AbonelikCard(sub: sub);
-                      },
-                    ),
+                            physics: BouncingScrollPhysics(),
+                            padding: EdgeInsets.all(16),
+                            itemCount: activeSubs.length,
+                            itemBuilder: (context, index) {
+                              final data = activeSubs[index].data()
+                                  as Map<String, dynamic>;
+                              final sub = Subscription.fromMap(
+                                  data, activeSubs[index].id);
+                              return AbonelikCard(sub: sub);
+                            },
+                          ),
                     pastSubs.isEmpty
                         ? _buildEmptyState(
-                        'Geçmiş aboneliğiniz bulunmamaktadır.')
+                            'Geçmiş aboneliğiniz bulunmamaktadır.')
                         : ListView.builder(
-                      physics: BouncingScrollPhysics(),
-                      padding: EdgeInsets.all(16),
-                      itemCount: pastSubs.length,
-                      itemBuilder: (context, index) {
-                        final data = pastSubs[index].data()
-                        as Map<String, dynamic>;
-                        final sub = Subscription.fromMap(
-                            data, pastSubs[index].id);
+                            physics: BouncingScrollPhysics(),
+                            padding: EdgeInsets.all(16),
+                            itemCount: pastSubs.length,
+                            itemBuilder: (context, index) {
+                              final data = pastSubs[index].data()
+                                  as Map<String, dynamic>;
+                              final sub = Subscription.fromMap(
+                                  data, pastSubs[index].id);
 
-                        return AbonelikCard(sub: sub);
-                      },
-                    ),
+                              return AbonelikCard(sub: sub);
+                            },
+                          ),
                   ],
                 );
               },
@@ -221,41 +221,10 @@ class _AbonelikCardState extends State<AbonelikCard> {
     }
   }
 
-  Future<void> showSuccessDialog(
-      BuildContext context, String title, String description) async {
-    if (!context.mounted) return;
-
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green.shade700),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Text(description),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Kapat'),
-          )
-        ],
-      ),
-    );
-  }
-
   void showSafeSnackBar(BuildContext context, String message,
       {Color backgroundColor = Colors.blue}) {
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).clearSnackBars(); // önceki varsa temizle
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -271,14 +240,13 @@ class _AbonelikCardState extends State<AbonelikCard> {
     );
   }
 
-  Future<void> _showSuccessSnackbar(String message) async {
+  Future<void> _showCancelSnackbar(String message) async {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
         );
@@ -290,7 +258,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
   Widget build(BuildContext context) {
     String status = widget.sub.status;
     String title = widget.sub.halisahaName;
-    String day = _convertDayNumberToText(widget.sub.dayOfWeek - 1);
+    String day = _convertDayNumberToText(widget.sub.dayOfWeek);
     String time = widget.sub.time;
     num price = widget.sub.price;
     String location = widget.sub.location;
@@ -342,7 +310,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
             ),
           ),
 
-// İçerik kısmı - beyaz arka plan
+          // İçerik kısmı - beyaz arka plan
           Container(
             color: Colors.white,
             padding: EdgeInsets.all(16),
@@ -478,13 +446,13 @@ class _AbonelikCardState extends State<AbonelikCard> {
                   children: [
                     Container(
                       padding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: status == 'Beklemede'
                             ? Color(0xFFFFF8E1) // Amber light
                             : (status == 'Aktif'
-                            ? Color(0xFFE8F5E9) // Green light
-                            : Color(0xFFEEEEEE)), // Grey light
+                                ? Color(0xFFE8F5E9) // Green light
+                                : Color(0xFFEEEEEE)), // Grey light
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: statusColor.withOpacity(0.5),
@@ -513,7 +481,11 @@ class _AbonelikCardState extends State<AbonelikCard> {
                           ),
                           SizedBox(width: 8),
                           _buildButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              await userCancelSubscription(widget.sub.docId);
+                              await _showCancelSnackbar(
+                                  "Aboneliğiniz iptal edildi.");
+                            },
                             label: 'Aboneliği İptal Et',
                             color: Color(0xFFE53935)
                                 .withOpacity(0.8), // Kırmızı daha soft
@@ -523,9 +495,9 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     else if (isPending)
                       _buildButton(
                         onPressed: () async {
-                          await aboneIstegiIptalEt(widget.sub.docId);
-                          await _showSuccessSnackbar(
-                              "Abonelik isteği iptal edildi.");
+                          await useraboneIstegiIptalEt(widget.sub.docId);
+                          showSafeSnackBar(
+                              context, "Abonelik isteği iptal edildi.");
                         },
 
                         label: 'Abonelik İsteğini İptal Et',
@@ -569,4 +541,3 @@ class _AbonelikCardState extends State<AbonelikCard> {
     );
   }
 }
-

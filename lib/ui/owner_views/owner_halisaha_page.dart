@@ -9,11 +9,13 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
+import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/owner_views/owner_completed_reservation_page.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:collection/collection.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -409,22 +411,22 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 tabs: [
                   Tab(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 4), // ✅ Sekme içi denge
-                        child: Text("Genel Bakış"),
-                      )),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 4), // ✅ Sekme içi denge
+                    child: Text("Genel Bakış"),
+                  )),
                   Tab(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text("Saha Bilgileri"),
-                      )),
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text("Saha Bilgileri"),
+                  )),
                   Tab(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 4),
                       child: Consumer<NotificationProvider>(
                         builder: (context, provider, child) {
-                          int notificationCount = provider
-                              .getNotificationCount(widget.haliSaha.id);
+                          int notificationCount =
+                              provider.getNotificationCount(widget.haliSaha.id);
 
                           return Stack(
                             clipBehavior: Clip.none,
@@ -459,11 +461,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   ),
                   Tab(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text("Abonelikler"),
-                      )),
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text("Abonelikler"),
+                  )),
                 ],
-
               ),
             ),
           ),
@@ -494,7 +495,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
-
   final List<Map<String, String>> days = [
     {'id': 'Pzt', 'label': 'Pzt'},
     {'id': 'Sal', 'label': 'Salı'},
@@ -517,19 +517,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     {"time": "23:00-00:00", "status": "musait", "statusText": "Müsait"},
   ];
 
-  String getDayName(String id) {
-    const dayMap = {
-      "Pzt": "Pazartesi",
-      "Sal": "Salı",
-      "Çar": "Çarşamba",
-      "Per": "Perşembe",
-      "Cum": "Cuma",
-      "Cmt": "Cumartesi",
-      "Paz": "Pazar",
-    };
-    return dayMap[id] ?? id;
-  }
-
   Widget statusBadge(String text, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -548,8 +535,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
-
-
 
   Widget _buildAboneliklerTab() {
     return Scaffold(
@@ -599,11 +584,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                 borderRadius: BorderRadius.circular(999),
                                 boxShadow: isSelected
                                     ? [
-                                  BoxShadow(
-                                      color: Colors.blue.shade200,
-                                      blurRadius: 6,
-                                      offset: Offset(0, 2))
-                                ]
+                                        BoxShadow(
+                                            color: Colors.blue.shade200,
+                                            blurRadius: 6,
+                                            offset: Offset(0, 2))
+                                      ]
                                     : [],
                               ),
                               child: Text(
@@ -621,126 +606,220 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     const SizedBox(height: 12),
 
                     // Durum Özeti
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        statusBadge("1 Abone", Icons.check_circle, Colors.blue),
-                        statusBadge(
-                            "1 İstek", Icons.error_outline, Colors.orange),
-                        statusBadge(
-                            "7 Müsait", Icons.circle_outlined, Colors.grey),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                    StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('subscriptions')
+                            .where('halisahaId', isEqualTo: widget.haliSaha.id)
+                            .where('dayOfWeek',
+                                isEqualTo: getDayOfWeekNumber(selectedDay))
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Center(child: CircularProgressIndicator());
+                          }
 
-                    // Saatlik tablo
-                    Container(
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.calendar_today,
-                                color: Colors.blue),
-                            title: Text(getDayName(selectedDay),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
-                            subtitle: const Text("Günlük Abonelikler",
-                                style: TextStyle(fontSize: 13)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            color: Colors.blue.shade50,
-                            child: Row(
-                              children: const [
-                                Expanded(
-                                    child: Text("Saat",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                                Expanded(
-                                    child: Text("Durum",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                                Expanded(
-                                    child: Text("İşlem",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                              ],
-                            ),
-                          ),
-                          ...mockSlots.map((slot) {
-                            final status = slot["status"];
-                            final statusText = slot["statusText"]!;
-                            final icon = status == "abone"
-                                ? Icons.check_circle
-                                : status == "istek"
-                                ? Icons.error_outline
-                                : Icons.circle_outlined;
-                            final iconColor = status == "abone"
-                                ? Colors.blue
-                                : status == "istek"
-                                ? Colors.orange
-                                : Colors.grey;
+                          final docs = snapshot.data!.docs;
+                          print("Toplam belge sayısı: ${docs.length}");
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
-                              decoration: const BoxDecoration(
-                                border: Border(
+                          final aktifCount =
+                              docs.where((d) => d['status'] == 'Aktif').length;
+                          final istekCount = docs
+                              .where((d) => d['status'] == 'Beklemede')
+                              .length;
+                          final musaitCount = timeSlots.length -
+                              (aktifCount +
+                                  istekCount); // timeSlots önceden initState'te hesaplandı
 
-                                    top: BorderSide(
-                                        color: Colors.grey, width: 0.2),
-                                    bottom: BorderSide(
-                                        color: Colors.grey, width: 0.2)),
-                              ),
-                              child: Row(
+                          return Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(child: Text(slot["time"]!)),
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Icon(icon, color: iconColor, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(statusText,
-                                            style: TextStyle(color: iconColor)),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {},
-                                      style: ElevatedButton.styleFrom(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(8)),
-                                        backgroundColor: status == "abone"
-                                            ? Colors.green
-                                            : status == "istek"
-                                            ? Colors.orange
-                                            : Colors.blue,
-                                        minimumSize: const Size.fromHeight(36),
-                                      ),
-                                      child: Text(
-                                        status == "abone"
-                                            ? "Detaylar"
-                                            : status == "istek"
-                                            ? "Görüntüle"
-                                            : "Abone Gir",
-                                        style: const TextStyle(
-                                            fontSize: 13, color: Colors.white),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
+                                  statusBadge("$aktifCount Abone",
+                                      Icons.check_circle, Colors.blue),
+                                  statusBadge("$istekCount İstek",
+                                      Icons.error_outline, Colors.orange),
+                                  statusBadge("$musaitCount Müsait",
+                                      Icons.circle_outlined, Colors.grey),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    )
+                              const SizedBox(height: 12),
+
+                              // Saatlik tablo
+                              Container(
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Column(
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.calendar_today,
+                                          color: Colors.blue),
+                                      title: Text(getDayName(selectedDay),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600)),
+                                      subtitle: const Text("Günlük Abonelikler",
+                                          style: TextStyle(fontSize: 13)),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      color: Colors.blue.shade50,
+                                      child: Row(
+                                        children: const [
+                                          Expanded(
+                                              child: Text("Saat",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500))),
+                                          Expanded(
+                                              child: Text("Durum",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500))),
+                                          Expanded(
+                                              child: Text("İşlem",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500))),
+                                        ],
+                                      ),
+                                    ),
+                                    ...timeSlots.map((slot) {
+                                      final matchingDoc = docs.firstWhereOrNull(
+                                        (doc) =>
+                                            doc['time'] == slot &&
+                                            doc['status'] != 'İptal Edildi' &&
+                                            doc['status'] != 'Sona Erdi',
+                                      );
+                                      String status = 'musait';
+                                      String statusText = 'Müsait';
+                                      IconData icon = Icons.circle_outlined;
+                                      Color iconColor = Colors.grey;
+
+                                      if (matchingDoc != null) {
+                                        final firestoreStatus =
+                                            matchingDoc['status'];
+                                        if (firestoreStatus == 'Aktif') {
+                                          status = 'abone';
+                                          statusText = 'Abone';
+                                          icon = Icons.check_circle;
+                                          iconColor = Colors.blue;
+                                        } else if (firestoreStatus ==
+                                            'Beklemede') {
+                                          status = 'istek';
+                                          statusText = 'İstek Var';
+                                          icon = Icons.error_outline;
+                                          iconColor = Colors.orange;
+                                        }
+                                      }
+
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 12),
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                              top: BorderSide(
+                                                  color: Colors.grey,
+                                                  width: 0.2),
+                                              bottom: BorderSide(
+                                                  color: Colors.grey,
+                                                  width: 0.2)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(child: Text(slot)),
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  Icon(icon,
+                                                      color: iconColor,
+                                                      size: 16),
+                                                  const SizedBox(width: 6),
+                                                  Text(statusText,
+                                                      style: TextStyle(
+                                                          color: iconColor)),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () async {
+                                                  if (matchingDoc == null) {
+                                                    await addOwnerSubscription(
+                                                      halisahaId:
+                                                          widget.haliSaha.id,
+                                                      halisahaName:
+                                                          widget.haliSaha.name,
+                                                      location: widget
+                                                          .haliSaha.location,
+                                                      dayOfWeek:
+                                                          getDayOfWeekNumber(
+                                                              selectedDay),
+                                                      time:
+                                                          slot, // çünkü timeSlots'tan geliyor
+                                                      price:
+                                                          widget.haliSaha.price,
+                                                      ownerUserId: widget
+                                                          .currentOwner.id,
+                                                      ownerName: widget
+                                                          .currentOwner.name,
+                                                      ownerPhone: widget
+                                                          .currentOwner.phone,
+                                                      ownerEmail: widget
+                                                          .currentOwner.email,
+                                                    );
+
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      SnackBar(
+                                                          content: Text(
+                                                              'Abonelik başarıyla eklendi')),
+                                                    );
+                                                  } else {
+                                                    _showSubscriptionDialog(
+                                                        matchingDoc!);
+                                                  }
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8)),
+                                                  backgroundColor:
+                                                      status == "abone"
+                                                          ? Colors.green
+                                                          : status == "istek"
+                                                              ? Colors.orange
+                                                              : Colors.blue,
+                                                  minimumSize:
+                                                      const Size.fromHeight(36),
+                                                ),
+                                                child: Text(
+                                                  status == "abone"
+                                                      ? "Detaylar"
+                                                      : status == "istek"
+                                                          ? "Görüntüle"
+                                                          : "Abone Gir",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.white),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        })
                   ],
                 ),
               ),
@@ -2314,6 +2393,284 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     }
   }
 
+  String getDayNameFromNumber(int dayOfWeek) {
+    const days = {
+      1: "Pazartesi",
+      2: "Salı",
+      3: "Çarşamba",
+      4: "Perşembe",
+      5: "Cuma",
+      6: "Cumartesi",
+      7: "Pazar",
+    };
+    return days[dayOfWeek] ?? "Gün";
+  }
+
+  void _showSubscriptionDialog(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    final userName = data['userName'] ?? 'İsim yok';
+    final userPhone = data['userPhone'] ?? 'Telefon yok';
+    final userEmail = data['userEmail'] ?? 'Email yok';
+    final status = data['status'] ?? 'Durum yok';
+    final time = data['time'] ?? '';
+    final dayOfWeek = data['dayOfWeek'] ?? 1;
+
+    final displaySlot = "Her ${getDayNameFromNumber(dayOfWeek)} $time";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Üst kısım (Başlık, ikon)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade400, Colors.blue.shade400],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.white, size: 28),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Abonelik Detayları",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // İçerik alanı
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Kullanıcı bilgileri
+                      Row(
+                        children: [
+                          Icon(Icons.person, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userPhone,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.email, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userEmail,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Divider(),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              displaySlot,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Durum: $status",
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+
+                // Alt kısım butonlar
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius:
+                        BorderRadius.vertical(bottom: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: status == "Beklemede"
+                        ? MainAxisAlignment.spaceBetween
+                        : MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (status == "Beklemede") ...[
+                        // 🔴 Reddet
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ownerRejectSubscription(doc.id);
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(Icons.close, color: Colors.white),
+                          label: Text("Reddet",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+
+                        // ✅ Onayla
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            approveSubscription(doc.id);
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(Icons.check, color: Colors.white),
+                          label: Text("Onayla",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+                      ] else if (status == "Aktif") ...[
+                        // 🔴 Aboneliği iptal et
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            userCancelSubscription(doc.id);
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(Icons.cancel, color: Colors.white),
+                          label: Text("Aboneliği İptal Et",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+
+                        // 🔘 Kapat
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text("Kapat"),
+                        ),
+                      ]
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey.shade700),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade800),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
 // Yardımcı Widget: Detay Satırı
   Widget _detailItem(IconData icon, String title, String? value) {
     return Row(
@@ -2784,6 +3141,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 }
+
 // HaliSaha sınıfında copyWith metodu eklenmeli
 extension HaliSahaCopyWith on HaliSaha {
   HaliSaha copyWith({
