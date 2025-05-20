@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -204,6 +205,25 @@ Future<void> addOwnerSubscription({
     _showSuccess(context, 'Abonelik oluşturuldu');
   } catch (e) {
     _showError(context, e, ctxLabel: 'subscription');
+  }
+}
+
+Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) async {
+  try {
+    final functions = FirebaseFunctions.instance;
+    final callable = functions.httpsCallable('cancelThisWeekSlot');
+
+    final response = await callable.call({
+      "subscriptionId": subscriptionId,
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Bu haftaki seans başarıyla iptal edildi.")),
+    );
+  } catch (error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("İptal sırasında bir hata oluştu: $error")),
+    );
   }
 }
 

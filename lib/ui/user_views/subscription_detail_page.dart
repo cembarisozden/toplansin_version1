@@ -455,7 +455,10 @@ class _AbonelikCardState extends State<AbonelikCard> {
                       Row(
                         children: [
                           _buildButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              await cancelThisWeekSlot(widget.sub.docId,context);
+                              print("DocId:${widget.sub.docId}");
+                            },
                             label: 'Bu Haftayı İptal Et',
                             color: Color(0xFFFFA000)
                                 .withOpacity(0.8), // Amber daha soft
