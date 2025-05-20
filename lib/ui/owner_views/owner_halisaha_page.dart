@@ -9,11 +9,14 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
+import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
-import 'package:toplansin/ui/owner_views/owner_completed_reservation_page.dart';
+import 'package:toplansin/ui/owner_views/owner_past_reservation_page.dart';
+import 'package:toplansin/ui/owner_views/owner_past_subscriptions.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:collection/collection.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -62,57 +65,57 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       _allReservationsSubscription =
           allReservationsStream.listen((snapshot) async {
-        List<Reservation> reservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
+            List<Reservation> reservations = [];
+            for (var document in snapshot.docs) {
+              var reservation = Reservation.fromDocument(document);
 
-          // Tarih ve saat kontrolü
-          DateTime? reservationDateTime;
-          try {
-            var rawDateTime =
-                reservation.reservationDateTime; // Ör: "2024-12-18 17:00-18:00"
-            var datePart = rawDateTime.split(' ')[0]; // Ör: "2024-12-18"
-            var timePart =
-                rawDateTime.split(' ')[1].split('-')[0]; // Ör: "17:00"
-            var formattedDateTime =
-                '$datePart $timePart'; // Ör: "2024-12-18 17:00"
-            reservationDateTime = DateTime.parse(formattedDateTime);
-          } catch (e) {
-            debugPrint(
-                "Tarih formatı hatası: ${reservation.reservationDateTime}");
-          }
-
-          // Geçmiş tarih kontrolü ve durum güncellemesi
-          if (reservationDateTime != null) {
-            if (reservationDateTime.isBefore(TimeService.now()) &&
-                reservation.status != 'Tamamlandı' &&
-                reservation.status != 'İptal Edildi') {
+              // Tarih ve saat kontrolü
+              DateTime? reservationDateTime;
               try {
-                // Firestore'da status güncellemesi
-                await FirebaseFirestore.instance
-                    .collection("reservations")
-                    .doc(document.id)
-                    .update({'status': 'Tamamlandı'});
-
-                // Yerel olarak reservation nesnesinin status'unu güncelle
-                reservation.status = 'Tamamlandı';
+                var rawDateTime =
+                    reservation.reservationDateTime; // Ör: "2024-12-18 17:00-18:00"
+                var datePart = rawDateTime.split(' ')[0]; // Ör: "2024-12-18"
+                var timePart =
+                rawDateTime.split(' ')[1].split('-')[0]; // Ör: "17:00"
+                var formattedDateTime =
+                    '$datePart $timePart'; // Ör: "2024-12-18 17:00"
+                reservationDateTime = DateTime.parse(formattedDateTime);
               } catch (e) {
-                debugPrint("Durum güncellenirken hata oluştu: $e");
+                debugPrint(
+                    "Tarih formatı hatası: ${reservation.reservationDateTime}");
               }
+
+              // Geçmiş tarih kontrolü ve durum güncellemesi
+              if (reservationDateTime != null) {
+                if (reservationDateTime.isBefore(TimeService.now()) &&
+                    reservation.status != 'Tamamlandı' &&
+                    reservation.status != 'İptal Edildi') {
+                  try {
+                    // Firestore'da status güncellemesi
+                    await FirebaseFirestore.instance
+                        .collection("reservations")
+                        .doc(document.id)
+                        .update({'status': 'Tamamlandı'});
+
+                    // Yerel olarak reservation nesnesinin status'unu güncelle
+                    reservation.status = 'Tamamlandı';
+                  } catch (e) {
+                    debugPrint("Durum güncellenirken hata oluştu: $e");
+                  }
+                }
+              }
+
+              reservations.add(reservation);
             }
-          }
 
-          reservations.add(reservation);
-        }
+            // Güncellenmiş rezervasyonları state'e atama
+            setState(() {
+              haliSahaReservations = reservations;
+            });
 
-        // Güncellenmiş rezervasyonları state'e atama
-        setState(() {
-          haliSahaReservations = reservations;
-        });
-
-        debugPrint(
-            "Rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
-      });
+            debugPrint(
+                "Rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
+          });
 
       // 2. Onaylanan ve Tamamlanan Rezervasyonları Dinleme (Bugün ve Saat Aralığı)
       // Bugünün tarihini al
@@ -134,99 +137,99 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           .collection("reservations")
           .where("haliSahaId", isEqualTo: haliSahaId)
           .where("status", whereIn: [
-            'Onaylandı',
-            'Tamamlandı'
-          ]) // Doğru status değerlerini kullanın
+        'Onaylandı',
+        'Tamamlandı'
+      ]) // Doğru status değerlerini kullanın
           .where("reservationDateTime", isGreaterThanOrEqualTo: startDateTime)
           .where("reservationDateTime", isLessThan: endDateTime)
           .snapshots();
 
       _TodaysApprovedReservationsSubscription =
           TodaysApprovedReservationsStream.listen((snapshot) {
-        List<Reservation> TodaysApprovedReservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          TodaysApprovedReservations.add(reservation);
-        }
+            List<Reservation> TodaysApprovedReservations = [];
+            for (var document in snapshot.docs) {
+              var reservation = Reservation.fromDocument(document);
+              TodaysApprovedReservations.add(reservation);
+            }
 
-        // Debug: Onaylanan rezervasyonları kontrol et
-        debugPrint(
-            "Onaylanan ve Tamamlanan rezervasyon sayısı: ${TodaysApprovedReservations.length}");
-        for (var reservation in TodaysApprovedReservations) {
-          debugPrint(
-              "Rezervasyon ID: ${reservation.id}, Fiyat: ${reservation.haliSahaPrice}, Tarih: ${reservation.reservationDateTime}");
-        }
+            // Debug: Onaylanan rezervasyonları kontrol et
+            debugPrint(
+                "Onaylanan ve Tamamlanan rezervasyon sayısı: ${TodaysApprovedReservations.length}");
+            for (var reservation in TodaysApprovedReservations) {
+              debugPrint(
+                  "Rezervasyon ID: ${reservation.id}, Fiyat: ${reservation.haliSahaPrice}, Tarih: ${reservation.reservationDateTime}");
+            }
 
-        // Geliri hesapla
-        num revenue = calculateTodaysRevenue(TodaysApprovedReservations);
+            // Geliri hesapla
+            num revenue = calculateTodaysRevenue(TodaysApprovedReservations);
 
-        totalOpenHours = calculateOpenHours(
-            widget.haliSaha.startHour, widget.haliSaha.endHour);
-        int testTodaysReservation = TodaysApprovedReservations.length;
-        int testOccupancyRate = (testTodaysReservation * 100) ~/ totalOpenHours;
-        print(testTodaysReservation);
+            totalOpenHours = calculateOpenHours(
+                widget.haliSaha.startHour, widget.haliSaha.endHour);
+            int testTodaysReservation = TodaysApprovedReservations.length;
+            int testOccupancyRate = (testTodaysReservation * 100) ~/ totalOpenHours;
+            print(testTodaysReservation);
 
-        setState(() {
-          haliSahaReservationsApproved = TodaysApprovedReservations;
-          todaysRevenue = revenue; // Geliri güncelle
-          todaysReservation = testTodaysReservation;
-          occupancyRate = testOccupancyRate;
-        });
+            setState(() {
+              haliSahaReservationsApproved = TodaysApprovedReservations;
+              todaysRevenue = revenue; // Geliri güncelle
+              todaysReservation = testTodaysReservation;
+              occupancyRate = testOccupancyRate;
+            });
 
-        debugPrint(
-            "Onaylanan rezervasyonlar güncellendi: ${TodaysApprovedReservations.length} adet. Toplam Gelir: \$${revenue.toStringAsFixed(2)}");
-      });
+            debugPrint(
+                "Onaylanan rezervasyonlar güncellendi: ${TodaysApprovedReservations.length} adet. Toplam Gelir: \$${revenue.toStringAsFixed(2)}");
+          });
       // 3. Beklemede Rezervasyonları Dinleme
       var pendingReservationsStream = FirebaseFirestore.instance
           .collection("reservations")
           .where("haliSahaId", isEqualTo: haliSahaId)
           .where("status",
-              isEqualTo: 'Beklemede') // Sadece 'Beklemede' olanları dinle
+          isEqualTo: 'Beklemede') // Sadece 'Beklemede' olanları dinle
           .snapshots();
 
       _pendingReservationsSubscription =
           pendingReservationsStream.listen((snapshot) {
-        List<Reservation> reservations = [];
-        List<DateTime> tempRequestDays = [];
-        Map<DateTime, int> tempRequestCount = {}; // Geçici sayım tablosu
+            List<Reservation> reservations = [];
+            List<DateTime> tempRequestDays = [];
+            Map<DateTime, int> tempRequestCount = {}; // Geçici sayım tablosu
 
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          reservations.add(reservation);
+            for (var document in snapshot.docs) {
+              var reservation = Reservation.fromDocument(document);
+              reservations.add(reservation);
 
-          String reservationDateTime = document['reservationDateTime'];
-          // Tarih kısmını al
-          DateTime dayOnly = DateTime.parse(reservationDateTime.split(' ')[0]);
+              String reservationDateTime = document['reservationDateTime'];
+              // Tarih kısmını al
+              DateTime dayOnly = DateTime.parse(reservationDateTime.split(' ')[0]);
 
-          // Günü normalize ediyoruz (Saat, dakika, saniyeyi 0'lıyoruz)
-          DateTime normalizedDay =
+              // Günü normalize ediyoruz (Saat, dakika, saniyeyi 0'lıyoruz)
+              DateTime normalizedDay =
               DateTime(dayOnly.year, dayOnly.month, dayOnly.day);
 
-          // Bu güne ait istek sayısını 1 arttır
-          if (tempRequestCount.containsKey(normalizedDay)) {
-            tempRequestCount[normalizedDay] =
-                tempRequestCount[normalizedDay]! + 1;
-          } else {
-            tempRequestCount[normalizedDay] = 1;
-          }
+              // Bu güne ait istek sayısını 1 arttır
+              if (tempRequestCount.containsKey(normalizedDay)) {
+                tempRequestCount[normalizedDay] =
+                    tempRequestCount[normalizedDay]! + 1;
+              } else {
+                tempRequestCount[normalizedDay] = 1;
+              }
 
-          tempRequestDays.add(dayOnly);
-        }
+              tempRequestDays.add(dayOnly);
+            }
 
-        setState(() {
-          haliSahaReservationsRequests = reservations;
-          requestDays = tempRequestDays;
-          requestCountMap =
-              tempRequestCount; // Gün bazlı istek sayıları state'e atandı
-        });
+            setState(() {
+              haliSahaReservationsRequests = reservations;
+              requestDays = tempRequestDays;
+              requestCountMap =
+                  tempRequestCount; // Gün bazlı istek sayıları state'e atandı
+            });
 
-        // Provider ile bildirim sayısını güncelle
-        Provider.of<NotificationProvider>(context, listen: false)
-            .setNotificationCount(haliSahaId, reservations.length);
+            // Provider ile bildirim sayısını güncelle
+            Provider.of<OwnerNotificationProvider>(context, listen: false)
+                .setNotificationCount(haliSahaId, reservations.length);
 
-        debugPrint(
-            "Beklemede rezervasyonlar güncellendi: ${reservations.length} adet.");
-      });
+            debugPrint(
+                "Beklemede rezervasyonlar güncellendi: ${reservations.length} adet.");
+          });
     } catch (e) {
       debugPrint("Rezervasyonları dinlerken hata oluştu: $e");
     }
@@ -379,7 +382,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => OwnerCompletedReservationsPage(
+                      builder: (context) => OwnerPastReservationsPage(
                           haliSahaId: widget.haliSaha.id)),
                 );
               },
@@ -405,7 +408,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 labelStyle:
-                    TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 tabs: [
                   Tab(
                       child: Padding(
@@ -421,16 +424,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   Tab(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 4),
-                      child: Consumer<NotificationProvider>(
+                      child: Consumer<OwnerNotificationProvider>(
                         builder: (context, provider, child) {
-                          int notificationCount = provider
-                              .getNotificationCount(widget.haliSaha.id);
+                          int reservationNotificationCount =
+                          provider.getNotificationCount(widget.haliSaha.id);
 
                           return Stack(
                             clipBehavior: Clip.none,
                             children: [
                               Text("Rezervasyonlar"),
-                              if (notificationCount > 0)
+                              if (reservationNotificationCount > 0)
                                 Positioned(
                                   right: -12,
                                   top: -6,
@@ -442,7 +445,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      '$notificationCount',
+                                      '$reservationNotificationCount',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 10,
@@ -463,7 +466,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         child: Text("Abonelikler"),
                       )),
                 ],
-
               ),
             ),
           ),
@@ -484,7 +486,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 child: Center(
                   child: CircularProgressIndicator(
                     valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.green.shade700),
+                    AlwaysStoppedAnimation<Color>(Colors.green.shade700),
                   ),
                 ),
               ),
@@ -493,7 +495,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
-
 
   final List<Map<String, String>> days = [
     {'id': 'Pzt', 'label': 'Pzt'},
@@ -517,19 +518,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     {"time": "23:00-00:00", "status": "musait", "statusText": "Müsait"},
   ];
 
-  String getDayName(String id) {
-    const dayMap = {
-      "Pzt": "Pazartesi",
-      "Sal": "Salı",
-      "Çar": "Çarşamba",
-      "Per": "Perşembe",
-      "Cum": "Cuma",
-      "Cmt": "Cumartesi",
-      "Paz": "Pazar",
-    };
-    return dayMap[id] ?? id;
-  }
-
   Widget statusBadge(String text, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -549,8 +537,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
-
-
   Widget _buildAboneliklerTab() {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -563,14 +549,44 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Abonelik Yönetimi",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                    Row(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Abonelik Yönetimi",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context)=>OwnerPastSubscriptionsPage(haliSahaId:widget.haliSaha.id,)));
+                          },
+                          icon: Icon(Icons.history, size: 20, color: Colors.white),
+                          label: Text(
+                            "Geçmiş Aboneler",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey.shade500, // Modern indigo rengi
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ],
                     ),
+
                     SizedBox(
                       height: 14,
                     ),
@@ -621,126 +637,213 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     const SizedBox(height: 12),
 
                     // Durum Özeti
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        statusBadge("1 Abone", Icons.check_circle, Colors.blue),
-                        statusBadge(
-                            "1 İstek", Icons.error_outline, Colors.orange),
-                        statusBadge(
-                            "7 Müsait", Icons.circle_outlined, Colors.grey),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                    StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('subscriptions')
+                            .where('halisahaId', isEqualTo: widget.haliSaha.id)
+                            .where('dayOfWeek',
+                            isEqualTo: getDayOfWeekNumber(selectedDay))
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Center(child: CircularProgressIndicator());
+                          }
 
-                    // Saatlik tablo
-                    Container(
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.calendar_today,
-                                color: Colors.blue),
-                            title: Text(getDayName(selectedDay),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
-                            subtitle: const Text("Günlük Abonelikler",
-                                style: TextStyle(fontSize: 13)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            color: Colors.blue.shade50,
-                            child: Row(
-                              children: const [
-                                Expanded(
-                                    child: Text("Saat",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                                Expanded(
-                                    child: Text("Durum",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                                Expanded(
-                                    child: Text("İşlem",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.w500))),
-                              ],
-                            ),
-                          ),
-                          ...mockSlots.map((slot) {
-                            final status = slot["status"];
-                            final statusText = slot["statusText"]!;
-                            final icon = status == "abone"
-                                ? Icons.check_circle
-                                : status == "istek"
-                                ? Icons.error_outline
-                                : Icons.circle_outlined;
-                            final iconColor = status == "abone"
-                                ? Colors.blue
-                                : status == "istek"
-                                ? Colors.orange
-                                : Colors.grey;
+                          final docs = snapshot.data!.docs;
+                          print("Toplam belge sayısı: ${docs.length}");
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
-                              decoration: const BoxDecoration(
-                                border: Border(
+                          final aktifCount =
+                              docs.where((d) => d['status'] == 'Aktif').length;
+                          final istekCount = docs
+                              .where((d) => d['status'] == 'Beklemede')
+                              .length;
+                          final musaitCount = timeSlots.length -
+                              (aktifCount +
+                                  istekCount); // timeSlots önceden initState'te hesaplandı
 
-                                    top: BorderSide(
-                                        color: Colors.grey, width: 0.2),
-                                    bottom: BorderSide(
-                                        color: Colors.grey, width: 0.2)),
-                              ),
-                              child: Row(
+                          return Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(child: Text(slot["time"]!)),
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Icon(icon, color: iconColor, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(statusText,
-                                            style: TextStyle(color: iconColor)),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {},
-                                      style: ElevatedButton.styleFrom(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(8)),
-                                        backgroundColor: status == "abone"
-                                            ? Colors.green
-                                            : status == "istek"
-                                            ? Colors.orange
-                                            : Colors.blue,
-                                        minimumSize: const Size.fromHeight(36),
-                                      ),
-                                      child: Text(
-                                        status == "abone"
-                                            ? "Detaylar"
-                                            : status == "istek"
-                                            ? "Görüntüle"
-                                            : "Abone Gir",
-                                        style: const TextStyle(
-                                            fontSize: 13, color: Colors.white),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
+                                  statusBadge("$aktifCount Abone",
+                                      Icons.check_circle, Colors.blue),
+                                  statusBadge("$istekCount İstek",
+                                      Icons.error_outline, Colors.orange),
+                                  statusBadge("$musaitCount Müsait",
+                                      Icons.circle_outlined, Colors.grey),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    )
+                              const SizedBox(height: 12),
+
+                              // Saatlik tablo
+                              Container(
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Column(
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.calendar_today,
+                                          color: Colors.blue),
+                                      title: Text(getDayName(selectedDay),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600)),
+                                      subtitle: const Text("Günlük Abonelikler",
+                                          style: TextStyle(fontSize: 13)),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      color: Colors.blue.shade50,
+                                      child: Row(
+                                        children: const [
+                                          Expanded(
+                                              child: Text("Saat",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w500))),
+                                          Expanded(
+                                              child: Text("Durum",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w500))),
+                                          Expanded(
+                                              child: Text("İşlem",
+                                                  style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w500))),
+                                        ],
+                                      ),
+                                    ),
+                                    ...timeSlots.map((slot) {
+                                      final matchingDoc = docs.firstWhereOrNull(
+                                            (doc) =>
+                                        doc['time'] == slot &&
+                                            doc['status'] != 'İptal Edildi' &&
+                                            doc['status'] != 'Sona Erdi',
+                                      );
+                                      String status = 'musait';
+                                      String statusText = 'Müsait';
+                                      IconData icon = Icons.circle_outlined;
+                                      Color iconColor = Colors.grey;
+
+                                      if (matchingDoc != null) {
+                                        final firestoreStatus =
+                                        matchingDoc['status'];
+                                        if (firestoreStatus == 'Aktif') {
+                                          status = 'abone';
+                                          statusText = 'Abone';
+                                          icon = Icons.check_circle;
+                                          iconColor = Colors.blue;
+                                        } else if (firestoreStatus ==
+                                            'Beklemede') {
+                                          status = 'istek';
+                                          statusText = 'İstek Var';
+                                          icon = Icons.error_outline;
+                                          iconColor = Colors.orange;
+                                        }
+                                      }
+
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 12),
+                                        decoration: const BoxDecoration(
+                                          border: Border(
+                                              top: BorderSide(
+                                                  color: Colors.grey,
+                                                  width: 0.2),
+                                              bottom: BorderSide(
+                                                  color: Colors.grey,
+                                                  width: 0.2)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(child: Text(slot)),
+                                            Expanded(
+                                              child: Row(
+                                                children: [
+                                                  Icon(icon,
+                                                      color: iconColor,
+                                                      size: 16),
+                                                  const SizedBox(width: 6),
+                                                  Text(statusText,
+                                                      style: TextStyle(
+                                                          color: iconColor)),
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () async {
+                                                  if (matchingDoc == null) {
+                                                    await addOwnerSubscription(
+                                                      context: context,
+                                                      halisahaId:
+                                                      widget.haliSaha.id,
+                                                      halisahaName:
+                                                      widget.haliSaha.name,
+                                                      location: widget
+                                                          .haliSaha.location,
+                                                      dayOfWeek:
+                                                      getDayOfWeekNumber(
+                                                          selectedDay),
+                                                      time:
+                                                      slot, // çünkü timeSlots'tan geliyor
+                                                      price:
+                                                      widget.haliSaha.price,
+                                                      ownerUserId: widget
+                                                          .currentOwner.id,
+                                                      ownerName: widget
+                                                          .currentOwner.name,
+                                                      ownerPhone: widget
+                                                          .currentOwner.phone,
+                                                      ownerEmail: widget
+                                                          .currentOwner.email,
+                                                    );
+                                                  } else {
+                                                    _showSubscriptionDialog(context,
+                                                        matchingDoc!);
+                                                  }
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                      BorderRadius.circular(
+                                                          8)),
+                                                  backgroundColor:
+                                                  status == "abone"
+                                                      ? Colors.green
+                                                      : status == "istek"
+                                                      ? Colors.orange
+                                                      : Colors.blue,
+                                                  minimumSize:
+                                                  const Size.fromHeight(36),
+                                                ),
+                                                child: Text(
+                                                  status == "abone"
+                                                      ? "Detaylar"
+                                                      : status == "istek"
+                                                      ? "Görüntüle"
+                                                      : "Abone Gir",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.white),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        })
                   ],
                 ),
               ),
@@ -769,10 +872,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             spacing: 16,
             runSpacing: 16,
             children: [
-              _buildInfoCard("Günlük Gelir", "₺${todaysRevenue}",
-                  subtitle: "+15.8% geçen günden", icon: Icons.monetization_on),
-              _buildInfoCard("Bugünkü Rezervasyonlar", "${todaysReservation}",
-                  subtitle: "+2 geçen haftadan", icon: Icons.calendar_today),
+              _buildInfoCard("Günlük Gelir", "₺${todaysRevenue}"),
+              _buildInfoCard("Bugünkü Rezervasyonlar", "${todaysReservation}"),
               _buildInfoCard("Doluluk Oranı", "${occupancyRate}%",
                   isProgress: true, icon: Icons.show_chart),
               _buildInfoCard("Müşteri Memnuniyeti",
@@ -878,7 +979,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           child: Padding(
             padding: EdgeInsets.all(12),
             child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (icon != null) ...[
                 Row(
                   children: [
@@ -908,7 +1009,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 SizedBox(height: 4),
                 Text(subtitle,
                     style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                    TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               ],
               if (isProgress) ...[
                 SizedBox(height: 8),
@@ -935,7 +1036,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         children: [
           Card(
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 3,
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -1011,11 +1112,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 });
               }),
               _buildFeatureSwitch("Gece Aydınlatması Var", hasNightLighting,
-                  (value) {
-                setState(() {
-                  hasNightLighting = value;
-                });
-              }),
+                      (value) {
+                    setState(() {
+                      hasNightLighting = value;
+                    });
+                  }),
             ],
           ),
           SizedBox(height: 16),
@@ -1033,8 +1134,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   borderRadius: BorderRadius.circular(8),
                   child: currentHaliSaha.imagesUrl.isNotEmpty
                       ? Image.asset(
-                          "assets/halisaha_images/${currentHaliSaha.imagesUrl.first}",
-                          fit: BoxFit.cover)
+                      "assets/halisaha_images/${currentHaliSaha.imagesUrl.first}",
+                      fit: BoxFit.cover)
                       : Center(child: Text("Fotoğraf yok")),
                 ),
               ),
@@ -1073,12 +1174,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 
   Widget _buildTextField(
-    String label,
-    TextEditingController controller, {
-    bool isNumber = false,
-    bool isMultiline = false,
-    int maxLength = 300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
-  }) {
+      String label,
+      TextEditingController controller, {
+        bool isNumber = false,
+        bool isMultiline = false,
+        int maxLength = 300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -1090,21 +1191,21 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         maxLength: maxLength,
         // ✅ karakter sınırı burada uygulanır
         buildCounter: (
-          BuildContext context, {
-          required int currentLength,
-          required bool isFocused,
-          required int? maxLength,
-        }) {
+            BuildContext context, {
+              required int currentLength,
+              required bool isFocused,
+              required int? maxLength,
+            }) {
           return maxLength != null
               ? Text(
-                  "$currentLength / $maxLength",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: currentLength > maxLength
-                        ? Colors.red
-                        : Colors.grey.shade600,
-                  ),
-                )
+            "$currentLength / $maxLength",
+            style: TextStyle(
+              fontSize: 11,
+              color: currentLength > maxLength
+                  ? Colors.red
+                  : Colors.grey.shade600,
+            ),
+          )
               : null;
         },
         decoration: InputDecoration(
@@ -1171,7 +1272,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       // Değiştirilen alanları belirleme
       Map<String, dynamic> updateData =
-          _getChangedFields(currentHaliSaha, updatedSaha);
+      _getChangedFields(currentHaliSaha, updatedSaha);
       if (updateData.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1375,7 +1476,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     final slotMinute = int.parse(startPart.split(':')[1]);
 
     DateTime slotDateTime =
-        DateTime(date.year, date.month, date.day, slotHour, slotMinute);
+    DateTime(date.year, date.month, date.day, slotHour, slotMinute);
     String bookingString =
         "${DateFormat('yyyy-MM-dd').format(slotDateTime)} $slot";
     return widget.haliSaha.bookedSlots.contains(bookingString);
@@ -1413,11 +1514,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
     // Şu anki ayın son günü
     DateTime currentMonthEnd =
-        DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
     // Rezervasyon penceresi sonraki aya uzanıyor mu?
     bool bookingWindowExtendToNextMonth =
-        bookingWindowEnd.isAfter(currentMonthEnd);
+    bookingWindowEnd.isAfter(currentMonthEnd);
 
     if (bookingWindowExtendToNextMonth) {
       // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
@@ -1507,7 +1608,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
         // Tarih, sonraki ay içinde mi kontrol et
         bool isInNextMonth = normalizedDate
-                .isAfter(firstDayOfNextMonth.subtract(Duration(days: 1))) &&
+            .isAfter(firstDayOfNextMonth.subtract(Duration(days: 1))) &&
             normalizedDate.isBefore(lastDayOfNextMonth.add(Duration(days: 1)));
 
         if (isInNextMonth &&
@@ -1572,7 +1673,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     Text(
                       selectedMonthYear,
                       style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Stack(
                       clipBehavior: Clip.none,
@@ -1623,13 +1724,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     final day = index - firstDayOfMonth + 2;
                     final isSelected = day == selectedDate.day;
                     final currentDay =
-                        DateTime(selectedDate.year, selectedDate.month, day);
+                    DateTime(selectedDate.year, selectedDate.month, day);
                     final isPastDay = currentDay
                         .isBefore(DateTime(now.year, now.month, now.day));
 
                     // Bugünden itibaren maksimum 7 gün ilerisi için rezervasyon yapılabilir
                     final DateTime maxDate =
-                        TimeService.now().add(Duration(days: 7));
+                    TimeService.now().add(Duration(days: 7));
 
                     // Ve takvim gösteriminde bu kontrolü ekleriz
                     final bool isInBookingWindow = !currentDay.isAfter(maxDate);
@@ -1695,11 +1796,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                 color: isSelected
                                     ? Colors.white
                                     : (isPastDay
-                                        ? Colors.grey.shade700
-                                        : (!isInBookingWindow
-                                            ? Colors.grey
-                                                .shade700 // Rezervasyon penceresi dışı: Daha soluk metin
-                                            : Colors.black87)),
+                                    ? Colors.grey.shade700
+                                    : (!isInBookingWindow
+                                    ? Colors.grey
+                                    .shade700 // Rezervasyon penceresi dışı: Daha soluk metin
+                                    : Colors.black87)),
                                 // Rezervasyon penceresi içi: Normal metin
                                 fontWeight: isSelected
                                     ? FontWeight.bold
@@ -1830,7 +1931,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               // Başlangıç saatinden "05" kısmını elde edelim
               String hourStr = startTimeStr.split(':')[0]; // "05"
               int slotHour =
-                  int.parse(hourStr); // Bu artık sayısal dönüştürülebilir
+              int.parse(hourStr); // Bu artık sayısal dönüştürülebilir
 
               bool reserved = isReserved(time);
               bool pending = hasPendingRequest(time);
@@ -1883,7 +1984,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: Padding(
                       padding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1952,8 +2053,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       var matchingReservations = haliSahaReservations
           .where((r) =>
-              r.reservationDateTime == reservationDateTimeStr &&
-              r.status == 'Tamamlandı')
+      r.reservationDateTime == reservationDateTimeStr &&
+          r.status == 'Tamamlandı')
           .toList();
 
       return matchingReservations.isNotEmpty;
@@ -2049,7 +2150,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     String bookingDateTime =
         "${DateFormat('yyyy-MM-dd').format(selectedDate)} $time";
     return haliSahaReservations.any((reservation) =>
-        reservation.reservationDateTime == bookingDateTime &&
+    reservation.reservationDateTime == bookingDateTime &&
         reservation.status == "Beklemede");
   }
 
@@ -2057,7 +2158,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     String bookingDateTime =
         "${DateFormat('yyyy-MM-dd').format(selectedDate)} $time";
     return haliSahaReservations.any((reservation) =>
-        reservation.reservationDateTime == bookingDateTime &&
+    reservation.reservationDateTime == bookingDateTime &&
         reservation.status == "Onaylandı");
   }
 
@@ -2068,7 +2169,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       print("Key: $key");
       // Tam eşleşme ile doğru rezervasyonu bul
       final reservation = haliSahaReservations.firstWhere(
-        (r) => r.reservationDateTime == key,
+            (r) => r.reservationDateTime == key,
       );
       showDialog(
         context: context,
@@ -2091,7 +2192,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                      BorderRadius.vertical(top: Radius.circular(16)),
                       gradient: LinearGradient(
                         colors: [Colors.green.shade400, Colors.blue.shade400],
                         begin: Alignment.topLeft,
@@ -2206,7 +2307,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
       // 2️⃣  Sadece TAMAMLANDI durumundakilerde ara, bulunamazsa null dön
       final reservation = haliSahaReservations.firstWhere(
-        (r) => r.reservationDateTime == key && r.status == 'Tamamlandı',
+            (r) => r.reservationDateTime == key && r.status == 'Tamamlandı',
       );
 
       showDialog(
@@ -2230,7 +2331,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                      BorderRadius.vertical(top: Radius.circular(16)),
                       gradient: LinearGradient(
                         colors: [Colors.green.shade400, Colors.blue.shade400],
                         begin: Alignment.topLeft,
@@ -2314,6 +2415,284 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     }
   }
 
+  String getDayNameFromNumber(int dayOfWeek) {
+    const days = {
+      1: "Pazartesi",
+      2: "Salı",
+      3: "Çarşamba",
+      4: "Perşembe",
+      5: "Cuma",
+      6: "Cumartesi",
+      7: "Pazar",
+    };
+    return days[dayOfWeek] ?? "Gün";
+  }
+
+  void _showSubscriptionDialog(BuildContext rootCtx,QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    final userName = data['userName'] ?? 'İsim yok';
+    final userPhone = data['userPhone'] ?? 'Telefon yok';
+    final userEmail = data['userEmail'] ?? 'Email yok';
+    final status = data['status'] ?? 'Durum yok';
+    final time = data['time'] ?? '';
+    final dayOfWeek = data['dayOfWeek'] ?? 1;
+
+    final displaySlot = "Her ${getDayNameFromNumber(dayOfWeek)} $time";
+
+    showDialog(
+      context: rootCtx,
+      builder: (dialogCtx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Üst kısım (Başlık, ikon)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(16)),
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade400, Colors.blue.shade400],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.white, size: 28),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Abonelik Detayları",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // İçerik alanı
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Kullanıcı bilgileri
+                      Row(
+                        children: [
+                          Icon(Icons.person, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userPhone,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.email, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              userEmail,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Divider(),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              displaySlot,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Durum: $status",
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+
+                // Alt kısım butonlar
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: status == "Beklemede"
+                        ? MainAxisAlignment.spaceBetween
+                        : MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (status == "Beklemede") ...[
+                        // 🔴 Reddet
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ownerRejectSubscription(rootCtx,doc.id);
+                            Navigator.pop(dialogCtx);
+                          },
+                          icon: Icon(Icons.close, color: Colors.white),
+                          label: Text("Reddet",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+
+                        // ✅ Onayla
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            approveSubscription(rootCtx,doc.id);
+                            Navigator.pop(dialogCtx);
+                          },
+                          icon: Icon(Icons.check, color: Colors.white),
+                          label: Text("Onayla",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+                      ] else if (status == "Aktif") ...[
+                        // 🔴 Aboneliği iptal et
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            ownerCancelSubscription(rootCtx,doc.id);
+                            Navigator.pop(dialogCtx);
+                          },
+                          icon: Icon(Icons.cancel, color: Colors.white),
+                          label: Text("Aboneliği İptal Et",
+                              style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            textStyle: TextStyle(fontSize: 15),
+                          ),
+                        ),
+
+                        // 🔘 Kapat
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          child: Text("Kapat"),
+                        ),
+                      ]
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey.shade700),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade800),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
 // Yardımcı Widget: Detay Satırı
   Widget _detailItem(IconData icon, String title, String? value) {
     return Row(
@@ -2355,7 +2734,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text("Rezervasyonu İptal Et",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           content: Text(
@@ -2366,7 +2745,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child:
-                  Text("Vazgeç", style: TextStyle(color: Colors.grey.shade700)),
+              Text("Vazgeç", style: TextStyle(color: Colors.grey.shade700)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -2381,7 +2760,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               child:
-                  Text("Evet, İptal Et", style: TextStyle(color: Colors.white)),
+              Text("Evet, İptal Et", style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -2395,7 +2774,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
     // Güvenli arama: firstWhereOrNull (ya da try/catch)
     final reservation = haliSahaReservations.firstWhere(
-      (r) => r.reservationDateTime == key && r.status == 'Beklemede',
+          (r) => r.reservationDateTime == key && r.status == 'Beklemede',
     );
 
     showDialog(
@@ -2420,7 +2799,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
+                    BorderRadius.vertical(top: Radius.circular(16)),
                     gradient: LinearGradient(
                       colors: [Colors.green.shade400, Colors.blue.shade400],
                       begin: Alignment.topLeft,
@@ -2554,7 +2933,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
                     borderRadius:
-                        BorderRadius.vertical(bottom: Radius.circular(16)),
+                    BorderRadius.vertical(bottom: Radius.circular(16)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2657,7 +3036,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
+            Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
             backgroundColor: Colors.red,
           ),
         );
@@ -2725,7 +3104,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
+            Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
             backgroundColor: Colors.red,
           ),
         );
@@ -2760,7 +3139,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         child: Text(
           text,
           style:
-              textStyle ?? TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          textStyle ?? TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
       ),
     );
@@ -2784,6 +3163,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 }
+
 // HaliSaha sınıfında copyWith metodu eklenmeli
 extension HaliSahaCopyWith on HaliSaha {
   HaliSaha copyWith({

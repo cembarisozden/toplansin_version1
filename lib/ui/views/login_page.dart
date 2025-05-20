@@ -20,7 +20,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   String email = '';
   String password = '';
-  bool rememberMe = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -215,21 +214,8 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(height: 16),
 
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Row(
-                                children: [
-                                  Checkbox(
-                                    value: rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        rememberMe = value!;
-                                      });
-                                    },
-                                  ),
-                                  Text('Beni hatırla'),
-                                ],
-                              ),
                               TextButton(
                                 onPressed: () {
                                   _showChangePasswordDialog();

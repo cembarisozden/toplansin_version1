@@ -42,7 +42,7 @@ class Reservation {
       haliSahaLocation: data['haliSahaLocation'] ?? '',
       haliSahaPrice: data['haliSahaPrice'] ?? 0,
       reservationDateTime: data['reservationDateTime'] ?? '',
-      status: data['status'] ?? 'Beklemede',
+      status: data['status']?? data['newStatus'] ?? 'Beklemede',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       userName: data['userName'] ?? 'Kullanıcı Adı Yok',
       userEmail: data['userEmail'] ?? 'E-posta Yok',

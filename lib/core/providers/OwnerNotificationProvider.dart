@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class NotificationProvider with ChangeNotifier {
+class OwnerNotificationProvider with ChangeNotifier {
   // Her Halı Saha için bildirim sayısını tutan map
   Map<String, int> _notificationCounts = {};
 
