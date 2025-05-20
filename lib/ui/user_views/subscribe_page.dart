@@ -111,7 +111,7 @@ class _SubscribePageState extends State<SubscribePage> {
     final selectedTimeText = selectedTime!;
     final createdAt = TimeService.now();
     final startDate =
-    calculateFirstSession(createdAt, selectedDay + 1, selectedTimeText);
+        calculateFirstSession(createdAt, selectedDay + 1, selectedTimeText);
     final sub = Subscription(
       docId: '',
       haliSahaId: widget.halisaha.id,
@@ -123,6 +123,7 @@ class _SubscribePageState extends State<SubscribePage> {
       price: widget.halisaha.price,
       startDate: startDate,
       endDate: "",
+      visibleSession: startDate,
       nextSession: startDate,
       lastUpdatedBy: 'user',
       status: 'Beklemede',
@@ -132,11 +133,10 @@ class _SubscribePageState extends State<SubscribePage> {
     );
 
     try {
-      await aboneOl(context,sub);
+      await aboneOl(context, sub);
       print("userName: ${widget.user.name}");
       print("userPhone: ${widget.user.phone}");
       print("userEmail: ${widget.user.email}");
-
 
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
     } catch (e) {
@@ -158,7 +158,7 @@ class _SubscribePageState extends State<SubscribePage> {
       builder: (BuildContext context) {
         return Dialog(
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 4,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -229,7 +229,7 @@ class _SubscribePageState extends State<SubscribePage> {
     print("END: ${widget.halisaha.endHour}");
     final now = DateTime(2025, 5, 18); // Cumartesi
     final result =
-    calculateFirstSession(now, 1, "20:00-21:00"); // Pazartesi için
+        calculateFirstSession(now, 1, "20:00-21:00"); // Pazartesi için
     print(result); // Beklenen: 2025-05-20 20:00-21:00
 
     // TODO: implement initState
@@ -293,24 +293,24 @@ class _SubscribePageState extends State<SubscribePage> {
                                 shape: BoxShape.circle,
                                 gradient: isSelected
                                     ? LinearGradient(
-                                  colors: gradientColors,
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
+                                        colors: gradientColors,
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
                                     : LinearGradient(
-                                  colors: [
-                                    Colors.grey.shade200,
-                                    Colors.grey.shade100
-                                  ],
-                                ),
+                                        colors: [
+                                          Colors.grey.shade200,
+                                          Colors.grey.shade100
+                                        ],
+                                      ),
                                 boxShadow: isSelected
                                     ? [
-                                  BoxShadow(
-                                    color: Colors.blue.shade200,
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
+                                        BoxShadow(
+                                          color: Colors.blue.shade200,
+                                          blurRadius: 5,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
                                     : [],
                               ),
                               child: Center(
@@ -372,9 +372,9 @@ class _SubscribePageState extends State<SubscribePage> {
                               stream: FirebaseFirestore.instance
                                   .collection('subscriptions')
                                   .where('halisahaId',
-                                  isEqualTo: widget.halisaha.id)
+                                      isEqualTo: widget.halisaha.id)
                                   .where('dayOfWeek',
-                                  isEqualTo: selectedDay + 1)
+                                      isEqualTo: selectedDay + 1)
                                   .where('status', whereIn: [
                                 'Beklemede',
                                 'Aktif'
@@ -416,16 +416,16 @@ class _SubscribePageState extends State<SubscribePage> {
                                         decoration: BoxDecoration(
                                           gradient: isSelected
                                               ? LinearGradient(
-                                            colors: gradientColors,
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          )
+                                                  colors: gradientColors,
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                )
                                               : null,
                                           color: isSelected
                                               ? null
                                               : Colors.grey.shade100,
                                           borderRadius:
-                                          BorderRadius.circular(10),
+                                              BorderRadius.circular(10),
                                           border: Border.all(
                                             color: isSelected
                                                 ? Colors.transparent
@@ -433,17 +433,17 @@ class _SubscribePageState extends State<SubscribePage> {
                                           ),
                                           boxShadow: isSelected
                                               ? [
-                                            BoxShadow(
-                                              color: Colors.blue.shade200,
-                                              blurRadius: 5,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ]
+                                                  BoxShadow(
+                                                    color: Colors.blue.shade200,
+                                                    blurRadius: 5,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ]
                                               : [],
                                         ),
                                         child: ElevatedButton.icon(
                                           onPressed: () => setState(
-                                                  () => selectedTime = time),
+                                              () => selectedTime = time),
                                           icon: Icon(
                                             Icons.access_time,
                                             size: 16,
@@ -465,7 +465,7 @@ class _SubscribePageState extends State<SubscribePage> {
                                             elevation: 0,
                                             shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                BorderRadius.circular(10)),
+                                                    BorderRadius.circular(10)),
                                           ),
                                         ),
                                       );

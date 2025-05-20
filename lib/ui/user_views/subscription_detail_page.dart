@@ -106,47 +106,55 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                   final status = doc['status'];
                   return status == 'Aktif' || status == 'Beklemede';
                 }).toList();
-;
+                ;
                 return TabBarView(
                   controller: _tabController,
                   children: [
                     activeSubs.isEmpty
                         ? _buildEmptyState(
-                        'Aktif aboneliğiniz bulunmamaktadır.')
+                            'Aktif aboneliğiniz bulunmamaktadır.')
                         : ListView.builder(
-                      physics: BouncingScrollPhysics(),
-                      padding: EdgeInsets.all(16),
-                      itemCount: activeSubs.length,
-                      itemBuilder: (context, index) {
-                        final data = activeSubs[index].data() as Map<String, dynamic>;
-                        final sub = Subscription.fromMap(data, activeSubs[index].id);
-                        return AbonelikCard(sub: sub);
-                      },
-                    ),
+                            physics: BouncingScrollPhysics(),
+                            padding: EdgeInsets.all(16),
+                            itemCount: activeSubs.length,
+                            itemBuilder: (context, index) {
+                              final data = activeSubs[index].data()
+                                  as Map<String, dynamic>;
+                              final sub = Subscription.fromMap(
+                                  data, activeSubs[index].id);
+                              return AbonelikCard(sub: sub);
+                            },
+                          ),
                     // 🔹 GEÇMİŞ: FutureBuilder ile log'ları bir defa oku
                     FutureBuilder<QuerySnapshot>(
                       future: FirebaseFirestore.instance
                           .collection('subscription_logs')
                           .where('userId', isEqualTo: widget.currentUser.id)
-                          .where('newStatus', whereIn: ['Sona Erdi', 'İptal Edildi'])
+                          .where('newStatus',
+                              whereIn: ['Sona Erdi', 'İptal Edildi'])
                           .orderBy('createdAt', descending: true)
                           .get(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
-                          return Center(child: CircularProgressIndicator(color: primaryBlue));
+                          return Center(
+                              child: CircularProgressIndicator(
+                                  color: primaryBlue));
                         }
 
                         final pastLogs = snapshot.data!.docs;
                         if (pastLogs.isEmpty) {
-                          return _buildEmptyState('Geçmiş aboneliğiniz bulunmamaktadır.');
+                          return _buildEmptyState(
+                              'Geçmiş aboneliğiniz bulunmamaktadır.');
                         }
 
                         return ListView.builder(
                           padding: EdgeInsets.all(16),
                           itemCount: pastLogs.length,
                           itemBuilder: (context, index) {
-                            final data = pastLogs[index].data() as Map<String, dynamic>;
-                            final sub = Subscription.fromMap(data, pastLogs[index].id);
+                            final data =
+                                pastLogs[index].data() as Map<String, dynamic>;
+                            final sub =
+                                Subscription.fromMap(data, pastLogs[index].id);
                             return AbonelikCard(sub: sub);
                           },
                         );
@@ -227,7 +235,6 @@ class _AbonelikCardState extends State<AbonelikCard> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     String status = widget.sub.status;
@@ -236,7 +243,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
     String time = widget.sub.time;
     num price = widget.sub.price;
     String location = widget.sub.location;
-    String nextSession = widget.sub.nextSession;
+    String nextSession = widget.sub.visibleSession;
 
     final Color statusColor = _statusColor(status);
     final isActive = status == 'Aktif';
@@ -420,13 +427,13 @@ class _AbonelikCardState extends State<AbonelikCard> {
                   children: [
                     Container(
                       padding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: status == 'Beklemede'
                             ? Color(0xFFFFF8E1) // Amber light
                             : (status == 'Aktif'
-                            ? Color(0xFFE8F5E9) // Green light
-                            : Color(0xFFEEEEEE)), // Grey light
+                                ? Color(0xFFE8F5E9) // Green light
+                                : Color(0xFFEEEEEE)), // Grey light
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: statusColor.withOpacity(0.5),
@@ -456,7 +463,8 @@ class _AbonelikCardState extends State<AbonelikCard> {
                           SizedBox(width: 8),
                           _buildButton(
                             onPressed: () async {
-                              await userCancelSubscription(context,widget.sub.docId);
+                              await userCancelSubscription(
+                                  context, widget.sub.docId);
                             },
                             label: 'Aboneliği İptal Et',
                             color: Color(0xFFE53935)
@@ -467,7 +475,8 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     else if (isPending)
                       _buildButton(
                         onPressed: () async {
-                          await userAboneIstegiIptalEt(context,widget.sub.docId);
+                          await userAboneIstegiIptalEt(
+                              context, widget.sub.docId);
                         },
 
                         label: 'Abonelik İsteğini İptal Et',

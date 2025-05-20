@@ -43,15 +43,17 @@ Future<void> aboneOl(BuildContext context, Subscription sub) async {
     // Aynı saha-gün-saat için daha önce iptal / sona ermiş kayıt var mı?
     final existing = await col
         .where('haliSahaId', isEqualTo: sub.haliSahaId)
-        .where('dayOfWeek',  isEqualTo: sub.dayOfWeek)
-        .where('time',       isEqualTo: sub.time)
-        .where('status',     whereIn: ['İptal Edildi', 'Sona Erdi'])
+        .where('dayOfWeek', isEqualTo: sub.dayOfWeek)
+        .where('time', isEqualTo: sub.time)
+        .where('status', whereIn: ['İptal Edildi', 'Sona Erdi'])
         .limit(1)
         .get();
 
     if (existing.docs.isNotEmpty) {
       // Varsa o dokümanı güncelle
-      await col.doc(existing.docs.first.id).set(sub.toMap(), SetOptions(merge: true));
+      await col
+          .doc(existing.docs.first.id)
+          .set(sub.toMap(), SetOptions(merge: true));
     } else {
       // Yoksa yeni doküman oluştur
       await col.add(sub.toMap());
@@ -64,7 +66,6 @@ Future<void> aboneOl(BuildContext context, Subscription sub) async {
     rethrow;
   }
 }
-
 
 Future<void> userAboneIstegiIptalEt(
     BuildContext context, String subscriptionDocId) async {
@@ -118,6 +119,7 @@ Future<void> userCancelSubscription(
     _showError(context, e, ctxLabel: 'subscription');
   }
 }
+
 Future<void> ownerCancelSubscription(
     BuildContext context, String subscriptionId) async {
   try {
@@ -130,6 +132,7 @@ Future<void> ownerCancelSubscription(
     _showError(context, e, ctxLabel: 'subscription');
   }
 }
+
 Future<void> ownerRejectSubscription(
     BuildContext context, String subscriptionId) async {
   try {
@@ -172,6 +175,7 @@ Future<void> addOwnerSubscription({
       price: price,
       startDate: startDate,
       endDate: '',
+      visibleSession: startDate,
       nextSession: startDate,
       lastUpdatedBy: 'owner',
       status: 'Aktif',
@@ -183,9 +187,9 @@ Future<void> addOwnerSubscription({
     // Aynı saha-gün-saat için iptal / sona ermiş eski kayıt var mı?
     final existing = await col
         .where('halisahaId', isEqualTo: halisahaId)
-        .where('dayOfWeek',  isEqualTo: dayOfWeek)
-        .where('time',       isEqualTo: time)
-        .where('status',     whereIn: ['İptal Edildi', 'Sona Erdi'])
+        .where('dayOfWeek', isEqualTo: dayOfWeek)
+        .where('time', isEqualTo: time)
+        .where('status', whereIn: ['İptal Edildi', 'Sona Erdi'])
         .limit(1)
         .get();
 
@@ -203,7 +207,6 @@ Future<void> addOwnerSubscription({
   }
 }
 
-
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
@@ -215,8 +218,8 @@ String calculateFirstSession(DateTime createdAt, int dayOfWeek, String time) {
   final hour = int.parse(time.split('-').first.split(':')[0]);
   final minute = int.parse(time.split('-').first.split(':')[1]);
 
-  final sessionDateTime = DateTime(
-      targetDay.year, targetDay.month, targetDay.day, hour, minute);
+  final sessionDateTime =
+      DateTime(targetDay.year, targetDay.month, targetDay.day, hour, minute);
   final formattedDate = DateFormat('yyyy-MM-dd').format(sessionDateTime);
   return '$formattedDate $time';
 }
@@ -225,7 +228,7 @@ String calculateNextSession(String currentSession) {
   final parts = currentSession.split(' ');
   if (parts.length != 2) return currentSession;
   final date =
-  DateFormat('yyyy-MM-dd').parse(parts[0]).add(const Duration(days: 7));
+      DateFormat('yyyy-MM-dd').parse(parts[0]).add(const Duration(days: 7));
   return '${DateFormat('yyyy-MM-dd').format(date)} ${parts[1]}';
 }
 
@@ -255,6 +258,7 @@ List<String> generateTimeSlots(String startHour, String endHour) {
       int.parse(a.split(':')[0]).compareTo(int.parse(b.split(':')[0])));
   return slots;
 }
+
 String getDayName(String id) {
   const dayMap = {
     'Pzt': 'Pazartesi',
