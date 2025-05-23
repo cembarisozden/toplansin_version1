@@ -17,7 +17,6 @@ dependencies:
   flutter:
     sdk: flutter
   table_calendar:
-  flutter_native_splash:
   flutter_rating_bar:
   intl:
   flutter_svg:
@@ -40,6 +39,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons:
+  flutter_native_splash: ^2.4.6
 
 flutter_icons:
   android: "launcher_icon"
@@ -49,6 +49,20 @@ flutter_icons:
   min_sdk_android: 24
   adaptive_icon_background: "#358C27"
   adaptive_icon_foreground: "assets/logo3.png"
+
+
+flutter_native_splash:            #  ← artık kök seviyede
+  color: "#43A047"
+  color_dark: "#43A047"     # koyu modda da aynısı
+  image: assets/logo3.png
+
+  android12:
+    color: "#43A047"
+    color_dark: "#43A047"     # koyu modda da aynısı
+    image: assets/logo3.png
+    icon_background_color: "#43A047"
+
+  ios: true                       # iOS için de uygula
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

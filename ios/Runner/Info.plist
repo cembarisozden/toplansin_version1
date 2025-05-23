@@ -49,21 +49,17 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
-
 		<!-- 🔔 Bildirim desteği -->
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
 		</array>
-
 		<!-- 🔐 Lokal ağ izni için açıklama -->
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>Bu uygulama cihazlar arası bağlantılar kurabilmek için yerel ağ erişimi ister.</string>
-
 		<!-- 🔔 Bildirim izni açıklaması -->
 		<key>NSUserNotificationUsageDescription</key>
 		<string>Bildirimler ile sizinle iletişim kurmak istiyoruz.</string>
-
 		<!-- (isteğe bağlı) Eğer manuel AppDelegate yönetiyorsan -->
 		<key>FirebaseAppDelegateProxyEnabled</key>
 		<false/>
