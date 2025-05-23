@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class TimeService {
   static DateTime? _serverTime;
   static DateTime? _fetchedAt;
-  static const Duration _utcOffset = Duration(hours: 3); // UTC+3 için Türkiye zaman dilimi
 
   static Future<void> init() async {
     try {
@@ -14,9 +13,8 @@ class TimeService {
 
       final ts = snap.data()?['ts'];
       if (ts != null && ts is Timestamp) {
-        // Timestamp'i UTC'den UTC+3'e çevir
-        final rawServerTime = ts.toDate();
-        final localServerTime = rawServerTime.add(_utcOffset);
+        // UTC'den cihazın yerel saat dilimine çevir
+        final localServerTime = ts.toDate().toLocal();
 
         _serverTime = localServerTime;
         _fetchedAt = DateTime.now();
@@ -45,12 +43,10 @@ class TimeService {
     return currentServerTime;
   }
 
-  // Yeniden senkronizasyon ihtiyacı olduğunda çağrılabilir
   static Future<void> sync() async {
     await init();
   }
 
-  // İki tarih arasındaki farkı gösteren yardımcı fonksiyon
   static String formatTimeDifference(DateTime dt1, DateTime dt2) {
     final diff = dt1.difference(dt2);
     return "${diff.inHours} saat, ${diff.inMinutes % 60} dakika, ${diff.inSeconds % 60} saniye";
