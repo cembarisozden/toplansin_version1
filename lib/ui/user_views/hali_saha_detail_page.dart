@@ -10,6 +10,7 @@ import 'package:toplansin/data/entitiy/reviews.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
 import 'package:toplansin/ui/user_views/subscribe_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum ReviewSortOption {
   newest,
@@ -37,6 +38,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   double _currentRating = 0;
 
   bool showAllReviews = false;
+
+
 
   Future<void> addReview(
     String haliSahaId,
@@ -248,6 +251,27 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildHeaderInfo(haliSaha),
+                      if (haliSaha.phone.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => _callNumber(haliSaha.phone),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top:8.0),
+                            child: Row(
+                              children: [
+                                SizedBox(width: 4),
+                                Icon(Icons.phone, color: Colors.green.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  haliSaha.phone,
+                                  style: TextStyle(
+                                      color: Colors.grey[700], height: 1.4, fontSize: 14,letterSpacing: 0.3),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+
                       SizedBox(height: 16),
                       Text(
                         haliSaha.description,
@@ -324,8 +348,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                       ),
                       SizedBox(height: 24),
                       _buildInfoAndFeaturesTabs(haliSaha),
-                      SizedBox(height: 24),
-                      _buildMapSection(),
                       SizedBox(height: 24),
                       _buildReviewSummary(
                         context: context,
@@ -522,6 +544,16 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     return counts;
   }
 
+  Future<void> _callNumber(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      debugPrint("Arama başlatılamadı: $phone");
+    }
+  }
+
+
   /// Galeri kısmını inşa ediyoruz.
   /// Her görsele "imageViewer_$index" gibi benzersiz bir Hero tag veriyoruz.
   Widget _buildImageGallery() {
@@ -697,6 +729,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     );
   }
 
+  /*
   Widget _buildMapSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,6 +751,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       ],
     );
   }
+  */
 
   Widget _buildReviewsSection() {
     if (reviewList.isEmpty) {

@@ -22,15 +22,23 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
   String _search = '';
   DateFilter _filter = DateFilter.all;
 
-  Stream<List<Subscription>> _logStream(String status) =>
-      FirebaseFirestore.instance
+  Future<List<Subscription>> _fetchLogs(String status) async {
+    try {
+      final snap = await FirebaseFirestore.instance
           .collection('subscription_logs')
           .where('haliSahaId', isEqualTo: widget.haliSahaId)
           .where('newStatus', isEqualTo: status)
           .orderBy('createdAt', descending: true)
-          .snapshots()
-          .map((s) =>
-          s.docs.map((d) => Subscription.fromMap(d.data() as Map<String, dynamic>, d.id)).toList());
+          .get();
+
+      return snap.docs
+          .map((d) => Subscription.fromMap(d.data() as Map<String, dynamic>, d.id))
+          .toList();
+    } catch (e) {
+      print("Hata oluştu: $e");
+      rethrow;
+    }
+  }
 
   DateTime? _parse(String raw) {
     try {
@@ -81,6 +89,26 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
     );
   }
 
+  Widget _buildFutureTab(String status) {
+    return FutureBuilder<List<Subscription>>(
+      future: _fetchLogs(status),
+      builder: (_, snap) {
+        if (snap.hasError) {
+          final msg = AppErrorHandler.getMessage(snap.error, context: 'subscription');
+          return Center(
+            child: Text(msg, style: const TextStyle(color: Colors.red)),
+          );
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final list = _applyFilters(snap.data!);
+        return _buildList(list);
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -122,7 +150,6 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
               ],
             ),
             const SizedBox(height: 20),
-
             Row(children: [
               Expanded(
                 child: TextField(
@@ -145,18 +172,14 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
                 value: _filter,
                 items: const [
                   DropdownMenuItem(value: DateFilter.all, child: Text('Tümü')),
-                  DropdownMenuItem(
-                      value: DateFilter.today, child: Text('Bugün')),
-                  DropdownMenuItem(
-                      value: DateFilter.last7Days, child: Text('Son 7 Gün')),
-                  DropdownMenuItem(
-                      value: DateFilter.thisMonth, child: Text('Bu Ay')),
+                  DropdownMenuItem(value: DateFilter.today, child: Text('Bugün')),
+                  DropdownMenuItem(value: DateFilter.last7Days, child: Text('Son 7 Gün')),
+                  DropdownMenuItem(value: DateFilter.thisMonth, child: Text('Bu Ay')),
                 ],
                 onChanged: (v) => setState(() => _filter = v!),
               ),
             ]),
             const SizedBox(height: 16),
-
             TabBar(
               controller: _tabController,
               labelColor: Colors.green.shade800,
@@ -168,51 +191,12 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
               ],
             ),
             const SizedBox(height: 10),
-
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  StreamBuilder<List<Subscription>>(
-                    stream: _logStream('Sona Erdi'),
-                    builder: (_, snap) {
-                      if (snap.hasError) {
-                        final msg = AppErrorHandler.getMessage(
-                          snap.error,
-                          context: 'subscription',
-                        );
-                        return Center(
-                          child: Text(msg,
-                              style: const TextStyle(color: Colors.red)),
-                        );
-                      }
-                      if (!snap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final list = _applyFilters(snap.data!);
-                      return _buildList(list);
-                    },
-                  ),
-                  StreamBuilder<List<Subscription>>(
-                    stream: _logStream('İptal Edildi'),
-                    builder: (_, snap) {
-                      if (snap.hasError) {
-                        final msg = AppErrorHandler.getMessage(
-                          snap.error,
-                          context: 'subscription',
-                        );
-                        return Center(
-                          child: Text(msg,
-                              style: const TextStyle(color: Colors.red)),
-                        );
-                      }
-                      if (!snap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final list = _applyFilters(snap.data!);
-                      return _buildList(list);
-                    },
-                  ),
+                  _buildFutureTab("Sona Erdi"),
+                  _buildFutureTab("İptal Edildi"),
                 ],
               ),
             ),

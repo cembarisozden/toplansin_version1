@@ -552,7 +552,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
-        return UserNotificationPanel();
+        return UserNotificationPanel(currentUser: widget.currentUser,);
       },
     );
   }

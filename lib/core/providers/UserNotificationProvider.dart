@@ -1,17 +1,27 @@
 import 'package:flutter/cupertino.dart';
 
 class UserNotificationProvider with ChangeNotifier {
-  int _count = 0;
+  int _reservationCount = 0;
+  int _subscriptionCount = 0;
 
-  int get notificationCount => _count;
+  int get reservationCount => _reservationCount;
+  int get subscriptionCount => _subscriptionCount;
 
-  void setCount(int count) {
-    _count = count;
+  int get totalCount => _reservationCount + _subscriptionCount;
+
+  void setReservationCount(int count) {
+    _reservationCount = count;
     notifyListeners();
   }
 
-  void clearCount() {
-    _count = 0;
+  void setSubscriptionCount(int count) {
+    _subscriptionCount = count;
+    notifyListeners();
+  }
+
+  void clearAll() {
+    _reservationCount = 0;
+    _subscriptionCount = 0;
     notifyListeners();
   }
 }

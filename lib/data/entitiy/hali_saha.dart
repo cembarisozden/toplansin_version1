@@ -18,6 +18,7 @@ class HaliSaha {
   String size;
   String surface;
   int maxPlayers;
+  String phone;
 
   HaliSaha({
     required this.ownerId,
@@ -39,6 +40,7 @@ class HaliSaha {
     required this.size,
     required this.surface,
     required this.maxPlayers,
+    required this.phone,
   });
 
   // JSON formatına dönüştürmek için toJson metodu
@@ -63,6 +65,7 @@ class HaliSaha {
       'size': size,
       'surface': surface,
       'maxPlayers': maxPlayers,
+      'phone':phone
     };
   }
 
@@ -88,6 +91,7 @@ class HaliSaha {
       size: json['size'] as String,
       surface: json['surface'] as String,
       maxPlayers: json['maxPlayers'] as int,
+      phone: json['phone'] as String,
     );
   }
 }

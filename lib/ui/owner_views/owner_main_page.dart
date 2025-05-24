@@ -71,7 +71,11 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
         });
 
         Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount(haliSahaId, reservations.length);
+            .setNotificationCount('reservation_${haliSahaId}', reservations.length);
+
+        Provider.of<OwnerNotificationProvider>(context, listen: false)
+            .setNotificationCount('reservation_${haliSahaId}', reservations.length);
+
 
         debugPrint(
             "Beklemede rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
@@ -215,7 +219,7 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
           itemCount: widget.halisahalar.length,
           itemBuilder: (context, index) {
             var saha = widget.halisahalar[index];
-            final notificationCount = notificationProvider.getNotificationCount(saha.id);
+            final notificationCount = (notificationProvider.getNotificationCount('reservation_${saha.id}')+notificationProvider.getNotificationCount('subscription_${saha.id}'));
 
             return Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

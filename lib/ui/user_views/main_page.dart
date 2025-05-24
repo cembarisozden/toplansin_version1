@@ -45,7 +45,7 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final count = context.watch<UserNotificationProvider>().notificationCount;
+    final count = context.watch<UserNotificationProvider>().totalCount;
     List<Widget> sayfalar = [
       HaliSahaPage(
         currentUser: widget.currentUser,

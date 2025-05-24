@@ -34,6 +34,8 @@ dependencies:
   cloud_functions: ^5.5.0
   flutter_local_notifications: ^19.2.0
   collection: ^1.17.1
+  url_launcher: ^6.2.5
+  flutter_multi_formatter: ^2.6.0
 
 dev_dependencies:
   flutter_test:
@@ -52,15 +54,15 @@ flutter_icons:
 
 
 flutter_native_splash:            #  ← artık kök seviyede
-  color: "#43A047"
-  color_dark: "#43A047"     # koyu modda da aynısı
+  color: "#4CAF50"
+  color_dark: "#4CAF50"      # koyu modda da aynısı
   image: assets/logo3.png
 
   android12:
-    color: "#43A047"
-    color_dark: "#43A047"     # koyu modda da aynısı
+    color: "#4CAF50"
+    color_dark: "#4CAF50"      # koyu modda da aynısı
     image: assets/logo3.png
-    icon_background_color: "#43A047"
+    icon_background_color: "#4CAF50"
 
   ios: true                       # iOS için de uygula
 

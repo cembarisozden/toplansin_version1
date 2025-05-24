@@ -4,13 +4,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
+import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 
 class UserNotificationPanel extends StatefulWidget {
-  const UserNotificationPanel({Key? key}) : super(key: key);
+  final Person currentUser;
+
+
+  UserNotificationPanel({
+    required this.currentUser,
+});
+
 
   @override
   _UserNotificationPanelState createState() => _UserNotificationPanelState();
@@ -19,6 +27,8 @@ class UserNotificationPanel extends StatefulWidget {
 class _UserNotificationPanelState extends State<UserNotificationPanel> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<QuerySnapshot>? _reservationsSubscription;
+  StreamSubscription<QuerySnapshot>? _subscriptionListener;
+
 
   final List<Map<String, String>> _notifications = [];
 
@@ -49,7 +59,7 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
         .snapshots()
         .listen((snapshot) {
       final count = snapshot.docs.length;
-      provider.setCount(count);
+      provider.setReservationCount(count);
     });
 
 
@@ -63,7 +73,7 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
         .snapshots()
         .listen((snapshot) {
       final count = snapshot.docs.length;
-      provider.setCount(count);
+      provider.setSubscriptionCount(count);
 
       List<Reservation> reservations = [];
       List<Map<String, String>> notifications = [];
@@ -73,6 +83,7 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
         reservations.add(reservation);
 
         notifications.add({
+          "type": "reservation",
           "title": reservation.status == "Onaylandı"
               ? "Rezervasyon Onaylandı"
               : "Rezervasyon İptal Edildi",
@@ -92,14 +103,59 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
     });
   }
 
+  void listenSubscriptions(String userId) {
+    _subscriptionListener = FirebaseFirestore.instance
+        .collection("subscriptions")
+        .where("userId", isEqualTo: userId)
+        .where("status", whereIn: ["Aktif", "İptal Edildi", "Sona Erdi"])
+        .where("lastUpdatedBy", isEqualTo: "owner")
+        .snapshots()
+        .listen((snapshot) {
+      final provider = Provider.of<UserNotificationProvider>(context, listen: false);
+      final count = snapshot.docs.length;
+      provider.setSubscriptionCount(count);
 
-    @override
+      List<Map<String, String>> notifications = [];
+
+      for (var doc in snapshot.docs) {
+        final status = doc["status"];
+        final time = doc["time"] ?? "";
+        final name = doc["haliSahaName"] ?? "Bir saha";
+        final session = doc["nextSession"] ?? "Tarih bilinmiyor";
+
+        String title;
+        if (status == "Aktif") {
+          title = "Abonelik Onaylandı";
+        } else if (status == "İptal Edildi") {
+          title = "Abonelik İptal Edildi";
+        } else {
+          title = "Abonelik Sona Erdi";
+        }
+
+        notifications.add({
+          "type": "subscription",
+          "title": title,
+          "subtitle": "$session - $time saatli $name aboneliğiniz $status.",
+        });
+      }
+
+      setState(() {
+        _notifications.addAll(notifications);
+      });
+    });
+  }
+
+
+
+
+  @override
   void initState() {
     super.initState();
     // Kullanıcı oturum açmış olmalı, null kontrolü yapabilirsiniz
     var currentUser = _auth.currentUser;
     if (currentUser != null) {
       listenReservations(currentUser.uid);
+      listenSubscriptions(currentUser.uid);
     }
   }
 
@@ -172,21 +228,36 @@ class _UserNotificationPanelState extends State<UserNotificationPanel> {
                       trailing: const Icon(Icons.arrow_forward_ios,
                           size: 16, color: Colors.grey),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UserReservationDetailPage(
-                                reservation: userReservations[index]),
-                          ),
-                        ).then((_) {
+                        final type = item['type'];
+
+                        if (type == 'reservation') {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) =>
-                                 UserReservationsPage()),
+                              builder: (context) => UserReservationDetailPage(
+                                reservation: userReservations[index],
+                              ),
+                            ),
+                          ).then((_) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UserReservationsPage(),
+                              ),
+                            );
+                          });
+                        } else if (type == 'subscription') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SubscriptionDetailPage(
+                                currentUser: widget.currentUser,
+                              ),
+                            ),
                           );
-                        });
+                        }
                       },
+
                     ),
                     const Divider(
                       thickness: 1,

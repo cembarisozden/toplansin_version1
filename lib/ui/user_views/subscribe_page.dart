@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
@@ -104,6 +105,32 @@ class _SubscribePageState extends State<SubscribePage> {
     );
   }
 
+  Future<bool> _hasReachedInstantSubscriptionLimit() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('subscriptions')
+        .where('userId', isEqualTo: widget.user.id)
+        .where('status', isEqualTo: 'Beklemede')
+        .get();
+    return snap.size >= 2;
+  }
+
+  Future<bool> _hasReachedDailyCancelLimit() async {
+    final today = DateFormat('yyyy-MM-dd').format(TimeService.now());
+    final start = Timestamp.fromDate(DateTime.parse('$today 00:00:00Z'));
+    final end = Timestamp.fromDate(DateTime.parse('$today 23:59:59Z'));
+
+    final snap = await FirebaseFirestore.instance
+        .collection('subscription_logs')
+        .where('userId', isEqualTo: widget.user.id)
+        .where('newStatus', isEqualTo: 'İptal Edildi')
+        .where('by', isEqualTo: 'user')
+        .where('createdAt', isGreaterThanOrEqualTo: start)
+        .where('createdAt', isLessThanOrEqualTo: end)
+        .get();
+
+    return snap.size >= 3;
+  }
+
   Future<void> _handleSubscriptionConfirmation(BuildContext context) async {
     Navigator.pop(context); // önce onay dialog’unu kapat
 
@@ -133,6 +160,30 @@ class _SubscribePageState extends State<SubscribePage> {
     );
 
     try {
+
+      if (await _hasReachedInstantSubscriptionLimit()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      if (await _hasReachedDailyCancelLimit()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       await aboneOl(context, sub);
       print("userName: ${widget.user.name}");
       print("userPhone: ${widget.user.phone}");

@@ -4,6 +4,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:flutter/services.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/subscription_service.dart';
+import 'package:toplansin/services/time_service.dart';
 
 class SubscriptionDetailPage extends StatefulWidget {
   final Person currentUser;
@@ -375,9 +376,54 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     ),
                   ],
                 ),
+                SizedBox(height: 12),
+                Divider(color: Colors.grey.shade300),
+
+// Kullanıcı bilgileri
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 16, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Text(
+                            widget.sub.userName,
+                            style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.email_outlined, size: 16, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Text(
+                            widget.sub.userEmail,
+                            style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.phone_outlined, size: 16, color: Colors.grey.shade700),
+                          SizedBox(width: 8),
+                          Text(
+                            widget.sub.userPhone,
+                            style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
 
                 // Sonraki seans bilgisi - beyaz arka plan
-                if (isActive || isEnded) ...[
+                if (isActive) ...[
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(12),
@@ -398,7 +444,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isEnded ? 'Bitiş Tarihi' : 'Sonraki Seans',
+                              'Sonraki Seans',
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade800,
@@ -425,20 +471,17 @@ class _AbonelikCardState extends State<AbonelikCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // 🔹 Durum etiketi
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: status == 'Beklemede'
-                            ? Color(0xFFFFF8E1) // Amber light
+                            ? Color(0xFFFFF8E1)
                             : (status == 'Aktif'
-                                ? Color(0xFFE8F5E9) // Green light
-                                : Color(0xFFEEEEEE)), // Grey light
+                            ? Color(0xFFE8F5E9)
+                            : Color(0xFFEEEEEE)),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: statusColor.withOpacity(0.5),
-                          width: 1,
-                        ),
+                        border: Border.all(color: statusColor.withOpacity(0.5), width: 1),
                       ),
                       child: Text(
                         status,
@@ -450,44 +493,84 @@ class _AbonelikCardState extends State<AbonelikCard> {
                       ),
                     ),
 
-                    // Butonlar
-                    if (isActive)
-                      Row(
-                        children: [
-                          _buildButton(
-                            onPressed: () async {
-                              await cancelThisWeekSlot(widget.sub.docId,context);
-                              print("DocId:${widget.sub.docId}");
-                            },
-                            label: 'Bu Haftayı İptal Et',
-                            color: Color(0xFFFFA000)
-                                .withOpacity(0.8), // Amber daha soft
-                          ),
-                          SizedBox(width: 8),
-                          _buildButton(
-                            onPressed: () async {
-                              await userCancelSubscription(
-                                  context, widget.sub.docId);
-                            },
-                            label: 'Aboneliği İptal Et',
-                            color: Color(0xFFE53935)
-                                .withOpacity(0.8), // Kırmızı daha soft
-                          ),
-                        ],
-                      )
-                    else if (isPending)
-                      _buildButton(
-                        onPressed: () async {
-                          await userAboneIstegiIptalEt(
-                              context, widget.sub.docId);
-                        },
+                    // 🔹 Butonlar
+                    if (isActive) ...[
+                      Builder(
+                        builder: (context) {
+                          final now = TimeService.now();
+                          final nextDate = DateTime.tryParse(widget.sub.nextSession ?? "");
+                          final bool canCancelThisWeek =
+                              nextDate != null && nextDate.difference(now).inDays < 7;
 
-                        label: 'Abonelik İsteğini İptal Et',
-                        color: Color(0xFF5C6BC0)
-                            .withOpacity(0.8), // Indigo daha soft
+                          return Row(
+                            children: [
+                              if (canCancelThisWeek)
+                                TextButton(
+                                  onPressed: () async {
+                                    final confirm = await showStyledConfirmDialog(
+                                      context,
+                                      title: "Bu Haftaki Seansı İptal Et",
+                                      message: "Bu işlem geri alınamaz. Emin misiniz?",
+                                      confirmText: "Evet, İptal Et",
+                                    );
+                                    if (confirm == true) {
+                                      await cancelThisWeekSlot(widget.sub.docId, context);
+                                      setState(() {});
+                                    }
+                                  },
+                                  child: Text('Bu Haftayı İptal Et'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Color(0xFFFFA000),
+                                    side: BorderSide(color: Color(0xFFFFA000)),
+                                  ),
+                                ),
+                              if (canCancelThisWeek) SizedBox(width: 8),
+                              TextButton(
+                                onPressed: () async {
+                                  final confirm = await showStyledConfirmDialog(
+                                    context,
+                                    title: "Aboneliği İptal Et",
+                                    message:
+                                    "Aboneliğiniz tamamen iptal edilecek. Emin misiniz?",
+                                    confirmText: "Evet, İptal Et",
+                                  );
+                                  if (confirm == true) {
+                                    await userCancelSubscription(context, widget.sub.docId);
+                                  }
+                                },
+                                child: Text('Aboneliği İptal Et'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Color(0xFFE53935),
+                                  side: BorderSide(color: Color(0xFFE53935)),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
+                    ] else if (isPending) ...[
+                      TextButton(
+                        onPressed: () async {
+                          final confirm = await showStyledConfirmDialog(
+                            context,
+                            title: "Abonelik İsteğini İptal Et",
+                            message: "İsteğiniz geri çekilecek. Emin misiniz?",
+                            confirmText: "Evet, İptal Et",
+                          );
+                          if (confirm == true) {
+                            await userAboneIstegiIptalEt(context, widget.sub.docId);
+                          }
+                        },
+                        child: Text('Abonelik İsteğini İptal Et'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Color(0xFF5C6BC0),
+                          side: BorderSide(color: Color(0xFF5C6BC0)),
+                        ),
+                      ),
+                    ],
                   ],
-                ),
+                )
+
               ],
             ),
           ),
@@ -495,6 +578,40 @@ class _AbonelikCardState extends State<AbonelikCard> {
       ),
     );
   }
+
+  Future<bool?> showStyledConfirmDialog(
+      BuildContext context, {
+        required String title,
+        required String message,
+        required String confirmText,
+      }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text("Vazgeç"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(confirmText),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildButton({
     required VoidCallback onPressed,
