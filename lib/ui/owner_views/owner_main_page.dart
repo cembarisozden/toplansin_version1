@@ -73,9 +73,6 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
         Provider.of<OwnerNotificationProvider>(context, listen: false)
             .setNotificationCount('reservation_${haliSahaId}', reservations.length);
 
-        Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount('reservation_${haliSahaId}', reservations.length);
-
 
         debugPrint(
             "Beklemede rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");

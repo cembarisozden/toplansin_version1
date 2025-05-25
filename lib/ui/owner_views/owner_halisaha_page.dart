@@ -18,6 +18,7 @@ import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
 import 'package:collection/collection.dart';
+import 'package:toplansin/ui/owner_views/owner_user_statistics_pannel.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -1064,6 +1065,38 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             icon: Icon(Icons.comment, color: Colors.white, size: 20),
             label: Text(
               "Değerlendirmeleri Görüntüle",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+
+          SizedBox(height: 32),
+
+
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OwnerUserStatisticsPannel()
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              elevation: 3,
+              minimumSize: Size(double.infinity, 50), // Tam genişlikte buton
+            ),
+            icon: Icon(Icons.bar_chart_rounded ,color: Colors.white, size: 20),
+            label: Text(
+              "Kullanıcı İstatistikleri",
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

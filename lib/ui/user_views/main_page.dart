@@ -27,6 +27,10 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+    Future.microtask(() {
+      Provider.of<UserNotificationProvider>(context, listen: false).startListening();
+    });
+
   }
 
   @override
@@ -44,20 +48,20 @@ class _MainPageState extends State<MainPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final count = context.watch<UserNotificationProvider>().totalCount;
-    List<Widget> sayfalar = [
-      HaliSahaPage(
-        currentUser: widget.currentUser,
-        favoriteHaliSahalar: favoriteHaliSahalar,
-        notificationCount: count,
-      ),
-      FavorilerPage(
-        currentUser: widget.currentUser,
-        favoriteHaliSahalar: favoriteHaliSahalar,
-        notificationCount: count,
-      ),
-    ];
+    Widget build(BuildContext context) {
+      final count = context.watch<UserNotificationProvider>().totalCount;
+      List<Widget> sayfalar = [
+        HaliSahaPage(
+          currentUser: widget.currentUser,
+          favoriteHaliSahalar: favoriteHaliSahalar,
+          notificationCount: count,
+        ),
+        FavorilerPage(
+          currentUser: widget.currentUser,
+          favoriteHaliSahalar: favoriteHaliSahalar,
+          notificationCount: count,
+        ),
+      ];
 
     return Scaffold(
       body: sayfalar[secilenIndex],
