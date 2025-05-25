@@ -323,11 +323,11 @@ class _FavorilerPageState extends State<FavorilerPage> {
                               borderRadius: BorderRadius.vertical(
                                   top: Radius.circular(15)),
                               child: halisaha.imagesUrl.isNotEmpty
-                                  ? Image.asset(
-                                      "assets/halisaha_images/${halisaha.imagesUrl.first}",
-                                      height: 180,
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
+                                  ? Image.network(
+                                halisaha.imagesUrl.first,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
                                     )
                                   : Container(
                                       height: 180, color: Colors.grey.shade300),

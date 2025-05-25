@@ -1283,11 +1283,20 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: currentHaliSaha.imagesUrl.isNotEmpty
-                      ? Image.asset(
-                          "assets/halisaha_images/${currentHaliSaha.imagesUrl.first}",
-                          fit: BoxFit.cover)
+                      ? Image.network(
+                    currentHaliSaha.imagesUrl.first,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade300,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.broken_image, color: Colors.grey.shade600),
+                      );
+                    },
+                  )
                       : Center(child: Text("Fotoğraf yok")),
                 ),
+
               ),
               SizedBox(height: 16),
             ],

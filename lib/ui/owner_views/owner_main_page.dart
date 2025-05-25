@@ -241,12 +241,24 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          "assets/halisaha_images/${saha.imagesUrl.isNotEmpty ? saha.imagesUrl.first : 'halisaha0.jpg'}",
+                        child: Image.network(
+                          saha.imagesUrl.isNotEmpty
+                              ? saha.imagesUrl.first
+                              : "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg",
                           width: 60,
                           height: 60,
                           fit: BoxFit.cover,
-                        ),
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey.shade300,
+                              alignment: Alignment.center,
+                              child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 24),
+                            );
+                          },
+                        )
+
                       ),
                       SizedBox(width: 12),
                       Expanded(

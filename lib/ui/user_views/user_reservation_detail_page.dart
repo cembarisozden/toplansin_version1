@@ -17,7 +17,6 @@ class UserReservationDetailPage extends StatefulWidget {
 class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
   bool isLoading = false;
 
-  // Duruma göre renk sınıflandırması
   Color getStatusColor(String status) {
     switch (status) {
       case 'Onaylandı':
@@ -72,7 +71,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                 style: TextStyle(color: Colors.grey.shade700),
               ),
               onPressed: () {
-                Navigator.of(context).pop(); // Dialogu kapat
+                Navigator.of(context).pop();
               },
             ),
             ElevatedButton(
@@ -81,7 +80,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
               ),
               child: Text('İptal Et', style: TextStyle(color: Colors.white)),
               onPressed: () {
-                Navigator.of(context).pop(); // Dialogu kapat
+                Navigator.of(context).pop();
                 _cancelReservation(widget.reservation.id);
               },
             ),
@@ -110,7 +109,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       await FirebaseFirestore.instance
           .collection('reservations')
           .doc(reservationId)
-          .update({'status': 'İptal Edildi','lastUpdatedBy':'user'});
+          .update({'status': 'İptal Edildi', 'lastUpdatedBy': 'user'});
 
       final success = await ReservationRemoteService().cancelSlot(
         haliSahaId: widget.reservation.haliSahaId,
@@ -124,9 +123,8 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
             backgroundColor: Colors.red,
           ),
         );
-        return; // iptal başarısızsa durdur
+        return;
       }
-
 
       setState(() {
         widget.reservation.status = 'İptal Edildi';
@@ -155,7 +153,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
     }
   }
 
-
   Widget _buildInfoRow(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -176,19 +173,18 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final parts = widget.reservation.reservationDateTime.split(' '); // ["2025-05-15", "20:00-21:00"]
-    final datePart = parts[0]; // "2025-05-15"
+    final parts = widget.reservation.reservationDateTime.split(' ');
+    final datePart = parts[0];
     final timePart = parts.length > 1 ? parts[1] : "00:00-01:00";
 
-    final dateParts = datePart.split('-'); // ["2025", "05", "15"]
+    final dateParts = datePart.split('-');
     final year = int.parse(dateParts[0]);
     final month = int.parse(dateParts[1]);
     final day = int.parse(dateParts[2]);
 
-// Saat aralığını doğrudan göster
-    final formattedTime = timePart; // "20:00-21:00"
+    final formattedTime = timePart;
     final formattedDate = "$day/$month/$year";
-
+    final String defaultImageUrl = "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg";
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -212,16 +208,55 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                 // 🎯 Üst Görsel Kart
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    "assets/halisaha_images/${widget.reservation.haliSahaName.isNotEmpty ? 'halisaha1.jpg' : 'halisaha0.jpg'}",
-                    width: double.infinity,
-                    height: 180,
-                    fit: BoxFit.cover,
+                  child: FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('hali_sahalar')
+                        .doc(widget.reservation.haliSahaId)
+                        .get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Container(
+                          width: double.infinity,
+                          height: 180,
+                          color: Colors.grey.shade200,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+
+                      if (snapshot.hasError || !snapshot.hasData) {
+                        return Container(
+                          width: double.infinity,
+                          height: 180,
+                          color: Colors.grey.shade300,
+                          alignment: Alignment.center,
+                          child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                        );
+                      }
+
+                      final data = snapshot.data!.data() as Map<String, dynamic>?;
+                      final List images = data?['imagesUrl'] ?? [];
+                      final String imageUrl = images.isNotEmpty ? images.first : defaultImageUrl;
+
+                      return Image.network(
+                        imageUrl,
+                        width: double.infinity,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: double.infinity,
+                            height: 180,
+                            color: Colors.grey.shade300,
+                            alignment: Alignment.center,
+                            child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // 🗓️ Rezervasyon Bilgileri Kartı
                 _buildCard(
                   children: [
                     _buildDetailTitle("Rezervasyon Bilgileri"),
@@ -234,7 +269,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // 👤 Kullanıcı Bilgileri
                 _buildCard(
                   children: [
                     _buildDetailTitle("Kullanıcı Bilgileri"),
@@ -246,14 +280,11 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // 🔖 Durum Bilgisi
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: getStatusColor(widget.reservation.status)
-                          .withOpacity(0.15),
+                      color: getStatusColor(widget.reservation.status).withOpacity(0.15),
                       border: Border.all(
                         color: getStatusTextColor(widget.reservation.status),
                         width: 1.2,
@@ -272,7 +303,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                 ),
                 const SizedBox(height: 30),
 
-                // ❌ İptal Butonu
                 if (widget.reservation.status == 'Onaylandı' ||
                     widget.reservation.status == 'Beklemede')
                   Center(
@@ -289,8 +319,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade600,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -301,7 +330,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
               ],
             ),
           ),
-
           if (isLoading)
             Container(
               color: Colors.black38,
@@ -311,6 +339,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       ),
     );
   }
+
   Widget _buildCard({required List<Widget> children}) {
     return Container(
       width: double.infinity,
@@ -343,5 +372,4 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       ),
     );
   }
-
 }
