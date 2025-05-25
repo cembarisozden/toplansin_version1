@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,6 +14,7 @@ class OwnerAddHaliSaha extends StatefulWidget {
 class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
+  final TextEditingController phoneController=TextEditingController(text: '+90');
   final TextEditingController priceController = TextEditingController();
   final TextEditingController sizeController = TextEditingController();
   final TextEditingController surfaceController = TextEditingController();
@@ -68,6 +70,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
   Future<void> _kaydet() async {
     if (nameController.text.trim().isEmpty ||
         locationController.text.trim().isEmpty ||
+        phoneController.text.trim().isEmpty ||
         priceController.text.trim().isEmpty ||
         sizeController.text.trim().isEmpty ||
         surfaceController.text.trim().isEmpty ||
@@ -98,6 +101,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         ownerId: FirebaseAuth.instance.currentUser!.uid,
         name: nameController.text.trim(),
         location: locationController.text.trim(),
+        phone: '+${toNumericString(phoneController.text.trim())}',
         price: double.parse(priceController.text.trim()),
         rating: 0.0,
         imagesUrl: imagesController.text
@@ -156,6 +160,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
     nameController.clear();
     locationController.clear();
     priceController.clear();
+    phoneController.clear();
     sizeController.clear();
     surfaceController.clear();
     maxPlayersController.clear();
@@ -197,6 +202,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
                       isNumber: true, maxLength: 20),
                   _buildTextField("Saha Boyutu (örn. 25x40)", sizeController,
                       maxLength: 20),
+                  buildPhoneNumberField(phoneController),
                   _buildTextField(
                       "Zemin Tipi (örn. Sentetik Çim)", surfaceController,
                       maxLength: 40),
@@ -299,6 +305,51 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
             ),
     );
   }
+
+
+  Widget buildPhoneNumberField(TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.phone,
+        inputFormatters: [
+          PhoneInputFormatter(
+            defaultCountryCode: 'TR',
+            allowEndlessPhone: false,
+          ),
+        ],
+        maxLength: 17,
+        maxLines: 1,
+        buildCounter: (
+            BuildContext context, {
+              required int currentLength,
+              required bool isFocused,
+              required int? maxLength,
+            }) {
+          if (maxLength == null) return null;
+          return Text(
+            "$currentLength / $maxLength",
+            style: TextStyle(
+              fontSize: 11,
+              color:
+              currentLength > maxLength ? Colors.red : Colors.grey.shade600,
+            ),
+          );
+        },
+        decoration: InputDecoration(
+          labelText: "İletişim Telefon Numarası",
+          hintText: "+90 5XX XXX XX XX",
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildTextField(
     String label,

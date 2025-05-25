@@ -1,18 +1,21 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class OwnerNotificationProvider with ChangeNotifier {
-  // Her Halı Saha için bildirim sayısını tutan map
-  Map<String, int> _notificationCounts = {};
+  // Artık sadece halı saha ID değil, rezervasyon/abonelik ayrımı içeren key kullanılacak
+  final Map<String, int> _notificationCounts = {};
 
-  // Bildirim sayısını almak için getter
-  int getNotificationCount(String haliSahaId) {
-    return _notificationCounts[haliSahaId] ?? 0;
+  // Güncel: Key artık "subscription_abc123" veya "reservation_abc123" gibi olabilir
+  int getNotificationCount(String key) {
+    return _notificationCounts[key] ?? 0;
   }
 
+  void setNotificationCount(String key, int count) {
+    _notificationCounts[key] = count;
+    notifyListeners();
+  }
 
-  // Bildirim sayısını ayarlamak için metod
-  void setNotificationCount(String haliSahaId, int count) {
-    _notificationCounts[haliSahaId] = count;
+  void clearNotificationCount(String key) {
+    _notificationCounts[key] = 0;
     notifyListeners();
   }
 }

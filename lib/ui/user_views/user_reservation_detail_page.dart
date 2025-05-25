@@ -284,6 +284,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(

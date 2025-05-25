@@ -428,7 +428,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext context) {
-        return UserNotificationPanel();
+        return UserNotificationPanel(currentUser: widget.currentUser,);
       },
     );
   }

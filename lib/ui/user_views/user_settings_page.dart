@@ -17,8 +17,6 @@ class UserSettingsPage extends StatefulWidget {
 }
 
 class _UserSettingsPageState extends State<UserSettingsPage> {
-  bool notifications = true;
-  bool locationSharing = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
@@ -32,6 +30,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         ),
         backgroundColor: Colors.white,
         title: Text('Ayarlar', style: TextStyle(color: Colors.green)),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
@@ -40,7 +39,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
             _buildProfileSection(),
             SizedBox(height: 20),
             _buildSettingsOptions(),
-            SizedBox(height: 30),
+            SizedBox(height: 50),
             _buildDangerZone(),
             SizedBox(height: 30),
             _buildLogoutButton(),
@@ -95,13 +94,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
             Icons.email, "E-posta Güncelle", _showUpdateEmailDialog),
         _buildOptionItem(
             Icons.phone, "Telefon Numarası Değiştir", _showChangePhoneDialog),
-        _buildSwitchOption(Icons.notifications, "Bildirimler", notifications,
-                (value) => setState(() => notifications = value)),
-        _buildSwitchOption(
-            Icons.location_on,
-            "Konum Paylaşımı",
-            locationSharing,
-                (value) => setState(() => locationSharing = value)),
       ],
     );
   }
@@ -121,18 +113,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     );
   }
 
-  Widget _buildSwitchOption(
-      IconData icon, String title, bool value, Function(bool) onChanged) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(title, style: TextStyle(color: Colors.white)),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.lightGreenAccent,
-      ),
-    );
-  }
 
   Widget _buildDangerZone() {
     return Column(
@@ -141,19 +121,20 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         Text(
           "Tehlikeli Bölge",
           style: TextStyle(
-              color: Colors.red[300],
+              color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 8),
-        ElevatedButton(
+        ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.redAccent[100],
+            backgroundColor: Colors.redAccent[400],
             foregroundColor: Colors.red[900],
             minimumSize: Size(double.infinity, 48),
           ),
           onPressed: () => _showDeleteAccountDialog(context),
-          child: Text("Hesabı Sil"),
+          icon:Icon(Icons.delete_forever,size: 25,color: Colors.white,),
+          label: Text("Hesabı Sil",style:TextStyle(color: Colors.white,),)
         ),
       ],
     );

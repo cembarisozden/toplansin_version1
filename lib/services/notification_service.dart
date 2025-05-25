@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -6,127 +8,168 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import '../../firebase_options.dart';
 
-/// Arka planda gelen mesajlar için *zorunlu* top‑level handler
+/// 🔹 BACKGROUND / TERMINATED mesajlar için zorunlu top-level handler
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform);
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  // Eğer mesajda notification alanı varsa
-  // sistem zaten bildirimi gösterdiği için tekrar göstermeyelim.
+  // Sadece data-only ise local bildirim göster
   if (message.notification == null) {
-    NotificationService.showLocal(message); // ← yalnızca data-only ise
+    NotificationService.showLocal(message);
   }
 }
 
-
 class NotificationService {
+  /* ---------- Singleton ---------- */
   NotificationService._();
-  static final NotificationService _instance = NotificationService._();
-  static NotificationService get I => _instance;
+  static final NotificationService I = NotificationService._();
 
-  // ----- Dahili alanlar -----
-  final FirebaseMessaging messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
-  final AndroidNotificationChannel _androidChannel = const AndroidNotificationChannel(
+  /* ---------- Alanlar ---------- */
+  final FirebaseMessaging _fm = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _local =
+  FlutterLocalNotificationsPlugin();
+
+  static const AndroidNotificationChannel _androidChannel =
+  AndroidNotificationChannel(
     'high_importance_channel',
     'High Importance Notifications',
-    description: 'Toplansın uygulaması için kritik bildirim kanalı',
+    description: 'Toplansın için kritik bildirim kanalı',
     importance: Importance.max,
   );
 
-  /// Uygulama başlatıldığında *bir kez* çağır
+  /* ---------- Init (main() içinde bir kez çağır) ---------- */
   static Future<void> init() async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-    // iOS & Android bildirim izinleri
-    await I.messaging.requestPermission();
-
-    // Local notification ayarları (Android için kanal, iOS için varsayılan)
-    await I._local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.
-    createNotificationChannel(I._androidChannel);
-
-    const initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-      iOS: DarwinInitializationSettings(),
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
     );
-    await I._local.initialize(initializationSettings,
-        onDidReceiveNotificationResponse: (details) {
-          // Bildirime tıklayınca yapılacaklar
-        });
 
-    // Token Firestore'a yaz
+    // 1️⃣ İzin iste (Android 13+, iOS)
+    final settings = await I._fm.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
+    // 2️⃣ iOS ön planda bildirim göster
+    await I._fm.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-    // Dinleyiciler
-    FirebaseMessaging.onMessage.listen((message) {
-      // Uygulama gerçekten ekrandayken (resumed) ve bildirimin
-      // notification alanı varsa local göster.
-      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
-          message.notification != null) {
-        NotificationService.showLocal(message);
-      }
-    });
+    // 3️⃣ Local notification plugin
+    const initSettings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      ),
+    );
+    await I._local.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
+    );
 
+    // 4️⃣ Android kanal
+    await I
+        ._local
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_androidChannel);
 
+    // 5️⃣ İlk token’i kaydet
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      await I.saveTokenToFirestore();
+    }
 
-
-
-    FirebaseMessaging.onMessageOpenedApp.listen((m) {
-      // Bildirime tıklayıp açtığında yapılacaklar
-    });
-
-    // Arkaplan handler'ı kaydet
+    // 6️⃣ Dinleyiciler
+    FirebaseMessaging.onMessage.listen(_onMessageForeground);
+    FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'fcmToken': newToken,
-        });
-      }
-    });
+    // 7️⃣ Token yenileme
+    FirebaseMessaging.instance.onTokenRefresh.listen(I._updateToken);
   }
 
-  // ----- Token Kaydet -----
+  /* ---------- Token kaydet ---------- */
   Future<void> saveTokenToFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || !user.emailVerified) {
-      print("[TOKEN] Kullanıcı doğrulanmamış, token yazımı iptal edildi.");
-      return;
+    if (user == null || !user.emailVerified) return;
+
+    String? token;
+
+    if (Platform.isIOS) {
+      // iOS: getToken() SIMÜLATÖRDE exception fırlatabilir
+      try {
+        token = await _fm.getToken();
+      } catch (_) {
+        // APNs hazır değil -> simülatör / erken aşama
+      }
+
+      // Hâlâ null ise APNS token’ı deneyelim (gerçek cihazda gelebilir)
+      token ??= await _fm.getAPNSToken();
+      if (token == null) return; // Token sonra onTokenRefresh ile gelecek
+    } else {
+      // Android tarafı
+      token = await _fm.getToken();
     }
-    final token = await messaging.getToken();
-    if (token != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'fcmToken': token,
-      }, SetOptions(merge: true));
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set({'fcmToken': token}, SetOptions(merge: true));
+  }
+  Future<void> _updateToken(String newToken) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'fcmToken': newToken});
     }
   }
 
-  // ----- Local Notif Göster -----
-  static Future<void> showLocal(RemoteMessage message) async {
-    final notification = message.notification;
-    if (notification == null) return;
+  /* ---------- Mesaj callback’leri ---------- */
+  static void _onMessageForeground(RemoteMessage m) {
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
+        m.notification != null) {
+      showLocal(m);
+    }
+  }
 
-    final androidDetails = AndroidNotificationDetails(
-      I._androidChannel.id,
-      I._androidChannel.name,
-      channelDescription: I._androidChannel.description,
-      importance: Importance.max,
-      priority: Priority.high,
+  static void _onNotificationTap(NotificationResponse d) {
+    // TODO: Bildirime tıklandığında yönlendirme yap
+  }
+
+  static void _onMessageOpenedApp(RemoteMessage m) {
+    // TODO: Bildirime tıklayıp uygulamayı açınca yapılacaklar
+  }
+
+  /* ---------- Local bildirim ---------- */
+  static Future<void> showLocal(RemoteMessage m) async {
+    final n = m.notification;
+    if (n == null) return;
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _androidChannel.id,
+        _androidChannel.name,
+        channelDescription: _androidChannel.description,
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: const DarwinNotificationDetails(),
     );
-    const iOSDetails = DarwinNotificationDetails();
-
-    final details = NotificationDetails(android: androidDetails, iOS: iOSDetails);
 
     await I._local.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
+      n.hashCode,
+      n.title,
+      n.body,
       details,
-      payload: message.data['reservationId'],
+      payload: m.data['reservationId'],
     );
   }
 }
