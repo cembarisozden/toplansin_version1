@@ -171,9 +171,16 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                       return GestureDetector(
                         onTap: () {},
                         child: InteractiveViewer(
-                          child: Image.asset(
-                            "assets/halisaha_images/${widget.haliSaha.imagesUrl[index]}",
+                          child: Image.network(
+                            widget.haliSaha.imagesUrl[index],
                             fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey.shade300,
+                                alignment: Alignment.center,
+                                child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -572,11 +579,20 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                 tag: "imageViewer_$index", // DİNAMİK TAG
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    "assets/halisaha_images/${widget.haliSaha.imagesUrl[index]}",
+                  child: Image.network(
+                    widget.haliSaha.imagesUrl[index],
                     width: MediaQuery.of(context).size.width * 0.8,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        color: Colors.grey.shade300,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                      );
+                    },
                   ),
+
                 ),
               ),
             ),

@@ -442,12 +442,22 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
                   child: (halisaha.imagesUrl.isNotEmpty)
-                      ? Image.asset(
-                          "assets/halisaha_images/${halisaha.imagesUrl.first}",
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        )
+                      ? Image.network(
+                    halisaha.imagesUrl.first,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 180,
+                        width: double.infinity,
+                        color: Colors.grey.shade300,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                      );
+                    },
+                  )
+
                       : Container(height: 180, color: Colors.grey.shade300),
                 ),
                 // Bilgiler
