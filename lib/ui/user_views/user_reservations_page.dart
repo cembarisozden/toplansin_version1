@@ -309,6 +309,7 @@ class ReservationCard extends StatelessWidget {
     final time = parts.length > 1 ? parts[1] : '';
 
     return Card(
+      
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       clipBehavior: Clip.antiAlias,

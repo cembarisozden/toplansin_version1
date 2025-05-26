@@ -74,7 +74,9 @@ class _OwnerProfileSettingsState extends State<OwnerProfileSettings> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Hesap Ayarları"),
+        backgroundColor: Colors.white,
       ),
+      backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: isLoading

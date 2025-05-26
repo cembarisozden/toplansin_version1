@@ -216,6 +216,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
                 // Kayıt formu
                 Card(
+                  color: Colors.white,
                   margin: EdgeInsets.symmetric(horizontal: 24),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

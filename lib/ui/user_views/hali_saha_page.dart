@@ -430,6 +430,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
             );
           },
           child: Card(
+            color: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),

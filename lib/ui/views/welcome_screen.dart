@@ -158,6 +158,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                         return Transform.scale(
                           scale: i == currentFeatureIndex ? 1 : 0.9,
                           child: Card(
+                            color: Colors.white,
                             elevation: 6,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             child: Container(
