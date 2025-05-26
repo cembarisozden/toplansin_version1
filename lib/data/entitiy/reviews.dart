@@ -33,7 +33,7 @@ class Reviews {
     return Reviews(
       docId: doc.id, // dokümanın benzersiz Firestore ID'si
       comment: json['comment'] as String,
-      rating: (json['rating'] as num).toDouble(),
+      rating: (json['rating'] ?? 0).toDouble(),
       datetime: (json['datetime'] as Timestamp).toDate(),
       user_id: json['user_id'] as String,
       user_name: json['user_name'] as String,

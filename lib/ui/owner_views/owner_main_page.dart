@@ -166,7 +166,12 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
                 ),
                 accountEmail: Text(widget.currentOwner.email),
                 currentAccountPicture: CircleAvatar(
-                  backgroundImage: AssetImage("assets/halisaha_images/halisaha0.jpg"),
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.person,
+                    size: 40,
+                    color: Colors.green.shade700,
+                  ),
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

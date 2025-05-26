@@ -39,8 +39,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
 
   bool showAllReviews = false;
 
-
-
   Future<void> addReview(
     String haliSahaId,
     String newComment,
@@ -178,7 +176,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                               return Container(
                                 color: Colors.grey.shade300,
                                 alignment: Alignment.center,
-                                child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                                child: Icon(Icons.broken_image,
+                                    color: Colors.grey.shade600, size: 40),
                               );
                             },
                           ),
@@ -262,7 +261,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                         GestureDetector(
                           onTap: () => _callNumber(haliSaha.phone),
                           child: Padding(
-                            padding: const EdgeInsets.only(top:8.0),
+                            padding: const EdgeInsets.only(top: 8.0),
                             child: Row(
                               children: [
                                 SizedBox(width: 4),
@@ -271,14 +270,15 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                                 Text(
                                   haliSaha.phone,
                                   style: TextStyle(
-                                      color: Colors.grey[700], height: 1.4, fontSize: 14,letterSpacing: 0.3),
+                                      color: Colors.grey[700],
+                                      height: 1.4,
+                                      fontSize: 14,
+                                      letterSpacing: 0.3),
                                 ),
                               ],
                             ),
                           ),
                         ),
-
-
                       SizedBox(height: 16),
                       Text(
                         haliSaha.description,
@@ -560,7 +560,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     }
   }
 
-
   /// Galeri kısmını inşa ediyoruz.
   /// Her görsele "imageViewer_$index" gibi benzersiz bir Hero tag veriyoruz.
   Widget _buildImageGallery() {
@@ -588,11 +587,11 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                         width: MediaQuery.of(context).size.width * 0.8,
                         color: Colors.grey.shade300,
                         alignment: Alignment.center,
-                        child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
+                        child: Icon(Icons.broken_image,
+                            color: Colors.grey.shade600, size: 40),
                       );
                     },
                   ),
-
                 ),
               ),
             ),
@@ -795,7 +794,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           break;
       }
 
-      final visibleReviews = showAllReviews ? sortedList : sortedList.take(3).toList();
+      final visibleReviews =
+          showAllReviews ? sortedList : sortedList.take(3).toList();
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,7 +807,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
               Spacer(),
               TextButton.icon(
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   minimumSize: Size.zero,
                   visualDensity: VisualDensity.compact,
@@ -817,7 +818,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                 label: DropdownButtonHideUnderline(
                   child: DropdownButton<ReviewSortOption>(
                     value: selectedSort,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                    icon:
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black,
@@ -831,10 +833,18 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                       }
                     },
                     items: const [
-                      DropdownMenuItem(value: ReviewSortOption.newest, child: Text("En yeni")),
-                      DropdownMenuItem(value: ReviewSortOption.oldest, child: Text("En eski")),
-                      DropdownMenuItem(value: ReviewSortOption.bestRated, child: Text("En iyi")),
-                      DropdownMenuItem(value: ReviewSortOption.worstRated, child: Text("En kötü")),
+                      DropdownMenuItem(
+                          value: ReviewSortOption.newest,
+                          child: Text("En yeni")),
+                      DropdownMenuItem(
+                          value: ReviewSortOption.oldest,
+                          child: Text("En eski")),
+                      DropdownMenuItem(
+                          value: ReviewSortOption.bestRated,
+                          child: Text("En iyi")),
+                      DropdownMenuItem(
+                          value: ReviewSortOption.worstRated,
+                          child: Text("En kötü")),
                     ],
                   ),
                 ),
@@ -914,10 +924,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           backgroundColor: Colors.red,
         ),
       );
-
     }
   }
-
 
   Widget _buildAddReviewSection() {
     return Column(
@@ -1066,7 +1074,7 @@ class ReviewItem extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                review.user_name,
+                                isOwner ? review.user_name : maskName(review.user_name ?? ''),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -1094,7 +1102,7 @@ class ReviewItem extends StatelessWidget {
 
                           /// Yıldız Rating (örn. 5 üzerinden)
                           Row(
-                            children: _buildStarIcons(review.rating),
+                            children: _buildStarIcons(review.rating ?? 0),
                           ),
                         ],
                       ),
@@ -1120,6 +1128,20 @@ class ReviewItem extends StatelessWidget {
     );
   }
 
+  String maskName(String fullName) {
+    if (fullName.trim().isEmpty) return '??';
+
+    List<String> parts = fullName.trim().split(' ');
+
+    return parts.map((part) {
+      if (part.length == 0) return '**';
+      if (part.length == 1) return part[0] + '*';
+      if (part.length == 2) return part[0] + part[1] + '*';
+      return part.substring(0, 2) + '*' * (part.length - 2);
+    }).join(' ');
+  }
+
+
   String _formatDateTime(DateTime dateTime) {
     try {
       return DateFormat('dd MMM yyyy, HH:mm', 'tr_TR').format(dateTime);
@@ -1129,13 +1151,16 @@ class ReviewItem extends StatelessWidget {
   }
 
   /// Yıldızlı rating göstergesi
-  List<Widget> _buildStarIcons(double rating) {
+  List<Widget> _buildStarIcons(double? rating) {
+    // Null, negatif veya çok yüksek değerler için koruma
+    double safeRating = (rating ?? 0).clamp(0, 5);
+
     List<Widget> stars = [];
     for (int i = 0; i < 5; i++) {
       final starPosition = i + 1.0;
-      if (rating >= starPosition) {
+      if (safeRating >= starPosition) {
         stars.add(Icon(Icons.star, color: Colors.yellow[700], size: 16));
-      } else if (rating > i && rating < starPosition) {
+      } else if (safeRating > i && safeRating < starPosition) {
         stars.add(Icon(Icons.star_half, color: Colors.yellow[700], size: 16));
       } else {
         stars.add(Icon(Icons.star_border, color: Colors.grey[300], size: 16));
