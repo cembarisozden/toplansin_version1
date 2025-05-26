@@ -32,7 +32,7 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
           .get();
 
       return snap.docs
-          .map((d) => Subscription.fromMap(d.data() as Map<String, dynamic>, d.id))
+          .map((d) => Subscription.fromMap(d.data(), d.id))
           .toList();
     } catch (e) {
       print("Hata oluştu: $e");

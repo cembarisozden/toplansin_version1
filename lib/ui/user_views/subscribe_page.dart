@@ -35,7 +35,7 @@ class _SubscribePageState extends State<SubscribePage> {
     Color(0xFF64B5F6),
   ];
 
-  bool get canMakeReservation => selectedDay != null && selectedTime != null;
+  bool get canMakeReservation => selectedTime != null;
 
   void showSubscriptionConfirmationDialog(BuildContext contextt) {
     final selectedDayText = daysOfWeek[selectedDay]['full'];
@@ -529,7 +529,7 @@ class _SubscribePageState extends State<SubscribePage> {
                     ),
                     const SizedBox(height: 20),
 
-                    if (selectedDay != null && selectedTime != null)
+                    if (selectedTime != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16.0, vertical: 12),
@@ -548,7 +548,7 @@ class _SubscribePageState extends State<SubscribePage> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  '${daysOfWeek[selectedDay!]['full']} günü, $selectedTime saatine abone olacaksınız.',
+                                  '${daysOfWeek[selectedDay]['full']} günü, $selectedTime saatine abone olacaksınız.',
                                   style: const TextStyle(
                                     color: Colors.black87,
                                     fontSize: 14,

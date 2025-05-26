@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/time_service.dart';
-import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 
 enum DateFilter { all, today, last7Days, thisMonth }
@@ -65,7 +64,7 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
       final dt = _parse(r.reservationDateTime);
       final matchDate = start == null || (dt != null && dt.isAfter(start));
       final matchSearch =
-          r.userName?.toLowerCase().contains(_search.toLowerCase()) ?? false;
+          r.userName.toLowerCase().contains(_search.toLowerCase()) ?? false;
       return matchDate && matchSearch;
     }).toList();
   }

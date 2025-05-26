@@ -69,7 +69,6 @@ flutter_icons:
 flutter:
   assets:
     - assets/
-    - assets/halisaha_images/
   generate: true
   fonts:
     - family: Audiowide

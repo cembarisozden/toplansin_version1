@@ -1,12 +1,7 @@
-import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/data/entitiy/reservation.dart';
-import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';

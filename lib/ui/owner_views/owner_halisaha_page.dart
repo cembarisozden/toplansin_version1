@@ -850,7 +850,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                                     );
                                                   } else {
                                                     _showSubscriptionDialog(
-                                                        context, matchingDoc!);
+                                                        context, matchingDoc);
                                                   }
                                                 },
                                                 style: ElevatedButton.styleFrom(
