@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
@@ -157,6 +158,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                         return Transform.scale(
                           scale: i == currentFeatureIndex ? 1 : 0.9,
                           child: Card(
+                            color: Colors.white,
                             elevation: 6,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                             child: Container(

@@ -42,6 +42,7 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
         docs = (await FirebaseFirestore.instance
             .collection('reservation_logs')
             .where('newStatus', isEqualTo: 'İptal Edildi')
+            .where('oldStatus', isEqualTo: 'Onaylandı')
             .where('by', isEqualTo: 'user')
             .where('haliSahaId', whereIn: sahaIds)
             .get())

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
@@ -12,6 +14,8 @@ import 'package:toplansin/ui/user_views/hali_saha_page.dart';
 
 class MainPage extends StatefulWidget {
   final Person currentUser;
+  final user = FirebaseAuth.instance.currentUser;
+
 
   MainPage({required this.currentUser});
 
@@ -38,6 +42,7 @@ class _MainPageState extends State<MainPage> {
     _reservationsSubscription?.cancel();
     super.dispose();
   }
+
 
 
 

@@ -169,6 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 SizedBox(height: 32),
                 Card(
+                  color: Colors.white,
                   margin: EdgeInsets.symmetric(horizontal: 24),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
@@ -394,6 +395,7 @@ class _LoginPageState extends State<LoginPage> {
       barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

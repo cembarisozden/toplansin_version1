@@ -357,6 +357,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     return DefaultTabController(
       length: 4,
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           centerTitle: true,
           title: Text(
