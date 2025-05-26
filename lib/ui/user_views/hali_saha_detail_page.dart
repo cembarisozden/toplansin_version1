@@ -40,17 +40,19 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   bool showAllReviews = false;
 
   Future<void> addReview(
-    String haliSahaId,
-    String newComment,
-    double newRating,
-    String userId,
-    String userName,
-  ) async {
+      String haliSahaId,
+      String newComment,
+      double newRating,
+      String userName,
+      ) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
     Reviews newReview = Reviews(
       comment: newComment,
       rating: newRating,
       datetime: TimeService.now(),
-      user_id: userId,
+      userId: currentUser.uid,         // 🔐 Güvenli UID
       user_name: userName,
     );
 
@@ -68,42 +70,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     _commentController.clear();
     _currentRating = 0;
 
-    await _updateHaliSahaRating(haliSahaId);
   }
 
-  Future<void> _updateHaliSahaRating(String haliSahaId) async {
-    var collectionReviews = FirebaseFirestore.instance
-        .collection("hali_sahalar")
-        .doc(haliSahaId)
-        .collection("reviews");
-
-    var snapshot = await collectionReviews.get();
-    if (snapshot.docs.isNotEmpty) {
-      double totalRating = 0;
-      int count = 0;
-
-      for (var doc in snapshot.docs) {
-        var data = doc.data();
-        if (data.containsKey('rating')) {
-          double r = data['rating']?.toDouble() ?? 0.0;
-          totalRating += r;
-          count++;
-        }
-      }
-
-      double averageRating = count > 0 ? totalRating / count : 0.0;
-
-      await FirebaseFirestore.instance
-          .collection('hali_sahalar')
-          .doc(haliSahaId)
-          .update({'rating': averageRating});
-    } else {
-      await FirebaseFirestore.instance
-          .collection('hali_sahalar')
-          .doc(haliSahaId)
-          .update({'rating': 0});
-    }
-  }
 
   Future<void> readReview(String haliSahaId) async {
     var collectionReviews = FirebaseFirestore.instance
@@ -125,9 +93,9 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     // 3) Kendi içlerinde tarihe göre (en yeni -> en eski)
     final currentUserId = widget._auth.currentUser!.uid;
     tempList.sort((a, b) {
-      if (a.user_id == currentUserId && b.user_id != currentUserId) {
+      if (a.userId == currentUserId && b.userId != currentUserId) {
         return -1;
-      } else if (b.user_id == currentUserId && a.user_id != currentUserId) {
+      } else if (b.userId == currentUserId && a.userId != currentUserId) {
         return 1;
       }
 
@@ -982,9 +950,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                   );
                 } else {
                   String currentUserName = widget.currentUser.name;
-                  String currentUserId = widget._auth.currentUser!.uid;
                   addReview(widget.haliSaha.id, _commentController.text,
-                      _currentRating, currentUserId, currentUserName);
+                      _currentRating,currentUserName);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -1027,7 +994,7 @@ class ReviewItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isOwner = (review.user_id == currentUserId);
+    bool isOwner = (review.userId == currentUserId);
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(

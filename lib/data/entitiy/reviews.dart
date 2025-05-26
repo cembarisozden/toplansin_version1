@@ -5,7 +5,7 @@ class Reviews {
   String comment;
   double rating;
   DateTime datetime;
-  String user_id;
+  String userId;
   String user_name;
 
   Reviews({
@@ -13,7 +13,7 @@ class Reviews {
     required this.comment,
     required this.rating,
     required this.datetime,
-    required this.user_id,
+    required this.userId,
     required this.user_name,
   });
 
@@ -22,7 +22,7 @@ class Reviews {
       'comment': comment,
       'rating': rating,
       'datetime': Timestamp.fromDate(datetime),
-      'user_id': user_id,
+      'userId': userId,
       'user_name': user_name,
     };
   }
@@ -35,7 +35,7 @@ class Reviews {
       comment: json['comment'] as String,
       rating: (json['rating'] ?? 0).toDouble(),
       datetime: (json['datetime'] as Timestamp).toDate(),
-      user_id: json['user_id'] as String,
+      userId: json['userId'] as String,
       user_name: json['user_name'] as String,
     );
   }
