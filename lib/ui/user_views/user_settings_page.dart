@@ -78,6 +78,10 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                 widget.currentUser.email,
                 style: TextStyle(color: Colors.green[200]),
               ),
+              Text(
+                widget.currentUser.phone,
+                style: TextStyle(color: Colors.green[200]),
+              ),
             ],
           ),
         ],
@@ -173,7 +177,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           () async {
         if (emailController.text == widget.currentUser.email) {
           try {
-            await _sendPasswordResetEmail(emailController.text);
+            await sendResetAndLogout(context,emailController.text);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Şifre sıfırlama e-postası gönderildi!")),
             );
@@ -433,26 +437,31 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     );
   }
 
-  Future<void> _sendPasswordResetEmail(String email) async {
+  Future<void> sendResetAndLogout(BuildContext context, String rawEmail) async {
+    final email = rawEmail.trim().toLowerCase();
+
+    // 1) Şifre sıfırlama linkini dene — Auth güvenlik gereği,
+    //    user-not-found hatasını bile yakalarsak bile mesajımız aynı kalacak.
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Şifre sıfırlama linki e-postanıza gönderildi.")),
-      );
-      _auth.signOut();
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => AuthCheckScreen()));
-    } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("E-posta gönderilemedi: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } catch (_) {
+      // (user-not-found dahil) tüm hatalar sessizce yutulur
     }
+
+
+    // 3) Oturumu kapat
+    await FirebaseAuth.instance.signOut();
+
+    // 4) Navigator işlemini bir sonraki frame’de yap (post-frame)
+    //    Böylece auth state değişimiyle çakışmaz.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthCheckScreen()),
+            (_) => false,
+      );
+    });
   }
+
 
   Future<void> _updateEmail(String newEmail, String password) async {
     User? user = _auth.currentUser;
