@@ -661,10 +661,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         // Provider ile bildirim sayısını güncelle
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           Provider.of<OwnerNotificationProvider>(context,
-                              listen: false)
+                                  listen: false)
                               .setNotificationCount(
-                              'subscription_${widget.haliSaha.id}',
-                              snapshot.data!.size);
+                                  'subscription_${widget.haliSaha.id}',
+                                  snapshot.data!.size);
                         });
 
                         // Günlere göre gruplama
@@ -679,7 +679,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         return buildDayButtonsWithBadges(pendingCountsByDay);
                       },
                     ),
-
 
                     const SizedBox(height: 12),
 
@@ -908,66 +907,78 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: days.map((day) {
-          final isSelected = selectedDay == day['id'];
-          final dayNumber = getDayOfWeekNumber(day['id']!);
-          final badgeCount = pendingCountsByDay[dayNumber] ?? 0;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 8.0; // daireler arası boşluk
+          final maxW = constraints.maxWidth;
+          final btnSize =
+              ((maxW - spacing * 6) / 7).clamp(36.0, 48.0); // 7 gün, 6 aralık
 
-          return GestureDetector(
-            onTap: () => setState(() => selectedDay = day['id']!),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: 48,
-                  width: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.blue : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: Colors.blue.shade200,
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            )
-                          ]
-                        : [],
-                  ),
-                  child: Text(
-                    day['label']!,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                    ),
-                  ),
-                ),
-                if (badgeCount > 0)
-                  Positioned(
-                    right: -2,
-                    top: -4,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            alignment: WrapAlignment.start,
+            children: days.map((day) {
+              final isSelected = selectedDay == day['id'];
+              final dayNumber = getDayOfWeekNumber(day['id']!);
+              final badgeCount = pendingCountsByDay[dayNumber] ?? 0;
+
+              return GestureDetector(
+                onTap: () => setState(() => selectedDay = day['id']!),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      height: btnSize,
+                      width: btnSize,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
+                        color: isSelected ? Colors.blue : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(btnSize / 2),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: Colors.blue.shade200,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : [],
                       ),
                       child: Text(
-                        '$badgeCount',
+                        day['label']!,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : Colors.black,
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
+                    if (badgeCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$badgeCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -986,19 +997,30 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 color: Colors.green.shade800),
           ),
           SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              _buildInfoCard("Günlük Gelir", "₺${todaysRevenue}"),
-              _buildInfoCard("Bugünkü Rezervasyonlar", "${todaysReservation}"),
-              _buildInfoCard("Doluluk Oranı", "${occupancyRate}%",
-                  isProgress: true, icon: Icons.show_chart),
-              _buildInfoCard("Müşteri Memnuniyeti",
-                  "${currentHaliSaha.rating.toStringAsFixed(1)}/5",
-                  icon: Icons.thumb_up),
-            ],
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return GridView.count(          // ← ❶ return eklendi
+                crossAxisCount: 2,            // daima 2 sütun
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio:
+                constraints.maxWidth < 360 ? 1.3 : 1.4,  // dar ekranda kart biraz uzasın
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildInfoCard("Günlük Gelir", "₺$todaysRevenue"),
+                  _buildInfoCard("Bugünkü Rezervasyonlar", "$todaysReservation"),
+                  _buildInfoCard("Doluluk Oranı", "$occupancyRate%",
+                      isProgress: true, icon: Icons.show_chart),
+                  _buildInfoCard("Müşteri Memnuniyeti",
+                      "${currentHaliSaha.rating.toStringAsFixed(1)}/5",
+                      icon: Icons.thumb_up),
+                ],
+              );
+            },
           ),
+
           SizedBox(height: 24),
           Text(
             "Operasyonel İşlemler",
@@ -1076,14 +1098,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
           SizedBox(height: 32),
 
-
           ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => OwnerUserStatisticsPannel()
-                ),
+                    builder: (context) => OwnerUserStatisticsPannel()),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -1095,7 +1115,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               elevation: 3,
               minimumSize: Size(double.infinity, 50), // Tam genişlikte buton
             ),
-            icon: Icon(Icons.bar_chart_rounded ,color: Colors.white, size: 20),
+            icon: Icon(Icons.bar_chart_rounded, color: Colors.white, size: 20),
             label: Text(
               "Kullanıcı İstatistikleri",
               style: TextStyle(
@@ -1110,70 +1130,92 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
-  Widget _buildInfoCard(String title, String value,
-      {String? subtitle, bool isProgress = false, IconData? icon}) {
-    return Container(
-      width: 180,
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 3,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.white, Colors.green.shade50],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildInfoCard(
+      String title,
+      String value, {
+        String? subtitle,
+        bool isProgress = false,
+        IconData? icon,
+      }) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.green.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (icon != null) ...[
-                Row(
-                  children: [
-                    Icon(icon, size: 20, color: Colors.green.shade700),
-                    SizedBox(width: 6),
-                    Expanded(
-                        child: Text(title,
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade900))),
-                  ],
-                ),
-              ] else
-                Text(title,
-                    style: TextStyle(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,                  // 👉  yalnızca içerik kadar yükseklik
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── Başlık satırı ───────────────────────────────
+            if (icon != null)
+              Row(
+                children: [
+                  Icon(icon, size: 20, color: Colors.green.shade700),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade900)),
-              SizedBox(height: 8),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87)),
-              if (subtitle != null) ...[
-                SizedBox(height: 4),
-                Text(subtitle,
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade700)),
-              ],
-              if (isProgress) ...[
-                SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: occupancyRate / 100,
-                    color: Colors.green.shade600,
-                    backgroundColor: Colors.green.shade100,
+                        color: Colors.green.shade900,
+                      ),
+                    ),
                   ),
+                ],
+              )
+            else
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade900,
                 ),
-              ]
-            ]),
-          ),
+              ),
+
+            const SizedBox(height: 8),
+
+            // ─── Değer ───────────────────────────────────────
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 23,                             // 👉  daha kompakt
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+
+            // ─── Alt başlık (isteğe bağlı) ──────────────────
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+            ],
+
+            // ─── Yüzdelik çubuk (isteğe bağlı) ──────────────
+            if (isProgress) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: occupancyRate / 100,              // mevcut değişkenini kullanıyor
+                  color: Colors.green.shade600,
+                  backgroundColor: Colors.green.shade100,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -1285,19 +1327,19 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   borderRadius: BorderRadius.circular(8),
                   child: currentHaliSaha.imagesUrl.isNotEmpty
                       ? Image.network(
-                    currentHaliSaha.imagesUrl.first,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey.shade300,
-                        alignment: Alignment.center,
-                        child: Icon(Icons.broken_image, color: Colors.grey.shade600),
-                      );
-                    },
-                  )
+                          currentHaliSaha.imagesUrl.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade300,
+                              alignment: Alignment.center,
+                              child: Icon(Icons.broken_image,
+                                  color: Colors.grey.shade600),
+                            );
+                          },
+                        )
                       : Center(child: Text("Fotoğraf yok")),
                 ),
-
               ),
               SizedBox(height: 16),
             ],

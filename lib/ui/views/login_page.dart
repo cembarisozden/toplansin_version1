@@ -464,104 +464,46 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
               onPressed: () async {
-                // 1) Veritabanında (Firestore) e-posta eşleşmesi kontrolü yapılır
                 final email = emailController.text.trim().toLowerCase();
-                final isEmailExists = await _checkEmailInDatabase(email);
-
-                if (isEmailExists) {
-                  // 2) E-posta bulunursa şifre sıfırlama e-postası gönder
-                  try {
-                    await _sendPasswordResetEmail(email);
-                    // Kullanıcıya başarı mesajı göster
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            "$email adresine şifre sıfırlama linki gönderildi."),
-                        backgroundColor: Colors.green.shade700,
-                      ),
-                    );
-                  } catch (e) {
-                    final msg = AppErrorHandler.getMessage(e, context: 'auth');
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Şifre sıfırlama başarısız: $msg"),
-                        backgroundColor: Colors.red.shade700,
-                      ),
-                    );
-
-                  }
-                } else {
-                  // 3) E-posta bulunamazsa kullanıcıya uyarı ver
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Girilen e-posta kayıtlı değil!"),
-                      backgroundColor: Colors.red.shade700,
-                    ),
-                  );
-                }
-
-                Navigator.pop(ctx);
+                await resetPasswordSafe(context, email);     // 🔑 yeni fonksiyon
+                Navigator.pop(ctx);                      // işlem sonrası diyalogu kapat
               },
-              child: Text(
+              child: const Text(
                 "Onayla",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
+
           ],
         );
       },
     );
   }
 
-  Future<bool> _checkEmailInDatabase(String email) async {
-    try {
-      // Firestore instance oluştur
-      final firestore = FirebaseFirestore.instance;
+  Future<void> resetPasswordSafe(BuildContext context, String rawEmail) async {
+    final email = rawEmail.trim().toLowerCase();
 
-      // users koleksiyonunda e-postayı sorgula
-      final query = await firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
-
-      // Eğer sonuç dönerse e-posta veritabanında kayıtlı demektir
-      if (query.docs.isNotEmpty) {
-        return true; // E-posta var
-      } else {
-        return false; // E-posta yok
-      }
-    } catch (e) {
-      // Hata durumunda false döndürüyoruz veya hatayı handle edebilirsiniz
-      print("Veritabanı hatası: $e");
-      return false;
-    }
-  }
-
-  Future<void> _sendPasswordResetEmail(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      // Gönderim hatası
-      final msg = AppErrorHandler.getMessage(e, context: 'auth');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("E-posta gönderilemedi: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } catch (_) {
+      // user-not-found dahil tüm hataları yutarız → enumeration koruması
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            "Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi."
+        ),
+        backgroundColor: Colors.green.shade700,
+      ),
+    );
   }
+
+
 
   void startCountdown() {
     canResendEmail = false;

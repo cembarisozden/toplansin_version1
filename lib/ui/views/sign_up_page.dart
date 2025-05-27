@@ -153,6 +153,7 @@ class _SignUpPageState extends State<SignUpPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text('Doğrulama E-postası Gönderildi'),
           content: Text('Lütfen e-postanızı kontrol ederek hesabınızı doğrulayın.'),
           actions: [

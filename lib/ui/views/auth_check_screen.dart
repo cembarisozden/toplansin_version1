@@ -107,6 +107,7 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Scaffold(
+    backgroundColor: Colors.white,
     body: Center(child: CircularProgressIndicator()),
   );
 }

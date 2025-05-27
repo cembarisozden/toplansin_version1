@@ -793,6 +793,7 @@ class _ReservationPageState extends State<ReservationPage> {
         context: context,
         builder: (BuildContext context) {
           return Dialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),

@@ -53,6 +53,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: Text(
             'Rezervasyonu İptal Et',
             style: TextStyle(fontWeight: FontWeight.bold),

@@ -72,8 +72,10 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
   Widget _buildGrid(List<Reservation> items) {
     if (items.isEmpty) {
       return Center(
-        child: Text('Kayıt bulunamadı.',
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 16)),
+        child: Text(
+          'Kayıt bulunamadı.',
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 16),
+        ),
       );
     }
 
@@ -81,16 +83,33 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
     final cols = w > 1200
         ? 4
         : w > 800
-            ? 3
-            : w > 600
-                ? 2
-                : 1;
+        ? 3
+        : w > 600
+        ? 2
+        : 1;
+
+    /*──── 1 sütun → ListView (taşma olmaz) ────*/
+    if (cols == 1) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(8),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, i) => ReservationCard(reservation: items[i]),
+      );
+    }
+
+    /*──── 2-4 sütun → GridView, oranı dinamik ────*/
+    final aspect = cols == 2
+        ? 0.9   // biraz daha uzun hücre
+        : cols == 3
+        ? 1.1
+        : 1.3; // 4 sütunda yaklaşık 3/2
 
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: cols,
-        childAspectRatio: 3 / 2,
+        childAspectRatio: aspect,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
@@ -98,6 +117,7 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
       itemBuilder: (_, i) => ReservationCard(reservation: items[i]),
     );
   }
+
 
   // ────────────────── LIFECYCLE ──────────────────
   @override

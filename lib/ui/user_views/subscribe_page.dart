@@ -315,69 +315,72 @@ class _SubscribePageState extends State<SubscribePage> {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    // Günler kutusu
+
+                    //  Günler kutusu  (overflow-free)
                     Container(
                       margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 10,
-                          ),
+                          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10),
                         ],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(daysOfWeek.length, (index) {
-                          final isSelected = selectedDay == index;
-                          return GestureDetector(
-                            onTap: () => setState(() => selectedDay = index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: isSelected
-                                    ? LinearGradient(
+                      child: LayoutBuilder(          // 👈 1️⃣  genişliği ölç
+                        builder: (context, constraints) {
+                          const spacing = 8.0;       // ikonlar arası boşluk
+                          final available = constraints.maxWidth - (spacing * 6); // 7 ikon → 6 boşluk
+                          final circleSize = available / 7;   // her dairenin yeni genişliği
+
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: List.generate(daysOfWeek.length, (index) {
+                              final isSelected = selectedDay == index;
+                              return Padding(
+                                padding: EdgeInsets.only(right: index == 6 ? 0 : spacing),
+                                child: GestureDetector(
+                                  onTap: () => setState(() => selectedDay = index),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 250),
+                                    width: circleSize,            // 👈 2️⃣  dinamik boyut
+                                    height: circleSize,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: isSelected
+                                          ? LinearGradient(
                                         colors: gradientColors,
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       )
-                                    : LinearGradient(
-                                        colors: [
-                                          Colors.grey.shade200,
-                                          Colors.grey.shade100
-                                        ],
+                                          : LinearGradient(
+                                        colors: [Colors.grey.shade200, Colors.grey.shade100],
                                       ),
-                                boxShadow: isSelected
-                                    ? [
+                                      boxShadow: isSelected
+                                          ? [
                                         BoxShadow(
                                           color: Colors.blue.shade200,
                                           blurRadius: 5,
                                           offset: const Offset(0, 2),
                                         ),
                                       ]
-                                    : [],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  daysOfWeek[index]['short']!,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.black87,
-                                    fontWeight: FontWeight.w500,
+                                          : [],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        daysOfWeek[index]['short']!,
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.white : Colors.black87,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                     ),
                     const SizedBox(height: 20),
