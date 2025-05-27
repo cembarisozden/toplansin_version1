@@ -244,6 +244,7 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
   /* ────────── Kullanıcı kartı ────────── */
   Widget _userCard(_UserStat stat) {
     return Card(
+      color: Colors.white,
       elevation: 3,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

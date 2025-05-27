@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -55,15 +57,18 @@ void main() async {
 
     await TimeService.init();
 
-    runApp(
-      MultiProvider(
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode, // Sadece debug modda çalışır
+      builder: (context) => MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
           ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
         ],
         child: const MyApp(),
       ),
-    );
+    ),
+  );
   }, (error, stackTrace) {
     // 🔥 Async context dışı hatalar
     FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
@@ -82,6 +87,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
+      builder: DevicePreview.appBuilder,
+      locale: DevicePreview.locale(context),
       home: const SplashScreen(),
     );
   }

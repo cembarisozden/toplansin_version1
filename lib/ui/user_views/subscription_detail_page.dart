@@ -588,6 +588,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(message),

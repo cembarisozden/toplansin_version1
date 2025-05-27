@@ -119,6 +119,7 @@ class _OwnerPhotoManagementPageState extends State<OwnerPhotoManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
         title: Text("Fotoğraf Yönetimi", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),

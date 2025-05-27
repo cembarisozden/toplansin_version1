@@ -17,6 +17,7 @@ class OwnerReviewsPage extends StatelessWidget {
         .collection('reviews');
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
         title: Text(
@@ -73,6 +74,7 @@ class OwnerReviewsPage extends StatelessWidget {
               Reviews review = Reviews.fromDocument(docSnapshot);
 
               return Card(
+                color: Colors.white,
                 elevation: 6,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
