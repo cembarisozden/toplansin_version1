@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
@@ -14,12 +16,10 @@ import 'package:toplansin/ui/views/login_page.dart';
 class HaliSahaPage extends StatefulWidget {
   final Person currentUser;
   List<HaliSaha> favoriteHaliSahalar;
-  int notificationCount;
 
   HaliSahaPage({
     required this.currentUser,
     required this.favoriteHaliSahalar,
-    required this.notificationCount,
   });
 
   User? user = FirebaseAuth.instance.currentUser;
@@ -29,6 +29,8 @@ class HaliSahaPage extends StatefulWidget {
 }
 
 class _HaliSahaPageState extends State<HaliSahaPage> {
+
+
   /// Firestore koleksiyon referansı
   final collectionHaliSaha =
       FirebaseFirestore.instance.collection("hali_sahalar");
@@ -186,6 +188,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
 
   @override
   Widget build(BuildContext context) {
+    final notificationCount=context.watch<UserNotificationProvider>().totalCount;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -209,7 +212,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   _showNotificationPanel(context);
                 },
               ),
-              if (widget.notificationCount != 0)
+              if (notificationCount != 0)
                 Positioned(
                   right: 5,
                   top: 5,
@@ -224,7 +227,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                       minHeight: 18,
                     ),
                     child: Text(
-                      '${widget.notificationCount}',
+                      '${notificationCount}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

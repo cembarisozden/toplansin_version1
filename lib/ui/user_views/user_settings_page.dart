@@ -6,6 +6,8 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
+import 'package:toplansin/ui/user_views/dialogs/phone_verify_dialog.dart';
+
 
 class UserSettingsPage extends StatefulWidget {
   final Person currentUser;
@@ -96,11 +98,29 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
             Icons.lock, "Şifre Değiştir", _showChangePasswordDialog),
         _buildOptionItem(
             Icons.email, "E-posta Güncelle", _showUpdateEmailDialog),
-        _buildOptionItem(
-            Icons.phone, "Telefon Numarası Değiştir", _showChangePhoneDialog),
+       _buildOptionItem(
+           Icons.phone, "Telefon Numarasını Güncelle", _showChangePhoneDialog),
+
+       /* _buildOptionItem(
+          Icons.verified_user,
+          "Telefon Numarasını Doğrula",
+              () => _showPhoneVerifyDialog(context, initialPhone: widget.currentUser.phone),
+        ),*/
       ],
     );
   }
+
+  /// Dialog fonksiyonu (transition + AnimatedSwitcher)
+  _showPhoneVerifyDialog(BuildContext context, {String? initialPhone}) {
+    showDialog(
+      context: context,
+      builder: (context) => PhoneVerifyDialog(initialPhone: initialPhone),
+    );
+  }
+
+
+
+
 
   Widget _buildOptionItem(IconData icon, String title, VoidCallback onPressed) {
     return ListTile(
@@ -536,5 +556,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     }
 
   }
+
+
 
 }

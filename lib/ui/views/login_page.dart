@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/services/notification_service.dart';
+import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
 
       /* ───── 4) FCM token arka planda kaydedilsin ───── */
       if (FirebaseAuth.instance.currentUser?.emailVerified == true) {
-        await NotificationService.I.saveTokenToFirestore();
+        await UserNotificationService.I.saveTokenToFirestore();
       }
 
 

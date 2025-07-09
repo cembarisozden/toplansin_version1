@@ -1,21 +1,54 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:toplansin/services/owner_notification_service.dart';
 
 class OwnerNotificationProvider with ChangeNotifier {
-  // Artık sadece halı saha ID değil, rezervasyon/abonelik ayrımı içeren key kullanılacak
-  final Map<String, int> _notificationCounts = {};
+  final Map<String, int> _counts = {};
 
-  // Güncel: Key artık "subscription_abc123" veya "reservation_abc123" gibi olabilir
-  int getNotificationCount(String key) {
-    return _notificationCounts[key] ?? 0;
-  }
+  // Artık her sahaId için ayrı abonelik tutuyoruz
+  final Map<String, StreamSubscription> _resSubs = {};
+  final Map<String, StreamSubscription> _subSubs = {};
 
-  void setNotificationCount(String key, int count) {
-    _notificationCounts[key] = count;
+  int getNotificationCount(String key) => _counts[key] ?? 0;
+
+  void _update(String key, int count) {
+    _counts[key] = count;
     notifyListeners();
   }
 
-  void clearNotificationCount(String key) {
-    _notificationCounts[key] = 0;
-    notifyListeners();
+  /// Rezervasyon dinleyicisini başlatır (aynı sahaId için önceki iptal edilir)
+  void startReservationListener(String haliSahaId) {
+    _resSubs[haliSahaId]?.cancel();
+    _resSubs[haliSahaId] = listenToReservationRequests(
+      haliSahaId: haliSahaId,
+      onCountUpdated: (cnt) => _update("reservation_$haliSahaId", cnt),
+    );
+  }
+
+  /// Abonelik dinleyicisini başlatır (aynı sahaId için önceki iptal edilir)
+  void startSubscriptionListener(String haliSahaId) {
+    _subSubs[haliSahaId]?.cancel();
+    _subSubs[haliSahaId] = listenToSubscriptionRequests(
+      haliSahaId: haliSahaId,
+      onCountUpdated: (cnt) => _update("subscription_$haliSahaId", cnt),
+    );
+  }
+
+  /// Tüm dinleyicileri durdurur
+  void stopAllListeners() {
+    for (var sub in _resSubs.values) {
+      sub.cancel();
+    }
+    for (var sub in _subSubs.values) {
+      sub.cancel();
+    }
+    _resSubs.clear();
+    _subSubs.clear();
+  }
+
+  @override
+  void dispose() {
+    stopAllListeners();
+    super.dispose();
   }
 }

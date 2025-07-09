@@ -14,30 +14,33 @@ import 'package:provider/provider.dart';
 
 import 'package:toplansin/firebase_options.dart';
 import 'package:toplansin/services/time_service.dart';
-import 'package:toplansin/services/notification_service.dart';
+import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/ui/views/splash_screen.dart';
+import 'package:toplansin/core/providers/PhoneVerificationProvider.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  NotificationService.showLocal(message); // senin mevcut servis
+  UserNotificationService.showLocal(message); // senin mevcut servis
 }
 
 void main() async {
-  runZonedGuarded(() async {
 
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await initializeDateFormatting('tr');
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+
+    await initializeDateFormatting('tr');
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
     // 🔴 Flutter framework hatalarını Crashlytics'e gönder
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
     // 🔔 Bildirim altyapısını başlat
-    await NotificationService.init();
+    await UserNotificationService.init();
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // 🕒 Zaman senkronizasyonu + Crashlytics UID
@@ -45,30 +48,39 @@ void main() async {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await user.getIdToken(true);
-        FirebaseCrashlytics.instance.setUserIdentifier(user.uid); // ✍️ UID logla
+        FirebaseCrashlytics.instance
+            .setUserIdentifier(user.uid); // ✍️ UID logla
       }
 
       await FirebaseFunctions.instance.httpsCallable('updateServerTime').call();
       print("✅ server_time güncellendi");
     } catch (e, stack) {
       print("⚠️ server_time güncellenemedi: $e");
-      FirebaseCrashlytics.instance.recordError(e, stack, reason: "Server time güncelleme hatası");
+      FirebaseCrashlytics.instance
+          .recordError(e, stack, reason: "Server time güncelleme hatası");
     }
 
     await TimeService.init();
 
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode, // Sadece debug modda çalışır
-      builder: (context) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
-          ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
-        ],
-        child: const MyApp(),
+    runApp(
+      DevicePreview(
+        enabled: !kReleaseMode, // Sadece debug modda çalışır
+        builder: (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<OwnerNotificationProvider>(
+              create: (_) => OwnerNotificationProvider(),
+            ),
+            ChangeNotifierProvider<UserNotificationProvider>(
+              create: (_) => UserNotificationProvider(),
+            ),
+            ChangeNotifierProvider<PhoneVerificationProvider>(
+              create: (_) => PhoneVerificationProvider(),
+            ),
+          ],
+          child: const MyApp(),
+        ),
       ),
-    ),
-  );
+    );
   }, (error, stackTrace) {
     // 🔥 Async context dışı hatalar
     FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);

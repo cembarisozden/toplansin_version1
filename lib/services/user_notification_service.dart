@@ -17,14 +17,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Sadece data-only ise local bildirim göster
   if (message.notification == null) {
-    NotificationService.showLocal(message);
+    UserNotificationService.showLocal(message);
   }
 }
 
-class NotificationService {
+class UserNotificationService {
   /* ---------- Singleton ---------- */
-  NotificationService._();
-  static final NotificationService I = NotificationService._();
+  UserNotificationService._();
+  static final UserNotificationService I = UserNotificationService._();
 
   /* ---------- Alanlar ---------- */
   final FirebaseMessaging _fm = FirebaseMessaging.instance;

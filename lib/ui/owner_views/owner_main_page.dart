@@ -49,47 +49,18 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
         print("Okunan HaliSaha: ${hali_saha.name}");
       }
     });
-  }
 
-  void listenToReservationsRequests(String haliSahaId) {
-    try {
-      var stream = FirebaseFirestore.instance
-          .collection("reservations")
-          .where("haliSahaId", isEqualTo: haliSahaId)
-          .where("status", isEqualTo: 'Beklemede')
-          .snapshots();
-
-      stream.listen((snapshot) {
-        List<Reservation> reservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          reservations.add(reservation);
-        }
-
-        setState(() {
-          haliSahaReservationsRequests = reservations;
-        });
-
-        Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount('reservation_${haliSahaId}', reservations.length);
-
-
-        debugPrint(
-            "Beklemede rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
-      });
-    } catch (e) {
-      debugPrint("Rezervasyonları dinlerken hata oluştu: $e");
+    final notifProv = context.read<OwnerNotificationProvider>();
+    for (var saha in widget.halisahalar) {
+      notifProv.startReservationListener(saha.id);
+      notifProv.startSubscriptionListener(saha.id);
     }
   }
 
   @override
   void initState() {
     super.initState();
-    readHaliSaha().then((_) {
-      for (var saha in widget.halisahalar) {
-        listenToReservationsRequests(saha.id);
-      }
-    });
+    readHaliSaha();
   }
 
 
@@ -110,7 +81,8 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notificationProvider = context.watch<OwnerNotificationProvider>();
+
+    final provider = context.watch<OwnerNotificationProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -221,7 +193,11 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
           itemCount: widget.halisahalar.length,
           itemBuilder: (context, index) {
             var saha = widget.halisahalar[index];
-            final notificationCount = (notificationProvider.getNotificationCount('reservation_${saha.id}')+notificationProvider.getNotificationCount('subscription_${saha.id}'));
+
+            final resCount   = provider.getNotificationCount("reservation_${saha.id}");
+            final subCount   = provider.getNotificationCount("subscription_${saha.id}");
+
+            final notificationCount=resCount+subCount;
 
             return Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

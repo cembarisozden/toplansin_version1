@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
@@ -28,12 +27,27 @@ class _MainPageState extends State<MainPage> {
   List<HaliSaha> favoriteHaliSahalar = [];
   StreamSubscription<QuerySnapshot>? _reservationsSubscription;
   List<Reservation> userReservations = [];
+  List<Widget> sayfalar=[];
+
+
   @override
   void initState() {
     super.initState();
+    sayfalar = [
+      HaliSahaPage(
+        currentUser: widget.currentUser,
+        favoriteHaliSahalar: favoriteHaliSahalar,
+      ),
+      FavorilerPage(
+        currentUser: widget.currentUser,
+        favoriteHaliSahalar: favoriteHaliSahalar,
+      ),
+    ];
+
     Future.microtask(() {
       Provider.of<UserNotificationProvider>(context, listen: false).startListening();
     });
+
 
   }
 
@@ -52,24 +66,15 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+
   @override
     Widget build(BuildContext context) {
-      final count = context.watch<UserNotificationProvider>().totalCount;
-      List<Widget> sayfalar = [
-        HaliSahaPage(
-          currentUser: widget.currentUser,
-          favoriteHaliSahalar: favoriteHaliSahalar,
-          notificationCount: count,
-        ),
-        FavorilerPage(
-          currentUser: widget.currentUser,
-          favoriteHaliSahalar: favoriteHaliSahalar,
-          notificationCount: count,
-        ),
-      ];
 
     return Scaffold(
-      body: sayfalar[secilenIndex],
+      body: IndexedStack(
+      index:secilenIndex,
+      children: sayfalar,
+    ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

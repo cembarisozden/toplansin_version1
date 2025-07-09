@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
@@ -13,12 +15,11 @@ import 'package:toplansin/ui/views/login_page.dart';
 class FavorilerPage extends StatefulWidget {
   Person currentUser;
   List<HaliSaha> favoriteHaliSahalar;
-  int notificationCount;
 
   FavorilerPage(
       {required this.currentUser,
       required this.favoriteHaliSahalar,
-      required this.notificationCount});
+      });
 
   @override
   State<FavorilerPage> createState() => _FavorilerPageState();
@@ -40,25 +41,34 @@ class _FavorilerPageState extends State<FavorilerPage> {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user?.uid)
-        .get();
+        .get(const GetOptions(source: Source.cache));
+
+    print('Cache’den veri geldi mi(docUser(favoriler_page)? ${doc.metadata.isFromCache}');
+
     if (doc.exists &&
         doc.data() != null &&
         doc.data()!.containsKey('favorites')) {
       List<dynamic> favIds = doc.data()!['favorites'] ?? [];
 
       var halisahaSnapshot =
-          await FirebaseFirestore.instance.collection('hali_sahalar').get();
+          await FirebaseFirestore.instance.collection('hali_sahalar').get(const GetOptions(source: Source.cache));
+      print('Cache’den veri geldi mi(HaliSahaSnapshot(favoriler_page)? ${halisahaSnapshot.metadata.isFromCache}');
       var allHalisahalar = halisahaSnapshot.docs.map((d) {
         var data = d.data();
         var id = d.id;
         return HaliSaha.fromJson(data, id);
       }).toList();
 
+
       List<HaliSaha> userFavorites = [];
       for (var favId in favIds) {
-        var h = allHalisahalar.firstWhere((element) => element.id == favId,
-            orElse: () => null as HaliSaha);
-        userFavorites.add(h);
+        // indexWhere kullanarak önce pozisyonu bul
+        final idx = allHalisahalar.indexWhere((e) => e.id == favId);
+        if (idx != -1) {
+          // eğer bulunduysa, o objeyi ekle
+          userFavorites.add(allHalisahalar[idx]);
+        }
+        // bulunamadıysa hiçbir şey yapma (skip)
       }
 
       widget.favoriteHaliSahalar = userFavorites;
@@ -113,6 +123,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final notificationCount=context.watch<UserNotificationProvider>().totalCount;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -132,7 +143,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
                   _showNotificationPanel(context);
                 },
               ),
-              if (widget.notificationCount != 0)
+              if (notificationCount != 0)
                 Positioned(
                   right: 5,
                   top: 5,
@@ -147,7 +158,7 @@ class _FavorilerPageState extends State<FavorilerPage> {
                       minHeight: 18,
                     ),
                     child: Text(
-                      '${widget.notificationCount}', // Bildirim sayısı
+                      '${notificationCount}', // Bildirim sayısı
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,

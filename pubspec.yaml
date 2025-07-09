@@ -39,7 +39,7 @@ dependencies:
   firebase_storage: ^12.4.6
   firebase_crashlytics: ^4.3.6
   device_preview: ^1.2.0
-
+  get: ^4.7.2
 
 dev_dependencies:
   flutter_test:

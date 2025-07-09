@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/services/notification_service.dart';
+import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -40,7 +40,7 @@ class AuthCheckScreen extends StatelessWidget {
 
         // Token sadece doğrulanmış kullanıcılar için kaydedilir
         if (user.emailVerified) {
-          NotificationService.I.saveTokenToFirestore();
+          UserNotificationService.I.saveTokenToFirestore();
         }
 
         /* ── 4. Rolü sunucudan çek ── */

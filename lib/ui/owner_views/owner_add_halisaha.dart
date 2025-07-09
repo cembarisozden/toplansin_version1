@@ -196,7 +196,7 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
                   ),
                   SizedBox(height: 16),
                   _buildTextField("Halı Saha Adı", nameController,
-                      maxLength: 10),
+                      maxLength: 100),
                   _buildTextField("Konum", locationController, maxLength: 100),
                   _buildTextField("Saatlik Ücret (TL)", priceController,
                       isNumber: true, maxLength: 20),

@@ -227,11 +227,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               tempRequestCount; // Gün bazlı istek sayıları state'e atandı
         });
 
-        // Provider ile bildirim sayısını güncelle
-        Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount(
-                'reservation_$haliSahaId', reservations.length);
-
         debugPrint(
             "Beklemede rezervasyonlar güncellendi: ${reservations.length} adet.");
       });
@@ -658,14 +653,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                         final docs = snapshot.data!.docs;
 
-                        // Provider ile bildirim sayısını güncelle
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Provider.of<OwnerNotificationProvider>(context,
-                                  listen: false)
-                              .setNotificationCount(
-                                  'subscription_${widget.haliSaha.id}',
-                                  snapshot.data!.size);
-                        });
 
                         // Günlere göre gruplama
                         Map<int, int> pendingCountsByDay = {};
