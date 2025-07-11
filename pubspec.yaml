@@ -40,6 +40,12 @@ dependencies:
   firebase_crashlytics: ^4.3.6
   device_preview: ^1.2.0
   get: ^4.7.2
+  google_nav_bar: ^5.0.7
+  ionicons: ^0.2.2
+  font_awesome_flutter: ^10.8.0
+  package_info_plus: ^8.3.0
+  google_fonts: ^6.2.1
+  carousel_slider: ^5.1.1
 
 dev_dependencies:
   flutter_test:

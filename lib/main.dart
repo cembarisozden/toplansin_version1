@@ -11,6 +11,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:toplansin/core/providers/FavoritesProvider.dart';
+import 'package:toplansin/core/providers/HomeProvider.dart';
 
 import 'package:toplansin/firebase_options.dart';
 import 'package:toplansin/services/time_service.dart';
@@ -75,6 +77,12 @@ void main() async {
             ),
             ChangeNotifierProvider<PhoneVerificationProvider>(
               create: (_) => PhoneVerificationProvider(),
+            ),
+            ChangeNotifierProvider<HomeProvider>(
+              create: (_) => HomeProvider(),
+            ),
+            ChangeNotifierProvider<FavoritesProvider>(
+              create: (_) => FavoritesProvider(),
             ),
           ],
           child: const MyApp(),

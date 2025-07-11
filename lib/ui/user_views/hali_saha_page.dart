@@ -1,183 +1,107 @@
 import 'dart:async';
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
-import 'package:toplansin/core/providers/UserNotificationProvider.dart';
+import 'package:toplansin/core/providers/FavoritesProvider.dart';
+
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
-import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
-import 'package:toplansin/ui/user_views/user_notification_panel.dart';
-import 'package:toplansin/ui/user_views/user_reservations_page.dart';
-import 'package:toplansin/ui/user_views/user_settings_page.dart';
-import 'package:toplansin/ui/views/login_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+
 
 class HaliSahaPage extends StatefulWidget {
   final Person currentUser;
-  List<HaliSaha> favoriteHaliSahalar;
 
-  HaliSahaPage({
-    required this.currentUser,
-    required this.favoriteHaliSahalar,
-  });
-
-  User? user = FirebaseAuth.instance.currentUser;
+  HaliSahaPage({required this.currentUser});
 
   @override
   State<HaliSahaPage> createState() => _HaliSahaPageState();
 }
 
 class _HaliSahaPageState extends State<HaliSahaPage> {
-
-
   /// Firestore koleksiyon referansı
   final collectionHaliSaha =
-      FirebaseFirestore.instance.collection("hali_sahalar");
+  FirebaseFirestore.instance.collection('hali_sahalar');
 
-  /// Tüm halı sahaları tutan liste (orijinal, filtrelenmemiş).
+  /// Tüm halı sahaları (orijinal)
   List<HaliSaha> _allHaliSahalar = [];
 
-  /// Ekranda gösterdiğimiz filtrelenmiş liste (arama yapıldığında burası güncellenir).
+  /// Arama sonucu gösterilecek liste
   List<HaliSaha> halisahalar = [];
 
-  /// Favori seçilen halı sahaların index bilgisi (listenin index’i) tutuluyor.
-  /// Dilerseniz id bazlı da tutabilirsiniz.
-  Set<int> favoriteHalisaha = {};
-
-  /// Firestore realtime dinleme için Subscription.
+  /// Realtime dinleme
   StreamSubscription<QuerySnapshot>? _haliSahaSubscription;
 
-  /// Arama alanı için TextEditingController
+  /// Arama alanı
   final TextEditingController _searchController = TextEditingController();
+
+  String? _selectedCity;
+  DateTime? _selectedDate;
+  String? _selectedHourRange;
+
+  final List<String> cities = [
+    'İzmir', 'İstanbul', 'Ankara', 'Bursa', 'Antalya'
+  ];
+
+  final List<String> hourRanges = [
+    '18:00-19:00',
+    '19:00-20:00',
+    '20:00-21:00',
+    '21:00-22:00',
+    '22:00-23:00',
+    '23:00-00:00',
+  ];
+
 
   @override
   void initState() {
     super.initState();
     _setupRealtimeHaliSahaListener();
-
     _searchController.addListener(_filterHaliSahalar);
-
-    _loadFavorites();
   }
 
-  /// Canlı (realtime) dinlemeyi ayarlayan fonksiyon
+  // ────────────────────────────────────────────────────────────
   void _setupRealtimeHaliSahaListener() {
     _haliSahaSubscription = collectionHaliSaha.snapshots().listen((snapshot) {
-      List<HaliSaha> allHalisahalar = [];
-      for (var doc in snapshot.docs) {
-        var data = doc.data();
-        var key = doc.id;
-        var haliSaha = HaliSaha.fromJson(data, key);
-        allHalisahalar.add(haliSaha);
-      }
+      final all = snapshot.docs
+          .map((d) => HaliSaha.fromJson(d.data(), d.id))
+          .toList();
 
       setState(() {
-        _allHaliSahalar = allHalisahalar;
+        _allHaliSahalar = all;
       });
 
-      // Yeni veri geldiğinde arama filtresi tekrar uygulansın
-      _filterHaliSahalar();
-    }, onError: (error) {
-      print("Hata oluştu: $error");
+      _filterHaliSahalar(); // arama kutusu varsa tekrar uygula
     });
   }
 
-  /// Metin girişi değiştiğinde veya Firestore değiştiğinde filtreleme yapan fonksiyon
   void _filterHaliSahalar() {
     final query = _searchController.text.toLowerCase();
 
-    // Eğer arama kutusu boşsa tüm halı sahaları göster
-    if (query.isEmpty) {
-      setState(() {
-        halisahalar = List.from(_allHaliSahalar);
-      });
-    } else {
-      // Arama kutusuna girilen metin hem isme hem lokasyona göre aranabilir
-      setState(() {
-        halisahalar = _allHaliSahalar.where((haliSaha) {
-          final nameLower = haliSaha.name.toLowerCase();
-          final locationLower = haliSaha.location.toLowerCase();
-          return nameLower.contains(query) || locationLower.contains(query);
-        }).toList();
-      });
-    }
-  }
+    List<HaliSaha> filtered = _allHaliSahalar.where((saha) {
+      final nameMatch = saha.name.toLowerCase().contains(query);
+      final locationMatch = saha.location.toLowerCase().contains(query);
 
-  /// Firestore'dan kullanıcının favori halı sahalarını çekiyoruz.
-  Future<void> _loadFavorites() async {
-    if (widget.user == null) return;
-    final userId = widget.user!.uid;
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final cityMatch = _selectedCity == null || saha.location.contains(_selectedCity!);
 
-    if (doc.exists &&
-        doc.data() != null &&
-        doc.data()!.containsKey('favorites')) {
-      List<dynamic> favIds = doc.data()!['favorites'] ?? [];
-      List<HaliSaha> userFavorites = [];
-      Set<int> favIndexSet = {};
-
-      // henüz _allHaliSahalar boş olabilir (dinleme gecikmeli gelebilir),
-      // bu nedenle futureBuilder veya streamBuilder mantığı da kullanılabilir.
-      // Kolaylık için bu haliyle bırakıyoruz.
-
-      for (var favId in favIds) {
-        int index =
-            _allHaliSahalar.indexWhere((element) => element.id == favId);
-        if (index != -1) {
-          userFavorites.add(_allHaliSahalar[index]);
-          favIndexSet.add(index);
-        }
+      bool dateTimeMatch = true;
+      if (_selectedDate != null && _selectedHourRange != null) {
+        final dateStr = "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
+        final formattedSlot = "$dateStr ${_selectedHourRange!}";
+        dateTimeMatch = !saha.bookedSlots.contains(formattedSlot);
       }
 
-      setState(() {
-        widget.favoriteHaliSahalar = userFavorites;
-        favoriteHalisaha = favIndexSet;
-      });
-    } else {
-      setState(() {
-        widget.favoriteHaliSahalar = [];
-        favoriteHalisaha = {};
-      });
-    }
+      return (nameMatch || locationMatch) && cityMatch && dateTimeMatch;
+    }).toList();
+
+    setState(() => halisahalar = filtered);
   }
 
-  /// Favori ekleme/çıkarma mantığı
-  Future<void> _toggleFavorite(int index) async {
-    if (widget.user == null) return;
-    final userId = widget.user!.uid;
-
-    /// Ekranda görüntülenen halisahalar listesi üzerinden gidiyoruz
-    final selectedHaliSaha = halisahalar[index];
-
-    // Tüm halı sahalar içinde selectedHaliSaha'nın indeksi (favoriSet’i güncellemek için)
-    final realIndex = _allHaliSahalar
-        .indexWhere((element) => element.id == selectedHaliSaha.id);
-
-    if (favoriteHalisaha.contains(realIndex)) {
-      // Zaten favori ise => Çıkart
-      setState(() {
-        favoriteHalisaha.remove(realIndex);
-        widget.favoriteHaliSahalar
-            .removeWhere((saha) => saha.id == selectedHaliSaha.id);
-      });
-
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'favorites': FieldValue.arrayRemove([selectedHaliSaha.id])
-      });
-    } else {
-      // Favoriye ekle
-      setState(() {
-        favoriteHalisaha.add(realIndex);
-        widget.favoriteHaliSahalar.add(selectedHaliSaha);
-      });
-
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'favorites': FieldValue.arrayUnion([selectedHaliSaha.id])
-      });
-    }
-  }
 
   @override
   void dispose() {
@@ -186,88 +110,23 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     super.dispose();
   }
 
+  // ────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final notificationCount=context.watch<UserNotificationProvider>().totalCount;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Toplansın',
-          style: TextStyle(
-            fontFamily: "Audiowide",
-            fontSize: 26,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.green.shade700,
-        elevation: 4,
-        actions: [
-          // Bildirim ikonu
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications, color: Colors.white),
-                onPressed: () {
-                  _showNotificationPanel(context);
-                },
-              ),
-              if (notificationCount != 0)
-                Positioned(
-                  right: 5,
-                  top: 5,
-                  child: Container(
-                    padding: EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      '${notificationCount}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.account_circle, color: Colors.white),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade700, Colors.green.shade500],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-      ),
-      drawer: _buildDrawer(context),
-
-      /// Gövde
       body: Container(
-        color: Colors.grey.shade100,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+        ),
         child: Column(
           children: [
-            // Arama alanı
+            // Arama kutusu
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Material(
                 elevation: 2,
                 borderRadius: BorderRadius.circular(8),
@@ -276,7 +135,8 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   decoration: InputDecoration(
                     hintText: 'Halı saha ara...',
                     hintStyle: TextStyle(color: Colors.grey.shade600),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                    prefixIcon:
+                    Icon(Icons.search, color: Colors.grey.shade600),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -287,125 +147,152 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 ),
               ),
             ),
-            Expanded(
-              child: _buildHaliSahaList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Drawer (yan menü) inşa eden fonksiyon
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: Container(
-        color: Colors.grey.shade100,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            /// Header
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade700, Colors.green.shade400],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person,
-                        color: Colors.green.shade700, size: 40),
+                  /// Şehir
+                  Expanded(
+                    child: _buildSelectionButton(
+                      label: _selectedCity ?? "Şehir",
+                      icon: Icons.location_city,
+                      onTap: () => _showCitySelector(context),
+                    ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    widget.currentUser.name,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600),
+                  const SizedBox(width: 8),
+
+                  /// Tarih
+                  Expanded(
+                    child: _buildSelectionButton(
+                      label: _selectedDate == null
+                          ? "Tarih"
+                          : "${_selectedDate!.day.toString().padLeft(2, '0')}.${_selectedDate!.month.toString().padLeft(2, '0')}.${_selectedDate!.year}",
+                      icon: Icons.calendar_month,
+                      onTap: () => _showFancyDatePicker(context),
+                    ),
                   ),
-                  SizedBox(height: 2),
-                  Text(widget.user?.email ?? "",
-                      style: TextStyle(color: Colors.white70)),
+                  const SizedBox(width: 8),
+
+                  /// Saat
+                  Expanded(
+                    child: _buildSelectionButton(
+                      label: _selectedHourRange ?? "Saat",
+                      icon: Icons.access_time,
+                      onTap: () => _showHourSelector(context),
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            /// Rezervasyonlarım
 
-            ListTile(
-              leading: Icon(Icons.calendar_today, color: Colors.green.shade700),
-              title: Text("Rezervasyonlarım",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => UserReservationsPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.event_repeat,
-                color: Colors.blue.shade700,
+            Expanded(child: _buildHaliSahaList()),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _showFancyDatePicker(BuildContext context) async {
+    DateTime now = DateTime.now();
+    DateTime firstDate = now;
+    DateTime lastDate = now.add(const Duration(days: 7));
+    DateTime pickedDate = _selectedDate ?? now;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.calendar_month_rounded,
+                  size: 36, color: AppColors.primary),
+              const SizedBox(height: 8),
+              const Text(
+                "Tarih Seç",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              title: Text("Aboneliklerim",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => SubscriptionDetailPage(currentUser: widget.currentUser,)),
-                );
-              },
-            ),
-
-            /// Ayarlar
-            ListTile(
-              leading: Icon(Icons.settings, color: Colors.grey.shade700),
-              title: Text("Ayarlar",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UserSettingsPage(
-                      currentUser: widget.currentUser,
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 300,
+                child: CalendarDatePicker(
+                  initialDate: pickedDate,
+                  firstDate: firstDate,
+                  lastDate: lastDate,
+                  onDateChanged: (value) {
+                    pickedDate = value;
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.check_rounded, size: 20,),
+                  label: const Text("Onayla", style: TextStyle(fontSize: 16,color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 2,
                   ),
-                );
-              },
-            ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() => _selectedDate = pickedDate);
+                    _filterHaliSahalar();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-            Divider(),
-
-            /// Çıkış Yap
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red),
-              title: Text("Çıkış Yap",
-                  style: TextStyle(
-                      fontWeight: FontWeight.w500, color: Colors.red)),
-              onTap: () async {
-                if (widget.user != null) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(widget.user?.uid)
-                      .update({
-                    'fcmToken': FieldValue.delete(),
-                  });
-                }
-                await FirebaseAuth.instance.signOut();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                );
-              },
+  /// Modern seçim butonu (ortak)
+  Widget _buildSelectionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 100, maxWidth: 180), // max genişlik limiti
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.primaryDark),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
@@ -413,141 +300,247 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     );
   }
 
-  /// Halı saha listesi (filtrelenmiş liste: `halisahalar`)
+
+
+  void _showCitySelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: true,
+          children: cities.map((city) {
+            return ListTile(
+              title: Text(city),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedCity = city);
+                _filterHaliSahalar();
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  void _showHourSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          shrinkWrap: true,
+          children: hourRanges.map((hr) {
+            return ListTile(
+              title: Text(hr),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedHourRange = hr);
+                _filterHaliSahalar();
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+
+
+  // ────────────────────────────────────────────────────────────
+  /// SAHA LİSTESİ
   Widget _buildHaliSahaList() {
-    return ListView.builder(
-      itemCount: halisahalar.length,
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemBuilder: (context, index) {
-        var halisaha = halisahalar[index];
-        return InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HaliSahaDetailPage(
-                  haliSaha: halisaha,
-                  currentUser: widget.currentUser,
+    final favProv = context.watch<FavoritesProvider>();
+
+    if (halisahalar.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.white),
+              const SizedBox(height: 16),
+              Text(
+                'Aranan kritere uygun\nhalı saha bulunamadı.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            );
-          },
-          child: Card(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            elevation: 3,
-            margin: EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Resim
-                ClipRRect(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                  child: (halisaha.imagesUrl.isNotEmpty)
-                      ? Image.network(
-                    halisaha.imagesUrl.first,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 180,
-                        width: double.infinity,
-                        color: Colors.grey.shade300,
-                        alignment: Alignment.center,
-                        child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
-                      );
-                    },
-                  )
-
-                      : Container(height: 180, color: Colors.grey.shade300),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _searchController.clear();
+                    _selectedCity = null;
+                    _selectedDate = null;
+                    _selectedHourRange = null;
+                  });
+                  _filterHaliSahalar();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                // Bilgiler
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Ad, lokasyon, vs.
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              halisaha.name,
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87),
-                            ),
-                            SizedBox(height: 6),
-                            Row(
+                icon: const Icon(Ionicons.refresh_outline,color: Colors.white,),
+                label: const Text("Filtreleri Temizle",style:TextStyle(fontSize: 16,color: Colors.white),),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      itemCount: halisahalar.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 11),
+      itemBuilder: (context, index) {
+        final saha = halisahalar[index];
+        final isFav = favProv.isFavorite(saha.id);
+
+        return GestureDetector(
+          onTap: () => _openDetail(context, saha),
+          child: Material(
+            elevation: 6,
+            shadowColor: Colors.black26,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── GÖRSEL + BİLGİ BAR ─────────────────────────
+                Stack(
+                  children: [
+                    Hero(
+                      tag: 'saha_${saha.id}',
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image.network(
+                          saha.imagesUrl.isNotEmpty
+                              ? saha.imagesUrl.first
+                              : 'https://via.placeholder.com/640x360?text=No+Image',
+                          fit: BoxFit.cover,
+                          loadingBuilder: (c, w, p) => p == null
+                              ? w
+                              : const Center(
+                              child: CircularProgressIndicator(strokeWidth: 1.6)),
+                        ),
+                      ),
+                    ),
+
+                    // BLUR ALT BANT
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                            color: Colors.black.withOpacity(.35),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.location_on,
-                                    color: Colors.grey.shade700, size: 16),
-                                SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    halisaha.location,
-                                    style:
-                                        TextStyle(color: Colors.grey.shade800),
-                                    overflow: TextOverflow.ellipsis,
+                                Text(
+                                  saha.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
                                   ),
                                 ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.star, color: Colors.amber, size: 16),
-                                SizedBox(width: 4),
-                                Text(
-                                  '${halisaha.rating.toStringAsFixed(1)}',
-                                  style: TextStyle(color: Colors.grey.shade800),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on,
+                                        size: 18, color: Colors.white70),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        saha.location,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${saha.rating.toStringAsFixed(1)} ★',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.monetization_on,
-                                    color: Colors.green.shade700, size: 16),
-                                SizedBox(width: 4),
-                                Text(
-                                  '₺${halisaha.price}',
-                                  style: TextStyle(color: Colors.grey.shade800),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      // Favori ikonu
-                      IconButton(
-                        iconSize: 26,
-                        icon: Icon(
-                          // Gerçek index'i bulmak için
-                          favoriteHalisaha.contains(
-                            _allHaliSahalar.indexWhere(
-                              (element) => element.id == halisaha.id,
+                    ),
+
+                    // FİYAT ROZETİ
+                    Positioned(
+                      top: 14,
+                      left: 14,
+                      child: _priceBadge(saha.price),
+                    ),
+
+                    // FAVORİ BUTON
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(24),
+                        onTap: () => context.read<FavoritesProvider>().toggleFavorite(saha.id),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.82),
+                            shape: BoxShape.circle,
+                          ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 120),
+                            child: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              key: ValueKey(isFav),
+                              size: 22,
+                              color: isFav ? Colors.redAccent : Colors.grey.shade600,
                             ),
-                          )
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: favoriteHalisaha.contains(
-                                  _allHaliSahalar.indexWhere(
-                                      (element) => element.id == halisaha.id))
-                              ? Colors.redAccent
-                              : Colors.grey.shade500,
+                          ),
                         ),
-                        onPressed: () {
-                          _toggleFavorite(index);
-                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -557,17 +550,62 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     );
   }
 
-  /// Bildirim alt panelini açan fonksiyon
-  void _showNotificationPanel(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+
+  // ────────────────────────────────────────────────────────────
+  Widget _priceBadge(num fiyat) => ClipRRect(
+    borderRadius: BorderRadius.circular(14),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      child: Container(
+        padding:
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.18),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFF43A047).withOpacity(.65),
+            width: 1.4,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black38,
+              offset: Offset(0, 2),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Text(
+          '₺$fiyat',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
       ),
-      builder: (BuildContext context) {
-        return UserNotificationPanel(currentUser: widget.currentUser,);
-      },
+    ),
+  );
+
+
+
+  // ────────────────────────────────────────────────────────────
+  void _openDetail(BuildContext ctx, HaliSaha saha) {
+    Navigator.of(ctx).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, __, ___) =>
+            HaliSahaDetailPage(
+              haliSaha: saha,
+              currentUser: widget.currentUser,
+            ),
+        transitionsBuilder: (_, anim, __, child) => ScaleTransition(
+          scale: Tween(begin: .94, end: 1.0)
+              .chain(CurveTween(curve: Curves.easeOutCubic))
+              .animate(anim),
+          child: FadeTransition(opacity: anim, child: child),
+        ),
+      ),
     );
   }
 }

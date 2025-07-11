@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 
 class SubscriptionDetailPage extends StatefulWidget {
   final Person currentUser;
@@ -37,7 +38,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
   @override
   Widget build(BuildContext context) {
     // Ana mavi renk - uygulamanın diğer sayfalarındaki mavi ile uyumlu
-    final Color primaryBlue = Color(0xFF1976D2);
+    final Color primaryBlue = AppColors.secondary;
     final Color lightBgColor = Color(0xFFE3F2FD);
 
     return Scaffold(

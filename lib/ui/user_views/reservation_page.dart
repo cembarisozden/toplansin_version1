@@ -11,6 +11,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/views/no_internet_screen.dart';
 
 class ReservationPage extends StatefulWidget {
@@ -309,7 +310,7 @@ class _ReservationPageState extends State<ReservationPage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text("Rezervasyon Yap", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.primary,
         centerTitle: true,
         leading: IconButton(
           onPressed: () {
