@@ -24,7 +24,7 @@ class _OwnerProfileSettingsState extends State<OwnerProfileSettings> {
   void initState() {
     super.initState();
     name = widget.currentOwner.name;
-    phone = widget.currentOwner.phone;
+    phone = widget.currentOwner.phone ?? "";
   }
 
   Future<void> _updateProfile() async {

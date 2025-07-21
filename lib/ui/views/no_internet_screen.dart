@@ -1,3 +1,4 @@
+/*
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
@@ -206,3 +207,4 @@ class NoInternetScreen extends StatelessWidget {
     );
   }
 }
+*/

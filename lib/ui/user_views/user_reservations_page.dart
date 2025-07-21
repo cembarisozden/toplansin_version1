@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ionicons/ionicons.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 
 class UserReservationsPage extends StatefulWidget {
@@ -149,16 +152,13 @@ class _UserReservationsPageState extends State<UserReservationsPage>
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.green.shade800),
+                    icon: Icon(Ionicons.arrow_back_outline, color: AppColors.primary),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Text('Rezervasyonlarım',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800)),
+                        style: AppTextStyles.titleLarge.copyWith(color:AppColors.primary)),
                   ),
                   const SizedBox(width: 48),
                 ],
@@ -166,6 +166,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
               const SizedBox(height: 12),
               TextField(
                 decoration: InputDecoration(
+                  hintStyle: AppTextStyles.bodyMedium,
                   hintText: 'Rezervasyon ara...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
@@ -310,11 +311,8 @@ class ReservationCard extends StatelessWidget {
             ),
             child: Text(
               reservation.haliSahaName,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium.copyWith(fontWeight:FontWeight.w600,color: Colors.white,overflow: TextOverflow.ellipsis),
+
             ),
           ),
 
@@ -351,11 +349,7 @@ class ReservationCard extends StatelessWidget {
                   ),
                   child: Text(
                     reservation.status,
-                    style: TextStyle(
-                      color: _fg(reservation.status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: AppTextStyles.bodySmall.copyWith(color: _fg(reservation.status)),
                   ),
                 );
                 final actionBtn = ElevatedButton(
@@ -378,7 +372,7 @@ class ReservationCard extends StatelessWidget {
                     (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi')
                         ? 'Detaylar'
                         : 'Düzenle',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style:  AppTextStyles.bodySmall.copyWith(color: Colors.white,fontWeight: FontWeight.w400),
                   ),
                 );
                 return narrow

@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
@@ -8,13 +9,15 @@ import 'package:toplansin/core/providers/HomeProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/banner/phone_verify_banner.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
+import 'package:toplansin/ui/user_views/user_settings_page.dart';
 import '../../data/entitiy/person.dart';
 import '../user_views/user_reservations_page.dart';
 import '../user_views/subscription_detail_page.dart';
 import '../user_views/shared/theme/app_colors.dart';
 
 class DashboardBody extends StatefulWidget {
-
   Person? user;
 
   DashboardBody({super.key, this.user});
@@ -24,7 +27,8 @@ class DashboardBody extends StatefulWidget {
 }
 
 class _DashboardBodyState extends State<DashboardBody> {
-  List<HaliSaha> favoriteHaliSahalar=[];
+  List<HaliSaha> favoriteHaliSahalar = [];
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -35,19 +39,31 @@ class _DashboardBodyState extends State<DashboardBody> {
 
   @override
   Widget build(BuildContext context) {
-    favoriteHaliSahalar=context.watch<HomeProvider>().favoriteHaliSahalar;
+    final noPhone = (widget.user?.phone ?? '').isEmpty;
+    favoriteHaliSahalar = context.watch<HomeProvider>().favoriteHaliSahalar;
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-              Expanded(
+          child: Column(
+            children: [
+        if (noPhone)
+          PhoneVerifyBanner(
+            onAction: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserSettingsPage(currentUser: widget.user!),
+              ),
+            ),
+          ),
+        
+        Expanded(
                 child: CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
@@ -62,67 +78,67 @@ class _DashboardBodyState extends State<DashboardBody> {
                           child: infoBanner(
                             context: context,
                             text:
-                            'Hey kaptan, tüm abonelik ve rezervasyonlarını aşağıdan görüntüleyebilirsin, kontrol sende!',
-                            icon: Ionicons.caret_down_outline,           // ister başka ikon
-                            iconColor: AppColors.secondary,           // marka rengin
+                                'Hey kaptan, tüm abonelik ve rezervasyonlarını aşağıdan görüntüleyebilirsin, kontrol sende!',
+                            icon: Ionicons.caret_down_outline, // ister başka ikon
+                            iconColor: AppColors.secondary, // marka rengin
                             // gradientStart / gradientEnd / borderColor vb. parametreleri
                             // geçmezsen varsayılanlar kullanılır.
                           ),
                         ),
                       ),
-
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                         sliver: SliverToBoxAdapter(
                             child: _actionRow(widget.user!, context)),
                       ),
-                        SliverPadding(
-                          padding:const EdgeInsets.fromLTRB(20,20, 20, 0),
-                          sliver:SliverToBoxAdapter(
-                            child: infoBanner(
-                                context: context,
-                                text: "Hemen başla, müsait saatleri kaçırma!",
-                                icon: Ionicons.football_outline
-                            ),
-                          ) ,
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: infoBanner(
+                              context: context,
+                              text: "Hemen başla, müsait saatleri kaçırma!",
+                              icon: Ionicons.football_outline),
                         ),
-
-
-                      SliverPadding(
-                        padding:EdgeInsets.fromLTRB(20, 20, 20, 0) ,
-                        sliver:SliverToBoxAdapter(
-                          child:favoritesPitches(
-                            favoriteHaliSahalar:favoriteHaliSahalar,
-                            user: widget.user!,
-                            onSeeAllTap: () {
-                              Navigator.push(context, MaterialPageRoute(
-                                builder: (_) => FavorilerPage(currentUser: widget.user!),
-                              ));
-                            },
-                          ),
-                        ) ,
                       ),
                       SliverPadding(
-                        padding:EdgeInsets.fromLTRB(20, 20, 20, 0) ,
-                        sliver:SliverToBoxAdapter(
-                          child:trendPitches(
-                            favoriteHaliSahalar:favoriteHaliSahalar,
+                        padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: favoritesPitches(
+                            favoriteHaliSahalar: favoriteHaliSahalar,
                             user: widget.user!,
                             onSeeAllTap: () {
-                              Navigator.push(context, MaterialPageRoute(
-                                builder: (_) => FavorilerPage(currentUser: widget.user!),
-                              ));
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        FavorilerPage(currentUser: widget.user!),
+                                  ));
                             },
                           ),
-                        ) ,
+                        ),
                       ),
-
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: trendPitches(
+                            favoriteHaliSahalar: favoriteHaliSahalar,
+                            user: widget.user!,
+                            onSeeAllTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        FavorilerPage(currentUser: widget.user!),
+                                  ));
+                            },
+                          ),
+                        ),
+                      ),
                       const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                    ]
-                ),
+                    ]),
               ),
-
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -133,19 +149,17 @@ class _DashboardBodyState extends State<DashboardBody> {
     required VoidCallback onSeeAllTap,
     required Person user,
   }) {
-    if (favoriteHaliSahalar.isEmpty) return SizedBox.shrink();
+    if (favoriteHaliSahalar.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /*  Başlık + “Tümünü Gör”  */
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
                   Icon(Icons.favorite, color: Colors.red, size: 20),
                   SizedBox(width: 6),
                   Text(
@@ -156,104 +170,106 @@ class _DashboardBodyState extends State<DashboardBody> {
                       color: Color(0xFF1E293B),
                     ),
                   ),
-                ],
-              ),
-              GestureDetector(
-                onTap: onSeeAllTap,
-                child: const Text(
-                  'Tümünü Gör',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF3B82F6),
-                  ),
-                ),
-              ),
+                  Spacer(),
+                  TextButton(
+                    onPressed: onSeeAllTap,
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    child: const Text(
+                      'Tümünü Gör',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3B82F6),
+                      ),
+                    ),
+                  )
+              //  TextButton const olamıyor (callback değişken)
             ],
           ),
         ),
 
+        /*  Yatay kart listesi  */
         SizedBox(
-          height: 100,
+          height: 120,
           child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            // iOS benzeri akıcılık
             scrollDirection: Axis.horizontal,
-            itemCount: favoriteHaliSahalar.length,
+            itemExtent: 132,
+            // 120 + 12 padding
+            addAutomaticKeepAlives: false,
+            // RAM dostu
             padding: const EdgeInsets.symmetric(horizontal: 10),
+            itemCount: favoriteHaliSahalar.length,
             itemBuilder: (context, index) {
               final saha = favoriteHaliSahalar[index];
+
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HaliSahaDetailPage(
-                          currentUser: user,
-                          haliSaha: saha,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Hero(
+                        tag: saha.id,
+                        child: ProgressiveImage(
+                          imageUrl: saha.imagesUrl.first,
+                          width: 120,
+                          height: 120,
+                          borderRadius: 16,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => HaliSahaDetailPage(
+                                currentUser: user,
+                                haliSaha: saha,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 6,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                      image: DecorationImage(
-                        image: NetworkImage(saha.imagesUrl.first),
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.25),
-                          BlendMode.darken,
-                        ),
-                      ),
-                    ),
-                    alignment: Alignment.bottomLeft,
-                    padding: const EdgeInsets.all(8),
-                    child: Stack(
-                      children: [
-                        // Blur kutusu arka plan
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                color: Colors.black.withOpacity(0.25),
-                                child: Text(
-                                  saha.name,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 2,
-                                        offset: Offset(0.5, 0.5),
-                                      ),
-                                    ],
-                                  ),
+
+                      /*── Sadece etiket alanını blur + yarı saydam arka plan ──*/
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(16),
+                          ),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            // düşük maliyet
+                            child: Container(
+                              height: 36,
+                              color: Colors.black45,
+                              // %55 opak
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 8, right: 8),
+                              child: Text(
+                                saha.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      blurRadius: 2,
+                                      offset: Offset(0.5, 0.5),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -263,40 +279,37 @@ class _DashboardBodyState extends State<DashboardBody> {
       ],
     );
   }
-
 
   Widget trendPitches({
     required List<HaliSaha> favoriteHaliSahalar,
     required VoidCallback onSeeAllTap,
     required Person user,
   }) {
-    if (favoriteHaliSahalar.isEmpty) return SizedBox.shrink();
+    if (favoriteHaliSahalar.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        /*  Başlık + “Tümünü Gör”  */
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Icon(Ionicons.flash, color: Colors.red, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    'Trendler',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                ],
+              Icon(Ionicons.flash, color: Colors.orange, size: 20),
+              SizedBox(width: 6),
+              Text(
+                'Trendler',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
               ),
-              GestureDetector(
-                onTap: onSeeAllTap,
+              Spacer(),
+              TextButton(
+                onPressed: onSeeAllTap,
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
                 child: const Text(
                   'Tümünü Gör',
                   style: TextStyle(
@@ -305,92 +318,94 @@ class _DashboardBodyState extends State<DashboardBody> {
                     color: Color(0xFF3B82F6),
                   ),
                 ),
-              ),
+              )
+              //  TextButton const olamıyor (callback değişken)
             ],
           ),
         ),
 
+        /*  Yatay kart listesi  */
         SizedBox(
-          height: 100,
+          height: 120,
           child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            // iOS benzeri akıcılık
             scrollDirection: Axis.horizontal,
-            itemCount: favoriteHaliSahalar.length,
+            itemExtent: 132,
+            // 120 + 12 padding
+            addAutomaticKeepAlives: false,
+            // RAM dostu
             padding: const EdgeInsets.symmetric(horizontal: 10),
+            itemCount: favoriteHaliSahalar.length,
             itemBuilder: (context, index) {
               final saha = favoriteHaliSahalar[index];
+
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HaliSahaDetailPage(
-                          currentUser: user,
-                          haliSaha: saha,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Hero(
+                        tag: "trend"+saha.id,
+                        child: ProgressiveImage(
+                          imageUrl: saha.imagesUrl.first,
+                          width: 120,
+                          height: 120,
+                          borderRadius: 16,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => HaliSahaDetailPage(
+                                currentUser: user,
+                                haliSaha: saha,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    );
-                  },
-                  child: Container(
-                    width: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 6,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                      image: DecorationImage(
-                        image: NetworkImage(saha.imagesUrl.first),
-                        fit: BoxFit.cover,
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.25),
-                          BlendMode.darken,
-                        ),
-                      ),
-                    ),
-                    alignment: Alignment.bottomLeft,
-                    padding: const EdgeInsets.all(8),
-                    child: Stack(
-                      children: [
-                        // Blur kutusu arka plan
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                color: Colors.black.withOpacity(0.25),
-                                child: Text(
-                                  saha.name,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 2,
-                                        offset: Offset(0.5, 0.5),
-                                      ),
-                                    ],
-                                  ),
+
+                      /*── Sadece etiket alanını blur + yarı saydam arka plan ──*/
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(16),
+                          ),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            // düşük maliyet
+                            child: Container(
+                              height: 36,
+                              color: Colors.black45,
+                              // %55 opak
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 8, right: 8),
+                              child: Text(
+                                saha.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black38,
+                                      blurRadius: 2,
+                                      offset: Offset(0.5, 0.5),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -401,13 +416,10 @@ class _DashboardBodyState extends State<DashboardBody> {
     );
   }
 
-
   Widget _welcomeCard(String name) {
     const radius = 32.0;
     const iconSize = 72.0;
-    final firstName = name
-        .split(' ')
-        .first;
+    final firstName = name.split(' ').first;
 
     return Container(
       height: 160,
@@ -443,8 +455,8 @@ class _DashboardBodyState extends State<DashboardBody> {
                     border: Border.all(
                         color: Colors.white.withOpacity(.35), width: 1),
                   ),
-                  child: const Icon(
-                      Icons.sports_soccer, size: 40, color: Colors.white),
+                  child: const Icon(Icons.sports_soccer,
+                      size: 40, color: Colors.white),
                 ),
                 const SizedBox(width: 28),
                 Expanded(
@@ -468,8 +480,8 @@ class _DashboardBodyState extends State<DashboardBody> {
                           )),
                       const SizedBox(height: 10),
                       Row(children: [
-                        const Icon(Icons.flash_on_rounded, size: 20,
-                            color: Colors.amber),
+                        const Icon(Icons.flash_on_rounded,
+                            size: 20, color: Colors.amber),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
@@ -493,11 +505,12 @@ class _DashboardBodyState extends State<DashboardBody> {
       ),
     );
   }
+
   Widget diamondDivider({
-    Color  color     = const Color(0xFF94A3B8), // ana renk
-    double thickness = 1.5,                     // çizgi kalınlığı
-    double gap       = 10,                      // elmas-çizgi arası boşluk
-    double size      = 10,                      // elmas köşegen uzunluğu
+    Color color = const Color(0xFF94A3B8), // ana renk
+    double thickness = 1.5, // çizgi kalınlığı
+    double gap = 10, // elmas-çizgi arası boşluk
+    double size = 10, // elmas köşegen uzunluğu
   }) {
     // Tek satırda çağırılabilir bölücüyü döndürür
     return Row(
@@ -553,16 +566,16 @@ class _DashboardBodyState extends State<DashboardBody> {
 
   Widget infoBanner({
     required BuildContext context,
-    required String   text,
-    IconData          icon           = Icons.info,
-    Color             iconColor      = const Color(0xFF3B82F6),
-    Color             gradientStart  = const Color(0xFFF8FAFC),
-    Color             gradientEnd    = const Color(0xFFE2E8F0),
-    Color             borderColor    = const Color(0xFFD1D5DB),
-    EdgeInsetsGeometry padding       =
-    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    double            radius         = 14,
-    double            fontSize       = 15,
+    required String text,
+    IconData icon = Icons.info,
+    Color iconColor = const Color(0xFF3B82F6),
+    Color gradientStart = const Color(0xFFF8FAFC),
+    Color gradientEnd = const Color(0xFFE2E8F0),
+    Color borderColor = const Color(0xFFD1D5DB),
+    EdgeInsetsGeometry padding =
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    double radius = 14,
+    double fontSize = 15,
   }) {
     return Container(
       padding: padding,
@@ -593,17 +606,16 @@ class _DashboardBodyState extends State<DashboardBody> {
             child: Text(
               text,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1E293B),
-              ),
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E293B),
+                  ),
             ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _blurBubble(double size, double opacity) {
     return Container(
@@ -622,29 +634,28 @@ class _DashboardBodyState extends State<DashboardBody> {
         context: context,
         icon: Ionicons.calendar_outline,
         title: 'Rezervasyonlarım',
-        buttonColors:LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
-        onTap: (context) =>
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const UserReservationsPage()),
-            ),
+        buttonColors:
+            LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+        onTap: (context) => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UserReservationsPage()),
+        ),
       ),
       const SizedBox(width: 16),
       _actionBtn(
         context: context,
         icon: Ionicons.repeat_outline,
         title: 'Aboneliklerim',
-        buttonColors:LinearGradient(colors: [AppColors.secondary, AppColors.secondaryDark]),
-        onTap: (context) =>
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => SubscriptionDetailPage(currentUser: user)),
-            ),
+        buttonColors: LinearGradient(
+            colors: [AppColors.secondary, AppColors.secondaryDark]),
+        onTap: (context) => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => SubscriptionDetailPage(currentUser: user)),
+        ),
       ),
     ]);
   }
-
 
   Widget _actionBtn({
     required IconData icon,
@@ -678,8 +689,8 @@ class _DashboardBodyState extends State<DashboardBody> {
               children: [
                 Icon(icon, color: Colors.white, size: 25),
                 const SizedBox(width: 8),
-                  Expanded(child:
-                  Text(
+                Expanded(
+                  child: Text(
                     title,
                     textAlign: TextAlign.center,
                     maxLines: 1,
@@ -690,7 +701,7 @@ class _DashboardBodyState extends State<DashboardBody> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  ),
+                ),
               ],
             ),
           ),

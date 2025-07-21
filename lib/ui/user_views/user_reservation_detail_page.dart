@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 
 class UserReservationDetailPage extends StatefulWidget {
   final Reservation reservation;
@@ -238,21 +239,18 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                       final List images = data?['imagesUrl'] ?? [];
                       final String imageUrl = images.isNotEmpty ? images.first : defaultImageUrl;
 
-                      return Image.network(
-                        imageUrl,
-                        width: double.infinity,
-                        height: 180,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: double.infinity,
-                            height: 180,
-                            color: Colors.grey.shade300,
-                            alignment: Alignment.center,
-                            child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
-                          );
-                        },
+                      return SizedBox(
+                        width: double.infinity,      // dışarıdan gelen genişlik korunur
+                        height: 180,                 // eski sabit yükseklik
+                        child: ProgressiveImage(
+                          imageUrl: imageUrl.isNotEmpty
+                              ? imageUrl
+                              : null, // yerel yedek görsel
+                          fit: BoxFit.cover,
+                          borderRadius: 0,                    // yuvarlama yok
+                        ),
                       );
+
                     },
                   ),
                 ),

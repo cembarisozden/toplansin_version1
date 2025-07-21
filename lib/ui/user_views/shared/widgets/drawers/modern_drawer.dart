@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/ui/user_views/about_help_page.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
@@ -119,6 +120,14 @@ class ModernDrawer extends StatelessWidget {
                         color: Colors.grey.shade700,
                         page:
                         UserSettingsPage(currentUser: currentUser),
+                      ),
+                      _tile(
+                        context,
+                        icon: Ionicons.information_circle_outline,
+                        label: 'Hakkında & Yardım',
+                        color: Colors.grey.shade700,
+                        page:
+                        AboutHelpPage(),
                       ),
                       const Divider(thickness: .8),
                       _tile(

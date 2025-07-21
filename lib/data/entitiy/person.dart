@@ -2,7 +2,7 @@ class Person {
   String id;
   String name;
   String email;
-  String phone;
+  String? phone;
   String role; // Rol alanı eklendi
   String? fcmToken;
 
@@ -10,7 +10,7 @@ class Person {
     required this.id,
     required this.name,
     required this.email,
-    required this.phone,
+    this.phone,
     required this.role, // Yeni alan eklendi
   });
 
@@ -35,4 +35,21 @@ class Person {
       role: map['role'] as String? ?? 'unknown', // Varsayılan rol 'user' olabilir
     );
   }
+
+  Person copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? phone,
+    String? role,
+  }) {
+    return Person(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+    );
+  }
 }
+

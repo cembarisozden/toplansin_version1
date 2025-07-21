@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
@@ -24,7 +25,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // TextEditingController'lar
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // Şifre görünür/gizli kontrolü
   bool showPassword = false;
@@ -48,10 +50,11 @@ class _SignUpPageState extends State<SignUpPage> {
   // Şifre gücü ölçüm fonksiyonu (0-4 arası puanlama)
   void _checkPasswordStrength(String pass) {
     int score = 0;
-    if (pass.length >= 8) score++;  // 1) En az 8 karakter
+    if (pass.length >= 8) score++; // 1) En az 8 karakter
     if (RegExp(r'[0-9]').hasMatch(pass)) score++; // 2) En az 1 rakam
     if (RegExp(r'[A-Za-z]').hasMatch(pass)) score++; // 3) En az 1 harf
-    if (RegExp(r'[^A-Za-z0-9]').hasMatch(pass)) score++; // 4) En az 1 özel karakter
+    if (RegExp(r'[^A-Za-z0-9]').hasMatch(pass))
+      score++; // 4) En az 1 özel karakter
 
     switch (score) {
       case 0:
@@ -110,7 +113,7 @@ class _SignUpPageState extends State<SignUpPage> {
       try {
         // Firebase Authentication ile kullanıcı oluştur
         UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
+            await _auth.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
@@ -142,10 +145,8 @@ class _SignUpPageState extends State<SignUpPage> {
           SnackBar(content: Text('Kayıt başarısız: $msg')),
         );
       }
-
     }
   }
-
 
   // E-posta doğrulama uyarısı
   void _showVerificationDialog() {
@@ -155,7 +156,8 @@ class _SignUpPageState extends State<SignUpPage> {
         return AlertDialog(
           backgroundColor: Colors.white,
           title: Text('Doğrulama E-postası Gönderildi'),
-          content: Text('Lütfen e-postanızı kontrol ederek hesabınızı doğrulayın.'),
+          content:
+              Text('Lütfen e-postanızı kontrol ederek hesabınızı doğrulayın.'),
           actions: [
             TextButton(
               onPressed: () {
@@ -180,7 +182,11 @@ class _SignUpPageState extends State<SignUpPage> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.green[400]!, Colors.green[500]!, Colors.green[600]!],
+            colors: [
+              Colors.green[400]!,
+              Colors.green[500]!,
+              Colors.green[600]!
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -194,7 +200,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.sports_soccer, color: Colors.green, size: 50),
+                  child:
+                      Icon(Icons.sports_soccer, color: Colors.green, size: 50),
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -229,6 +236,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       key: _formKey,
                       child: Column(
                         children: [
+                          SizedBox(height: 12,),
                           // Ad Soyad
                           _buildTextField(
                             label: 'Ad Soyad',
@@ -263,26 +271,10 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                           SizedBox(height: 16),
 
-                          // Telefon
-                          _buildTextField(
-                            label: 'Telefon',
-                            icon: Icons.phone,
-                            keyboardType: TextInputType.phone,
-                            onSaved: (value) => phone = value ?? '',
-                            validator: (value) {
-                              if (value == null ||
-                                  value.isEmpty ||
-                                  value.length < 10) {
-                                return 'Lütfen geçerli bir telefon numarası giriniz';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 16),
-
                           // Şifre
                           TextFormField(
-                            controller: _passwordController, // Controller ekleyin
+                            controller: _passwordController,
+                            // Controller ekleyin
                             decoration: InputDecoration(
                               labelText: "Şifre",
                               prefixIcon: Icon(Icons.lock, color: Colors.green),
@@ -292,8 +284,8 @@ class _SignUpPageState extends State<SignUpPage> {
                                       ? Icons.visibility_off
                                       : Icons.visibility,
                                 ),
-                                onPressed: () =>
-                                    setState(() => showPassword = !showPassword),
+                                onPressed: () => setState(
+                                    () => showPassword = !showPassword),
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -306,7 +298,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             onChanged: (value) {
                               _checkPasswordStrength(value);
                               setState(() {
-                                password = value; // Anlık olarak şifreyi güncelleyin
+                                password =
+                                    value; // Anlık olarak şifreyi güncelleyin
                               });
                             },
                             onSaved: (value) => password = value ?? '',
@@ -320,18 +313,20 @@ class _SignUpPageState extends State<SignUpPage> {
 
                           // Şifre Tekrar
                           TextFormField(
-                            controller: _confirmPasswordController, // Controller ekleyin
+                            controller: _confirmPasswordController,
+                            // Controller ekleyin
                             decoration: InputDecoration(
                               labelText: "Şifre Tekrar",
-                              prefixIcon: Icon(Icons.lock_outline, color: Colors.green),
+                              prefixIcon:
+                                  Icon(Icons.lock_outline, color: Colors.green),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   showConfirmPassword
                                       ? Icons.visibility_off
                                       : Icons.visibility,
                                 ),
-                                onPressed: () => setState(
-                                        () => showConfirmPassword = !showConfirmPassword),
+                                onPressed: () => setState(() =>
+                                    showConfirmPassword = !showConfirmPassword),
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -345,7 +340,8 @@ class _SignUpPageState extends State<SignUpPage> {
                               if (value == null || value.isEmpty) {
                                 return "Şifre tekrar alanı boş olamaz";
                               }
-                              if (value != _passwordController.text) { // Controller ile karşılaştırın
+                              if (value != _passwordController.text) {
+                                // Controller ile karşılaştırın
                                 return "Şifreler eşleşmiyor";
                               }
                               return null;
@@ -494,5 +490,44 @@ class _SignUpPageState extends State<SignUpPage> {
       validator: validator,
     );
   }
-}
 
+  /// Sabit +90’lı telefon alanı
+  Widget buildPhoneField({
+    required void Function(String?) onSaved,
+    String label = 'Telefon (isteğe bağlı)',
+  }) {
+    return TextFormField(
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: '5XXXXXXXXX',                    // örnek 10 hane
+        prefixText: '+90 ',
+        prefixIcon: const Icon(Icons.phone, color: Colors.green),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.green),
+        ),
+      ),
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,      // yalnızca rakam
+        LengthLimitingTextInputFormatter(10),        // en çok 10 hane
+      ],
+      // Opsiyonel alan: boş bırakılırsa hata yok
+      validator: (value) {
+        if (value == null || value.isEmpty) return null;
+        if (value.length != 10) {
+          return 'Lütfen 10 haneli telefon numarası giriniz';
+        }
+        return null;
+      },
+      onSaved: (value) {
+        // Hiçbir şey girilmediyse DB’ye null gönder
+        if (value == null || value.isEmpty) {
+          onSaved(null);                             // ➜ kaydedilmez
+        } else {
+          onSaved('+90$value');                      // ➜ +90XXXXXXXXXX
+        }
+      },
+    );
+  }
+}

@@ -39,4 +39,23 @@ class Reviews {
       user_name: json['user_name'] as String,
     );
   }
+
+  Reviews copyWith({
+    String? docId,
+    String? comment,
+    double? rating,
+    DateTime? datetime,
+    String? userId,
+    String? user_name,
+  }) {
+    return Reviews(
+      docId: docId ?? this.docId,
+      comment: comment ?? this.comment,
+      rating: rating ?? this.rating,
+      datetime: datetime ?? this.datetime,
+      userId: userId ?? this.userId,
+      user_name: user_name ?? this.user_name,
+    );
+  }
+
 }

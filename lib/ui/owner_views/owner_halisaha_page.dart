@@ -37,7 +37,6 @@ class OwnerHalisahaPage extends StatefulWidget {
 class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   DateTime selectedDate = TimeService.now();
   String? selectedTime;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<QuerySnapshot>? _allReservationsSubscription;
   StreamSubscription<QuerySnapshot>? _TodaysApprovedReservationsSubscription;
@@ -831,7 +830,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                                       ownerName: widget
                                                           .currentOwner.name,
                                                       ownerPhone: widget
-                                                          .currentOwner.phone,
+                                                          .currentOwner.phone ?? "",
                                                       ownerEmail: widget
                                                           .currentOwner.email,
                                                     );
@@ -1244,10 +1243,22 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   _buildTextField("Kapanış Saati", endHourController,
                       maxLength: 5),
                   _buildTextField("Açıklama", descriptionController,
-                      isMultiline: true, maxLength: 300),
+                      isMultiline: true, maxLength: 500),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _updateHaliSaha,
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                      // 1) Yükleniyor durumunu başlat
+                      setState(() => _isLoading = true);
+
+                      // 2) Asenkron güncelleme metodunu çağır
+                      await _updateHaliSaha();
+
+                      // 3) Yükleniyor durumunu bitir
+                      setState(() => _isLoading = false);
+
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade600,
                       shape: RoundedRectangleBorder(
@@ -1367,7 +1378,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     TextEditingController controller, {
     bool isNumber = false,
     bool isMultiline = false,
-    int maxLength = 300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
+    int maxLength = 500, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -3304,7 +3315,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         createdAt: TimeService.now(),
         userName: widget.currentOwner.name,
         userEmail: widget.currentOwner.email,
-        userPhone: widget.currentOwner.phone,
+        userPhone: widget.currentOwner.phone ?? "",
         lastUpdatedBy: widget.currentOwner.role,
       );
 

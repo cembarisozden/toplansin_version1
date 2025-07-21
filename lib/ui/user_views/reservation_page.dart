@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
@@ -12,7 +12,6 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
-import 'package:toplansin/ui/views/no_internet_screen.dart';
 
 class ReservationPage extends StatefulWidget {
   final HaliSaha haliSaha;
@@ -25,7 +24,6 @@ class ReservationPage extends StatefulWidget {
 }
 
 class _ReservationPageState extends State<ReservationPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   DateTime selectedDate = TimeService.now();
@@ -41,33 +39,7 @@ class _ReservationPageState extends State<ReservationPage> {
     super.initState();
     _initSelectedDate();
     listenBookedSlots(widget.haliSaha);
-    _internetConnectionStreamSubscription =
-        InternetConnection().onStatusChange.listen((event) {
-          print(event);
-          switch (event) {
-            case InternetStatus.connected:
-              setState(() {
-                isConnectedToInternet = true;
-              });
-              break;
-            case InternetStatus.disconnected:
-              setState(() {
-                isConnectedToInternet = false;
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => NoInternetScreen()),
-                      (route) =>
-                  false, // Bu, önceki tüm rotaların kaldırılmasını sağlar.
-                );
-              });
-              break;
-            default:
-              setState(() {
-                isConnectedToInternet = false;
-              });
-              break;
-          }
-        });
+
   }
 
   @override
@@ -235,7 +207,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 bookingWindowEnd)} arası rezervasyon yapılabilir.",
           ),
           duration: Duration(seconds: 3),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.info,
         ),
       );
       // Ay değişikliği yapma - mevcut ayda kalır
@@ -639,7 +611,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 backgroundColor: selectedTime != null
                     ? Colors.green.shade700
                     : Colors.grey.shade300,
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: 16,horizontal: 24),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -647,8 +619,7 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
               child: Text(
                 selectedTime != null
-                    ? "${DateFormat.yMMMd('tr_TR').format(
-                    selectedDate)} ${selectedTime!} için Rezervasyon Yap"
+                    ? "Rezervasyon Yap"
                     : "Lütfen bir tarih ve saat seçin",
                 style: TextStyle(
                   color: selectedTime != null ? Colors.white : Colors.grey[600],
@@ -749,7 +720,7 @@ class _ReservationPageState extends State<ReservationPage> {
       String userId = _auth.currentUser!.uid;
       String userName = widget.currentUser.name ?? "Name";
       String userEmail = widget.currentUser.email ?? 'email@example.com';
-      String userPhone = widget.currentUser.phone;
+      String? userPhone = widget.currentUser.phone;
 
       DocumentReference docRef;
 
@@ -777,7 +748,7 @@ class _ReservationPageState extends State<ReservationPage> {
         createdAt: TimeService.now(),
         userName: userName,
         userEmail: userEmail,
-        userPhone: userPhone,
+        userPhone: userPhone ?? "",
         lastUpdatedBy: widget.currentUser.role,
       );
       print("Firestore'a yazılacak veri: ${newReservation.toMap()}");
@@ -899,8 +870,9 @@ class _ReservationPageState extends State<ReservationPage> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  Container(
-                    padding: EdgeInsets.all(12),
+                  Center(
+                    child:Container(
+                    padding: EdgeInsets.only(top: 12, bottom: 12, left: 32, right: 32),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -914,8 +886,9 @@ class _ReservationPageState extends State<ReservationPage> {
                         color: Colors.green.shade900,
                       ),
                     ),
-                  ),
-                  SizedBox(height: 24),
+                  ),),
+
+                  SizedBox(height: 18),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -933,10 +906,19 @@ class _ReservationPageState extends State<ReservationPage> {
                       ),
                       SizedBox(width: 8),
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _makeReservation(selectedTime!);
+                        onPressed: () async {
+                          Navigator.of(context).pop(); // varsa dialog kapat
+                          showOverlayLoader(context);  // spinner başlat
+
+                          try {
+                            await _makeReservation(selectedTime!); // işlemi bekle
+                          } catch (e) {
+                            print('HATA: $e');
+                          } finally {
+                            hideOverlayLoader(); // spinner her durumda kapanır
+                          }
                         },
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
@@ -963,4 +945,38 @@ class _ReservationPageState extends State<ReservationPage> {
       },
     );
   }
+  OverlayEntry? _loader;
+
+  void showOverlayLoader(BuildContext context) {
+    _loader = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Arka plan hafif karanlık (bulanık değil)
+          ModalBarrier(
+            color: Colors.black.withOpacity(0.2),
+            dismissible: false,
+          ),
+
+          // Ortada sadece yeşil spinner
+          const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 4,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context, rootOverlay: true).insert(_loader!);
+  }
+
+
+  void hideOverlayLoader() {
+    _loader?.remove();
+    _loader = null;
+  }
+
+
+
 }

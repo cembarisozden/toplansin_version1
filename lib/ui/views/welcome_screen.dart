@@ -1,10 +1,7 @@
 import 'dart:async';
 
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
-import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
-import 'package:toplansin/ui/views/no_internet_screen.dart';
 import 'dart:math' as math;
 
 import 'package:toplansin/ui/views/sign_up_page.dart';
@@ -46,33 +43,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
     )..repeat(reverse: true);
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
-    _internetConnectionStreamSubscription=
-        InternetConnection().onStatusChange.listen((event){
-          print(event);
-          switch(event){
-            case InternetStatus.connected:
-              setState(() {
-                isConnectedToInternet=true;
-              });
-              break;
-            case InternetStatus.disconnected:
-              setState(() {
-                isConnectedToInternet=false;
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => NoInternetScreen()),
-                      (route) => false, // Bu, önceki tüm rotaların kaldırılmasını sağlar.
-                );
-
-              });
-              break;
-            default:
-              setState(() {
-                isConnectedToInternet=false;
-              });
-              break;
-          }
-    });
   }
   @override
   void dispose() {
