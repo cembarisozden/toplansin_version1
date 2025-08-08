@@ -159,11 +159,16 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw 'Kullanıcı bulunamadı.';
+
       await user.linkWithCredential(cred);
-      final ref = FirebaseFirestore.instance
+      await user.reload(); // 🔥 KULLANICIYI GÜNCELLE
+      final updatedUser = FirebaseAuth.instance.currentUser;
+
+      await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid);
-      await ref.set({'phone': phone}, SetOptions(merge: true));
+          .doc(updatedUser!.uid)
+          .set({'phone': phone}, SetOptions(merge: true));
+
       widget.onVerified();
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -172,6 +177,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
       if (mounted) setState(() => busy = false);
     }
   }
+
 
   void _showError(String message) {
     if (!mounted) return;

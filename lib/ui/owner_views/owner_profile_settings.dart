@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 
 class OwnerProfileSettings extends StatefulWidget {
   final Person currentOwner;
@@ -46,21 +47,11 @@ class _OwnerProfileSettingsState extends State<OwnerProfileSettings> {
         // Firebase Authentication'da displayName güncelleme
         await FirebaseAuth.instance.currentUser?.updateDisplayName(name);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Profil başarıyla güncellendi.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppSnackBar.success(context,'Profil başarıyla güncellendi.');
       } catch (e) {
         final msg = AppErrorHandler.getMessage(e, context: 'user');
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Profil güncellenemedi: $msg'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context,'Profil güncellenemedi: $msg');
       } finally {
         setState(() {
           isLoading = false;

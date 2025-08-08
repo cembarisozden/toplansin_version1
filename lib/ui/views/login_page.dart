@@ -8,6 +8,8 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -34,6 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
+    showLoader(context);
     try {
       /* ───── 1) Firebase Auth ───── */
       final cred = await _auth.signInWithEmailAndPassword(
@@ -54,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final uid = cred.user?.uid;
       if (uid == null) {
-        _snack('Giriş başarısız: Kullanıcı bulunamadı.', Colors.red);
+        AppSnackBar.error(context, "Giriş başarısız kullanıcı bulunamadı.");
         return;
       }
 
@@ -84,12 +87,14 @@ class _LoginPageState extends State<LoginPage> {
     /* ───── 6) Hata yakalama ───── */
     on FirebaseException catch (e) {
       final msg = AppErrorHandler.getMessage(e);
-      _snack('Hata: $msg', Colors.red);
+      AppSnackBar.error(context, msg);
       await _auth.signOut();
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
-      _snack('Hata: $msg', Colors.red);
+      AppSnackBar.error(context, msg);
       await _auth.signOut();
+    }finally{
+      hideLoader();
     }
   }
 
@@ -120,13 +125,6 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     return Person.fromMap(snap.data()!); // rol artık owner/user olmalı
-  }
-
-  void _snack(String msg, Color c) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: c),
-    );
   }
 
   @override
@@ -493,14 +491,7 @@ class _LoginPageState extends State<LoginPage> {
       // user-not-found dahil tüm hataları yutarız → enumeration koruması
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            "Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi."
-        ),
-        backgroundColor: Colors.green.shade700,
-      ),
-    );
+    AppSnackBar.show(context,"Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi.");
   }
 
 
@@ -527,13 +518,10 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await _auth.currentUser?.sendEmailVerification();
       startCountdown();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Doğrulama e-postası tekrar gönderildi.")),
-      );
+      AppSnackBar.show(context,"Doğrulama e-postası tekrar gönderildi.");
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("E-posta gönderilemedi: $e")),
-      );
+      final msg = AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, msg);
     }
   }
 

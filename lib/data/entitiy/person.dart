@@ -5,6 +5,7 @@ class Person {
   String? phone;
   String role; // Rol alanı eklendi
   String? fcmToken;
+  List<String>? fieldAccessCodes;
 
   Person({
     required this.id,
@@ -12,6 +13,7 @@ class Person {
     required this.email,
     this.phone,
     required this.role, // Yeni alan eklendi
+    this.fieldAccessCodes,
   });
 
   // toMap fonksiyonu
@@ -22,6 +24,8 @@ class Person {
       'email': email,
       'phone': phone,
       'role': role, // Rol alanı ekleniyor
+      'fieldAccessCodes': fieldAccessCodes,
+
     };
   }
 
@@ -33,6 +37,7 @@ class Person {
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       role: map['role'] as String? ?? 'unknown', // Varsayılan rol 'user' olabilir
+      fieldAccessCodes: List<String>.from(map['fieldAccessCodes'] ?? []),
     );
   }
 
@@ -42,6 +47,7 @@ class Person {
     String? email,
     String? phone,
     String? role,
+    List<String>? fieldAccessCodes,
   }) {
     return Person(
       id: id ?? this.id,
@@ -49,6 +55,7 @@ class Person {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       role: role ?? this.role,
+      fieldAccessCodes: fieldAccessCodes ?? this.fieldAccessCodes,
     );
   }
 }

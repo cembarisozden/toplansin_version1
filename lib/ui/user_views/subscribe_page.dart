@@ -8,6 +8,8 @@ import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 class SubscribePage extends StatefulWidget {
   HaliSaha halisaha;
@@ -136,7 +138,7 @@ class _SubscribePageState extends State<SubscribePage> {
 
   Future<void> _handleSubscriptionConfirmation(BuildContext context) async {
     Navigator.pop(context); // önce onay dialog’unu kapat
-
+    showLoader(context);
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
     final createdAt = TimeService.now();
@@ -153,7 +155,6 @@ class _SubscribePageState extends State<SubscribePage> {
       price: widget.halisaha.price,
       startDate: startDate,
       endDate: "",
-      visibleSession: startDate,
       nextSession: startDate,
       lastUpdatedBy: 'user',
       status: 'Beklemede',
@@ -164,25 +165,12 @@ class _SubscribePageState extends State<SubscribePage> {
 
     try {
       if (await _hasReachedInstantSubscriptionLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.',
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackBar.warning(context, 'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
         return;
       }
 
       if (await _hasReachedDailyCancelLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+          AppSnackBar.warning(context, 'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
         return;
       }
 
@@ -191,16 +179,15 @@ class _SubscribePageState extends State<SubscribePage> {
       print("userPhone: ${widget.user.phone}");
       print("userEmail: ${widget.user.email}");
 
+      hideLoader();
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Abonelik gönderilirken bir hata oluştu.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Abonelik gönderilirken bir hata oluştu.');
       print("Abone olma hatası: $e");
+    }
+    finally{
+      hideLoader();
     }
   }
 

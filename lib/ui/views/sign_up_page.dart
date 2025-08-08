@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 
@@ -102,14 +104,14 @@ class _SignUpPageState extends State<SignUpPage> {
       // Tüm onSaved fonksiyonlarını tetikler
       _formKey.currentState!.save();
 
+
+      showLoader(context);
+
       // (Opsiyonel) Son bir kez password/confirmPassword eşit mi diye bakabilirsiniz
       if (password != confirmPassword) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Şifreler eşleşmiyor!")),
-        );
+        AppSnackBar.error(context,"Şifreler Eşleşmiyor!");
         return;
       }
-
       try {
         // Firebase Authentication ile kullanıcı oluştur
         UserCredential userCredential =
@@ -140,10 +142,10 @@ class _SignUpPageState extends State<SignUpPage> {
         _showVerificationDialog();
       } catch (e) {
         final msg = AppErrorHandler.getMessage(e, context: 'auth');
+        AppSnackBar.error(context,"Kayıt Başarısız: $msg");
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kayıt başarısız: $msg')),
-        );
+      }finally{
+        hideLoader();
       }
     }
   }

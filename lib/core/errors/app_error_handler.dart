@@ -166,5 +166,5 @@ class AppErrorHandler {
   // ------------------------------------------------------------
   // 🔚 Genel bilinmeyen mesaj
   // ------------------------------------------------------------
-  static const String _unknown = 'Bir hata oluştu. Lütfen tekrar deneyin.';
+  static const String _unknown = 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.';
 }

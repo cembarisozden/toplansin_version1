@@ -1,9 +1,10 @@
 import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'dart:math' as math;
-
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -11,56 +12,47 @@ class WelcomeScreen extends StatefulWidget {
   _WelcomeScreenState createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProviderStateMixin {
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with SingleTickerProviderStateMixin {
   final List<Map<String, String>> features = [
-    {"title": "Hızlı Rezervasyon", "description": "Tek tıkla halı saha rezervasyonu yap", "icon": "⚡"},
-    {"title": "Saha Değerlendirmeleri", "description": "En iyi sahaları keşfet", "icon": "⭐"},
-    {"title": "Maç Organizasyonu", "description": "Takımını kur, rakip bul (Çok Yakında!)", "icon": "🏆"},
-
+    {
+      "title": "Hızlı Rezervasyon",
+      "description": "Tek tıkla halı saha rezervasyonu yap",
+      "icon": "⚡"
+    },
+    {
+      "title": "Saha Değerlendirmeleri",
+      "description": "En iyi sahaları keşfet",
+      "icon": "⭐"
+    },
+    {
+      "title": "Maç Organizasyonu",
+      "description": "Takımını kur, rakip bul (Çok Yakında!)",
+      "icon": "🏆"
+    },
   ];
 
-  bool isConnectedToInternet=false;
+  bool isConnectedToInternet = false;
   StreamSubscription? _internetConnectionStreamSubscription;
-
-
   int currentFeatureIndex = 0;
-  bool isBouncingBall = false;
   late AnimationController _controller;
   late Animation<double> _animation;
 
-
-
-
-
-
   @override
   void initState() {
-
     super.initState();
     _controller = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-
   }
+
   @override
   void dispose() {
     _controller.dispose();
     _internetConnectionStreamSubscription?.cancel();
     super.dispose();
-  }
-
-  void nextFeature() {
-    setState(() {
-      currentFeatureIndex = (currentFeatureIndex + 1) % features.length;
-    });
-  }
-
-  void prevFeature() {
-    setState(() {
-      currentFeatureIndex = (currentFeatureIndex - 1 + features.length) % features.length;
-    });
   }
 
   @override
@@ -71,7 +63,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.green.shade900, Colors.green.shade700, Colors.green.shade500],
+            colors: [
+              Colors.green.shade900,
+              Colors.green.shade700,
+              Colors.green.shade500,
+            ],
           ),
         ),
         child: SafeArea(
@@ -81,80 +77,89 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
               ...List.generate(20, (index) => _buildParticle()),
 
               Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Title and subtitle
-                  TweenAnimationBuilder(
-                    tween: Tween<double>(begin: -100, end: 0),
-                    duration: Duration(seconds: 1),
-                    builder: (context, double value, child) {
-                      return Transform.translate(
-                        offset: Offset(0, value),
-                        child: child,
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Toplansın',
-                            style: TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              shadows: [Shadow(blurRadius: 10, color: Colors.black26, offset: Offset(2, 2))],
-                            ),
+                  // 1) Başlık
+                  Padding(
+                    padding: EdgeInsets.all(20.r),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Toplansın',
+                          style: TextStyle(
+                            fontSize: 48.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                  blurRadius: 10.r,
+                                  color: Colors.black26,
+                                  offset: Offset(2.w, 2.h)),
+                            ],
                           ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Yeşil Sahalarda Buluşmanın Adresi',
-                            style: TextStyle(fontSize: 18, color: Colors.white70),
-                            textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 10.h),
+                        Text(
+                          'Yeşil Sahalarda Buluşmanın Adresi',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            color: Colors.white70,
                           ),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
 
-                  // Feature carousel
-                  Container(
-                    height: 250,
+                  // 2) Carousel
+                  Expanded(
+                    flex: 2,
                     child: PageView.builder(
                       itemCount: features.length,
                       controller: PageController(viewportFraction: 0.8),
-                      onPageChanged: (int index) => setState(() => currentFeatureIndex = index),
+                      onPageChanged: (i) =>
+                          setState(() => currentFeatureIndex = i),
                       itemBuilder: (_, i) {
                         return Transform.scale(
                           scale: i == currentFeatureIndex ? 1 : 0.9,
                           child: Card(
                             color: Colors.white,
                             elevation: 6,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.r)),
                             child: Container(
-                              padding: EdgeInsets.all(20),
+                              padding: EdgeInsets.all(20.r),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20.r),
                                 gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                  colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.2)],
+                                  colors: [
+                                    Colors.white.withOpacity(0.1),
+                                    Colors.white.withOpacity(0.2),
+                                  ],
                                 ),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(features[i]['icon']!, style: TextStyle(fontSize: 50)),
-                                  SizedBox(height: 20),
+                                  Text(features[i]['icon']!,
+                                      style: TextStyle(fontSize: 50.sp)),
+                                  SizedBox(height: 20.h),
                                   Text(
                                     features[i]['title']!,
-                                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green), // Title rengini yeşil yapar
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
                                     textAlign: TextAlign.center,
                                   ),
-                                  SizedBox(height: 10),
+                                  SizedBox(height: 10.h),
                                   Text(
                                     features[i]['description']!,
-                                    style: TextStyle(fontSize: 16, color: Colors.green), // Description rengini yeşil yapar
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                        fontSize: 14.sp,
+                                        color: AppColors.primary),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -166,51 +171,132 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                     ),
                   ),
 
-                  // Buttons
-                  Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        ElevatedButton(
-                          child: Text('Giriş Yap', style: TextStyle(fontSize: 18)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.green.shade700,
-                            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  // 3) Butonlar
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56.h,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  PageRouteBuilder(
+                                    pageBuilder: (ctx, anim, sec) =>
+                                        LoginPage(),
+                                    transitionsBuilder:
+                                        (ctx, anim, sec, child) {
+                                      final slide = Tween<Offset>(
+                                              begin: const Offset(1, 0),
+                                              end: Offset.zero)
+                                          .chain(
+                                              CurveTween(curve: Curves.easeOut))
+                                          .animate(anim);
+                                      final fade = CurvedAnimation(
+                                          parent: anim, curve: Curves.easeIn);
+                                      return SlideTransition(
+                                        position: slide,
+                                        child: FadeTransition(
+                                            opacity: fade, child: child),
+                                      );
+                                    },
+                                    transitionDuration:
+                                        const Duration(milliseconds: 400),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.login_outlined,
+                                  color: AppColors.primaryDark, size: 24.sp),
+                              label: Text(
+                                'Giriş Yap',
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                elevation: 8,
+                                shadowColor: Colors.black26,
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(32.r),
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context)=>AuthCheckScreen()));
-
-                          },
-                        ),
-                        SizedBox(height: 15),
-                        OutlinedButton(
-                          child: Text('Kayıt Ol', style: TextStyle(fontSize: 18)),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white),
-                            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          SizedBox(height: 16.h),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56.h,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  PageRouteBuilder(
+                                    pageBuilder: (ctx, anim, sec) =>
+                                        SignUpPage(),
+                                    transitionsBuilder:
+                                        (ctx, anim, sec, child) {
+                                      final slide = Tween<Offset>(
+                                              begin: const Offset(1, 0),
+                                              end: Offset.zero)
+                                          .chain(
+                                              CurveTween(curve: Curves.easeOut))
+                                          .animate(anim);
+                                      final fade = CurvedAnimation(
+                                          parent: anim, curve: Curves.easeIn);
+                                      return SlideTransition(
+                                        position: slide,
+                                        child: FadeTransition(
+                                            opacity: fade, child: child),
+                                      );
+                                    },
+                                    transitionDuration:
+                                        const Duration(milliseconds: 400),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.person_add_outlined,
+                                  color: Colors.white, size: 24.sp),
+                              label: Text(
+                                'Kayıt Ol',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                    color: Colors.white70, width: 2.w),
+                                backgroundColor: Colors.white.withOpacity(0.1),
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(32.r),
+                                ),
+                              ),
+                            ),
                           ),
-                          onPressed: () {
-                           Navigator.push(context, MaterialPageRoute(builder: (context)=>SignUpPage()));
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
 
-                  // Footer
+                  // 4) Footer
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 20.0),
+                    padding: EdgeInsets.only(bottom: 8.h),
                     child: Column(
                       children: [
                         Text(
                           'Toplansın ile futbol keyfi bir tık uzağınızda!',
-                          style: TextStyle(color: Colors.white70),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14.sp),
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 10.h),
                         AnimatedBuilder(
                           animation: _animation,
                           builder: (_, child) {
@@ -219,7 +305,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
                               child: child,
                             );
                           },
-
+                          child: Icon(Icons.sports_soccer,
+                              color: Colors.white30, size: 24.sp),
                         ),
                       ],
                     ),
@@ -229,7 +316,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
             ],
           ),
         ),
-
       ),
     );
   }
@@ -241,11 +327,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> with SingleTickerProvider
     final initialPosition = random.nextDouble() * 400;
     return Positioned(
       left: random.nextDouble() * MediaQuery.of(context).size.width,
+      top: 0,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
           return Transform.translate(
-            offset: Offset(0, initialPosition + (_animation.value * speed * 10) - 50),
+            offset: Offset(
+              0,
+              initialPosition + (_animation.value * speed * 10) - 50,
+            ),
             child: child,
           );
         },

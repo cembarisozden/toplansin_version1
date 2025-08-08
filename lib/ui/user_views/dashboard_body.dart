@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/HomeProvider.dart';
+import 'package:toplansin/core/providers/bottomNavProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/banner/phone_verify_banner.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 import 'package:toplansin/ui/user_views/user_settings_page.dart';
@@ -28,6 +30,7 @@ class DashboardBody extends StatefulWidget {
 
 class _DashboardBodyState extends State<DashboardBody> {
   List<HaliSaha> favoriteHaliSahalar = [];
+  List<HaliSaha> _trendHaliSahalar = [];
 
   @override
   void initState() {
@@ -53,16 +56,22 @@ class _DashboardBodyState extends State<DashboardBody> {
           ),
           child: Column(
             children: [
-        if (noPhone)
-          PhoneVerifyBanner(
-            onAction: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => UserSettingsPage(currentUser: widget.user!),
+              StreamBuilder<User?>(
+                stream: FirebaseAuth.instance.userChanges(),
+                builder: (context, snapshot) {
+                  final user = snapshot.data;
+                  final noPhone = user?.phoneNumber == null ;
+                  if (!noPhone) return SizedBox.shrink();
+                  return PhoneVerifyBanner(
+                    onAction: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => UserSettingsPage(currentUser: widget.user!),
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-          ),
-        
         Expanded(
                 child: CustomScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -121,15 +130,9 @@ class _DashboardBodyState extends State<DashboardBody> {
                         padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
                         sliver: SliverToBoxAdapter(
                           child: trendPitches(
-                            favoriteHaliSahalar: favoriteHaliSahalar,
                             user: widget.user!,
-                            onSeeAllTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        FavorilerPage(currentUser: widget.user!),
-                                  ));
+                            onSeeAllTrends: () {
+                              Provider.of<BottomNavProvider>(context,listen:false).setIndex(1);
                             },
                           ),
                         ),
@@ -281,11 +284,12 @@ class _DashboardBodyState extends State<DashboardBody> {
   }
 
   Widget trendPitches({
-    required List<HaliSaha> favoriteHaliSahalar,
-    required VoidCallback onSeeAllTap,
+    required VoidCallback onSeeAllTrends,
     required Person user,
   }) {
-    if (favoriteHaliSahalar.isEmpty) return const SizedBox.shrink();
+    final trendHaliSahalar = context.watch<HomeProvider>().trendHaliSahalar;
+
+    if (trendHaliSahalar.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +312,7 @@ class _DashboardBodyState extends State<DashboardBody> {
               ),
               Spacer(),
               TextButton(
-                onPressed: onSeeAllTap,
+                onPressed: onSeeAllTrends,
                 style: TextButton.styleFrom(padding: EdgeInsets.zero),
                 child: const Text(
                   'Tümünü Gör',
@@ -336,9 +340,9 @@ class _DashboardBodyState extends State<DashboardBody> {
             addAutomaticKeepAlives: false,
             // RAM dostu
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            itemCount: favoriteHaliSahalar.length,
+            itemCount: trendHaliSahalar.length,
             itemBuilder: (context, index) {
-              final saha = favoriteHaliSahalar[index];
+              final saha = trendHaliSahalar[index];
 
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
@@ -488,10 +492,7 @@ class _DashboardBodyState extends State<DashboardBody> {
                             'Saha hazır, top hazır, peki ya sen?',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(.85),
-                                fontSize: 14,
-                                height: 1.3),
+                            style: AppTextStyles.bodySmall.copyWith(color: Colors.white,fontWeight: FontWeight.w200),
                           ),
                         ),
                       ]),

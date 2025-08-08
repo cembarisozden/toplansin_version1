@@ -8,7 +8,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/about_help_page.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
+import 'package:toplansin/ui/user_views/user_acces_code_page.dart';
 import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 import 'package:toplansin/ui/user_views/user_settings_page.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -107,6 +110,13 @@ class ModernDrawer extends StatelessWidget {
                       ),
                       _tile(
                         context,
+                        icon: Ionicons.key_outline,
+                        label: 'Saha Erişim Kodlarım',
+                        color: Colors.black87,
+                        page: const UserAccessCodePage(),
+                      ),
+                      _tile(
+                        context,
                         icon: Ionicons.heart_outline,
                         label: 'Favorilerim',
                         color: Colors.red,
@@ -171,10 +181,11 @@ class ModernDrawer extends StatelessWidget {
         VoidCallback? onTap,
       }) =>
       ListTile(
+        //dense: true,
         leading: Icon(icon, color: color),
         horizontalTitleGap: 4,
         title: Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
+            style: AppTextStyles.bodyMedium),
         onTap: () {
           Navigator.pop(ctx);
           if (onTap != null) return onTap();
@@ -206,6 +217,7 @@ class ModernDrawer extends StatelessWidget {
 
   Future<void> _signOut(BuildContext ctx) async {
     if (firebaseUser != null) {
+      showLoader(ctx);
       await FirebaseFirestore.instance
           .collection('users')
           .doc(firebaseUser!.uid)
@@ -216,5 +228,6 @@ class ModernDrawer extends StatelessWidget {
       Navigator.pushReplacement(
           ctx, MaterialPageRoute(builder: (_) =>  LoginPage()));
     }
+    hideLoader();
   }
 }

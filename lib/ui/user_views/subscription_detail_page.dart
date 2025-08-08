@@ -50,7 +50,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
         backgroundColor: primaryBlue,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -246,7 +246,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
     String time = widget.sub.time;
     num price = widget.sub.price;
     String location = widget.sub.location;
-    String nextSession = widget.sub.visibleSession;
+    String nextSession = widget.sub.nextSession;
 
     final Color statusColor = _statusColor(status);
     final isActive = status == 'Aktif';

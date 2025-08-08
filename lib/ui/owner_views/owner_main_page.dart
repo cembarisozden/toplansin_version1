@@ -8,7 +8,8 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/ui/owner_views/owner_add_halisaha.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
 import 'package:toplansin/ui/owner_views/owner_profile_settings.dart';
-import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 import 'package:badges/badges.dart' as badges;
 
@@ -222,22 +223,15 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          saha.imagesUrl.isNotEmpty
-                              ? saha.imagesUrl.first
-                              : "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg",
-                          width: 60,
+                        child: SizedBox(
                           height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey.shade300,
-                              alignment: Alignment.center,
-                              child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 24),
-                            );
-                          },
+                          width: 60,
+                          child: ProgressiveImage(
+                            imageUrl:saha.imagesUrl.first,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
                         )
 
                       ),

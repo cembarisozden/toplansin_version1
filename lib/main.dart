@@ -12,17 +12,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'package:toplansin/core/providers/FavoritesProvider.dart';
 import 'package:toplansin/core/providers/HomeProvider.dart';
+import 'package:toplansin/core/providers/acces_code_provider.dart';
+import 'package:toplansin/core/providers/bottomNavProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/StatsProvider.dart';
 import 'package:toplansin/firebase_options.dart';
 import 'package:toplansin/services/connectivity_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/services/user_notification_service.dart';
-import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
 import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
@@ -94,19 +98,42 @@ void main() async {
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
   // 5) UI hemen ayağa kalksın!
+
   runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (_) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
-          ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
-          ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
-          ChangeNotifierProvider(create: (_) => HomeProvider()),
-          ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-        ],
-        child: const MyApp(),
-      ),
+
+    ScreenUtilInit(
+      designSize: const Size(411.42857142857144, 914.2857142857143),
+      useInheritedMediaQuery: true,    // ← EKLEDİK
+      minTextAdapt: true,
+      builder: (context, child) {
+        return DevicePreview(
+          enabled: !kReleaseMode,
+          builder: (previewContext) {
+            return MultiProvider(
+              providers: [
+                ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
+                ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
+                ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
+                ChangeNotifierProvider(create: (_) => HomeProvider()),
+                ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+                ChangeNotifierProvider(create: (_) => StatsProvider()),
+                ChangeNotifierProvider(create: (_) => BottomNavProvider()),
+                ChangeNotifierProvider(create: (_) => AccessCodeProvider()),
+              ],
+              child: MaterialApp(
+                debugShowCheckedModeBanner: false,
+                // DevicePreview için locale ve builder
+                locale: DevicePreview.locale(previewContext),
+                builder: DevicePreview.appBuilder,
+                // Orijinal başlangıç ekranınız
+                home: SplashScreen(),
+              ),
+            );
+          },
+        );
+      },
+      // child param'ı kullanmıyoruz, builder zaten tüm widget'ları sarmalıyor
+      child: const SizedBox.shrink(),
     ),
   );
 
@@ -136,6 +163,46 @@ void main() async {
   });
 }
 
+class AppRoot extends StatefulWidget {
+  const AppRoot({super.key});
+
+  @override
+  State<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<AppRoot> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Yeni yöntem: View.of(context) → viewInsets ile klavye yüksekliğini al
+    final bottomInset = View.of(context).viewInsets.bottom;
+    final isKeyboardOpen = bottomInset > 0;
+
+    final focus = FocusManager.instance.primaryFocus;
+
+    if (isKeyboardOpen && (focus == null || !focus.hasFocus)) {
+      focus?.unfocus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MyApp(); // senin mevcut app'in burada çağrılıyor
+  }
+} //Klavye açılmasın diye ayar
+
+
 
 /* ─────────────────────────────────────────────────────────────── */
 
@@ -150,7 +217,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorSchemeSeed: AppColors.primary,
         useMaterial3: true,
-        fontFamily: GoogleFonts.manrope().fontFamily,
+        fontFamily: GoogleFonts.roboto().fontFamily,
         textTheme:  AppTextStyles.textTheme,
       ),
       // ➊ Lokalizasyon delegeleri
@@ -186,3 +253,5 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+

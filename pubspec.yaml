@@ -61,7 +61,9 @@ dependencies:
   internet_connection_checker: ^3.0.1
   connectivity_plus: ^6.1.4
   lottie: ^3.3.1
-
+  google_maps_flutter: ^2.12.3
+  smooth_page_indicator: ^1.2.1
+  flutter_screenutil: ^5.9.3
 
 
 dev_dependencies:

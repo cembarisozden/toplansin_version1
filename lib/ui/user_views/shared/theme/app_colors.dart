@@ -10,6 +10,8 @@ class AppColors {
   static Color secondary = Color(0xFF1976D2);
   static Color secondaryDark = Color(0xFF0D47A1);
 
+  static const accessOrange = Color(0xFFE65100);
+
   // Nötr tonlar
   static const surface       = Color(0xFFF5F5F5);
   static const surfaceDark   = Color(0xFFE9E9E9);

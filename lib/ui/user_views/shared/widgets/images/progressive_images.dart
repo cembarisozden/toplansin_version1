@@ -84,7 +84,7 @@ class ProgressiveImage extends StatelessWidget {
               const Center(
                 child: SizedBox(
                   width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                  child: CircularProgressIndicator(strokeWidth: 2.2,color: Colors.white,),
                 ),
               ),
             ],

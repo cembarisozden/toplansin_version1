@@ -1,52 +1,56 @@
+// time_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TimeService {
-  static DateTime? _serverTime;
-  static DateTime? _fetchedAt;
+  static DateTime? _serverUtc;
+  static DateTime? _fetchedAtUtc;
 
+  /// Uygulama açılır açılmaz main() içinde çağır:
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   await TimeService.init();
   static Future<void> init() async {
     try {
       final snap = await FirebaseFirestore.instance
           .collection('server_time')
           .doc('now')
           .get();
-
       final ts = snap.data()?['ts'];
-      if (ts != null && ts is Timestamp) {
-        // UTC'den cihazın yerel saat dilimine çevir
-        final localServerTime = ts.toDate().toLocal();
-
-        _serverTime = localServerTime;
-        _fetchedAt = DateTime.now();
-
-        print("📌 TimeService initialized: ${TimeService.now()}");
+      if (ts is Timestamp) {
+        // 1) Firestore Timestamp → UTC DateTime
+        _serverUtc = ts.toDate().toUtc();
+        // 2) O an cihaz zamanı → UTC
+        _fetchedAtUtc = DateTime.now().toUtc();
+        print("📌 TimeService initialized (UTC): ${nowUtc()}");
+        print("📌 TimeService initialized (TR): ${now()}");
       } else {
-        print('⚠️ server_time/now.ts alanı bulunamadı.');
+        print('⚠️ server_time/now.ts bulunamadı.');
       }
     } catch (e) {
-      print('⛔ Server saat alınırken hata oluştu: $e');
+      print('⛔ TimeService.init() hatası: $e');
     }
   }
 
+  /// ------------- FONKSİYONLAR -------------
+
+  /// 1) Sunucu zamanı (UTC) → createdAt vs için kullan
+  static DateTime nowUtc() {
+    if (_serverUtc == null || _fetchedAtUtc == null) {
+      print("⚠️ Server zamanı alınmadı, fallback UTC kullanılıyor.");
+      return DateTime.now().toUtc();
+    }
+    final elapsed = DateTime.now().toUtc().difference(_fetchedAtUtc!);
+    return _serverUtc!.add(elapsed);
+  }
+
+  /// 2) Türkiye saati (UTC+3) → rezervasyon kontrolleri / UI için kullan
   static DateTime now() {
-    if (_serverTime == null || _fetchedAt == null) {
-      print("⚠️ Server saati henüz alınmadı, cihaz saati kullanılıyor.");
-      return DateTime.now(); // fallback
-    }
-
-    // Cihaz saatinden bağımsız olarak, geçen süreyi hesapla
-    final elapsed = DateTime.now().difference(_fetchedAt!);
-
-    // Server saatini güncelle
-    final currentServerTime = _serverTime!.add(elapsed);
-
-    return currentServerTime;
+    return nowUtc().add(const Duration(hours: 3));
   }
 
-  static Future<void> sync() async {
-    await init();
-  }
+  /// İstersen tekrar senkronize etmek için
+  static Future<void> sync() => init();
 
+  /// İki zaman arasındaki farkı insan okunur formata çevirir
   static String formatTimeDifference(DateTime dt1, DateTime dt2) {
     final diff = dt1.difference(dt2);
     return "${diff.inHours} saat, ${diff.inMinutes % 60} dakika, ${diff.inSeconds % 60} saniye";

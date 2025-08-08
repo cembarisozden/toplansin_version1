@@ -4,15 +4,17 @@ import 'package:app_settings/app_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ionicons/ionicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/dialogs/edit_profile_dialog.dart';
 import 'package:toplansin/ui/user_views/dialogs/phone_verify_dialog.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
-import 'package:toplansin/ui/views/login_page.dart';
+import 'package:toplansin/ui/views/welcome_screen.dart';
 
 
 
@@ -56,7 +58,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       ),
       body: Container(
         constraints: const BoxConstraints.expand(),
-        decoration: BoxDecoration(gradient: LinearGradient(colors:[AppColors.primaryDark,AppColors.primary])),
+        decoration: BoxDecoration(gradient: LinearGradient(
+            colors: [AppColors.primaryDark, AppColors.primary])),
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16.0),
           child: Column(
@@ -82,7 +85,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       builder: (context, snap) {
         if (!snap.hasData) return const SizedBox.shrink();
 
-        final info    = snap.data!;
+        final info = snap.data!;
         final version = "${info.version} (${info.buildNumber})";
 
         return Container(
@@ -115,7 +118,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
 
-
   Widget _buildProfileSection() {
     final noPhone = (widget.currentUser.phone ?? '').isEmpty;
     return Container(
@@ -127,7 +129,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         color: Colors.white.withOpacity(0.08),
         border: Border.all(color: Colors.white.withOpacity(0.25)),
         boxShadow: [
-          BoxShadow(                    // yumuşak ışık gölgesi
+          BoxShadow( // yumuşak ışık gölgesi
             color: Colors.black.withOpacity(0.15),
             blurRadius: 12,
             offset: const Offset(0, 6),
@@ -228,16 +230,20 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   Widget _buildSettingsOptions() {
     return Column(
       children: [
-        if ((widget.currentUser.phone ?? '').isEmpty)
+        if ((_auth.currentUser?.phoneNumber ?? '').isEmpty)
           _buildOptionItem(
             Icons.phone_android,
             "Telefon Ekle & Doğrula",
             // Ayarlar sayfasında "Telefon Ekle" butonu:
-            () => openPhoneVerify(context, () {
-              // ✔️Doğrulama tamamlandı
-              setState(() => widget.currentUser =
-                  widget.currentUser.copyWith(phone: FirebaseAuth.instance.currentUser?.phoneNumber));
-            }),
+                () =>
+                openPhoneVerify(context, () {
+                  // ✔️Doğrulama tamamlandı
+                  setState(() =>
+                  widget.currentUser =
+                      widget.currentUser.copyWith(
+                          phone: FirebaseAuth.instance.currentUser
+                              ?.phoneNumber));
+                }),
           ),
         _buildOptionItem(
             Icons.lock_outline, "Şifre Değiştir", _showChangePasswordDialog),
@@ -262,20 +268,20 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
 
-  Widget _buildOptionItem(
-      IconData icon,
+  Widget _buildOptionItem(IconData icon,
       String title,
-      VoidCallback onPressed,
-      ) {
+      VoidCallback onPressed,) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-      elevation: 0,                             // gölge yok → hafif görünüm
+      elevation: 0,
+      // gölge yok → hafif görünüm
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: Colors.grey.shade300), // ince kenarlık
       ),
-      color: Colors.grey.shade50,               // çok açık zemin
-      child: InkWell(                           // satırın tamamı tıklanabilir
+      color: Colors.grey.shade50,
+      // çok açık zemin
+      child: InkWell( // satırın tamamı tıklanabilir
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -292,18 +298,21 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                   ),
                 ),
               ),
-              OutlinedButton(                   // hafif buton
+              OutlinedButton( // hafif buton
                 onPressed: onPressed,
                 style: OutlinedButton.styleFrom(
-                  backgroundColor:Colors.green[50] ,
-                  side: BorderSide(color: AppColors.primaryDark.withOpacity(0.8),width: 1.5),
+                  backgroundColor: Colors.green[50],
+                  side: BorderSide(
+                      color: AppColors.primaryDark.withOpacity(0.8),
+                      width: 1.5),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Değiştir',style: TextStyle(color:AppColors.primaryDark),),
+                child: const Text(
+                  'Değiştir', style: TextStyle(color: AppColors.primaryDark),),
               ),
             ],
           ),
@@ -313,8 +322,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
 
-
-
   /// Uyarı kartı – ‘Hesabı Sil’
   /// Kırmızımsı arka plan + ince border + açıklama metni.
   Widget _buildDangerZone() {
@@ -322,12 +329,12 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       margin: const EdgeInsets.fromLTRB(2, 32, 2, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,                       // yumuşak zemin
+        color: Colors.white, // yumuşak zemin
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.shade200),  // ince çerçeve
+        border: Border.all(color: Colors.red.shade200), // ince çerçeve
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,                       // hafif gölge
+            color: Colors.black12, // hafif gölge
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -364,7 +371,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showDeleteAccountDialog(context),
+              onPressed: () => showDeleteAccountDialog(),
               icon: const Icon(Icons.delete_forever_outlined, size: 22),
               label: const Text('Hesabı Sil'),
               style: ElevatedButton.styleFrom(
@@ -399,23 +406,14 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           () async {
         if (emailController.text == widget.currentUser.email) {
           try {
-            await sendResetAndLogout(context,emailController.text);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Şifre sıfırlama e-postası gönderildi!")),
-            );
+            await sendResetAndLogout(context, emailController.text);
+            AppSnackBar.show(context, "Şifre sıfırlama e-postası gönderildi!");
           } catch (e) {
             final msg = AppErrorHandler.getMessage(e);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("İşlem başarısız: $msg"),
-                backgroundColor: Colors.red,
-              ),
-            );
+            AppSnackBar.error(context,"İşlem başarısız: $msg");
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("E-posta uyuşmadı!")),
-          );
+          AppSnackBar.error(context, "E-posta uyuşmadı!");
         }
         Navigator.pop(context);
       },
@@ -448,102 +446,126 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           await _updateEmail(emailController.text, passwordController.text);
         } catch (e) {
           final msg = AppErrorHandler.getMessage(e);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("E-posta güncellenemedi: $msg"),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.error(context, "E-posta güncellenemedi: $msg");
         }
       },
     );
   }
-
-  Future<void> deleteAccount(BuildContext context) async {
+// 1) Hesap silme dialogu
+  // 1) Hesap silme dialogu
+  Future<void> showDeleteAccountDialog() async {
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Kullanıcı oturumu bulunamadı.")));
+    if (user == null || user.email == null) {
+      AppSnackBar.error(context, "Kullanıcı oturumu bulunamadı.");
       return;
     }
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
+    String? authError; // Şifre hatası mesajı
 
-      if (user == null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Kullanıcı bulunamadı.")));
-        return;
-      }
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(builder: (ctx, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Form(
+                key: formKey,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red, size: 40),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Hesabı silmek üzeresiniz",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Lütfen şifrenizi girerek onaylayın.",
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      hintText: "Şifre",
+                      prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      errorText: authError,
+                    ),
+                    validator: (v) =>
+                    v == null || v.isEmpty ? "Şifre gerekli" : null,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text("İptal"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () async {
+                          if (!formKey.currentState!.validate()) return;
+
+                          Navigator.of(dialogContext).pop();
+                          // Aşağıdaki helper fonksiyon silme + yönlendirmeyi yapacak
+                          await _deleteAccountWithPassword(
+                            user.email!,
+                            passwordController.text,
+                          );
+                        },
+                        child: Text("Sil", style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ]),
+                ]),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+// ————————————————————————————————————————————————
+// Bu fonksiyon artık gerçekten kullanılıyor!
+  Future<void> _deleteAccountWithPassword(String email, String password) async {
+    showLoader(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final cred = EmailAuthProvider.credential(email: email, password: password);
+
+    try {
+      await user!.reauthenticateWithCredential(cred);
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+      await user.delete();
+
+      AppSnackBar.show(context, "Hesabınız başarıyla silindi.");
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => LoginPage()),
+        MaterialPageRoute(builder: (_) => WelcomeScreen()),
             (route) => false,
       );
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Hesap Başarıyla Silindi")));
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .delete();
-      await user.delete();
     } on FirebaseAuthException catch (e) {
       final msg = AppErrorHandler.getMessage(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Hesap silinemedi: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context,"Silme başarısız: $msg");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Bir hata oluştu: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "Bir hata oluştu: $msg");
+    }finally{
+      hideLoader();
     }
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          "Hesabı Sil",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          "Bu işlem geri alınamaz.\nHesabınız ve tüm verileriniz kalıcı olarak silinecek.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("İptal", style: TextStyle(color: Colors.grey[700])),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              deleteAccount(context);
-            },
-            icon: Icon(Icons.delete_forever),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            label: Text("Hesabı Sil"),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showCustomDialog(
       String title, List<Map<String, dynamic>> fields, VoidCallback onConfirm) {
@@ -561,10 +583,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(title,
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[700])),
+                  style: AppTextStyles.titleLarge.copyWith(color: AppColors.primaryDark)),
               ...fields.map((field) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: _buildTextField(
@@ -656,9 +675,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   Future<void> _updateEmail(String newEmail, String password) async {
     User? user = _auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Kullanıcı oturum açmamış.")),
-      );
+     AppSnackBar.error(context,"Kullanıcı oturum açmamış.");
       return;
     }
 
@@ -674,24 +691,14 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       // Yeni e-posta için doğrulama bağlantısı gönder
       await user.verifyBeforeUpdateEmail(newEmail);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              "E-posta güncelleme bağlantısı gönderildi. Yeni e-postayı doğrulamanız gerekiyor."),
-        ),
-      );
+      AppSnackBar.show(context, "E-posta güncelleme bağlantısı gönderildi. Yeni e-postayı doğrulamanız gerekiyor.");
       _auth.signOut();
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (context) => AuthCheckScreen()));
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'auth');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("E-posta güncelleme başarısız: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "E-posta güncelleme başarısız: $msg");
     }
   }
   
@@ -720,15 +727,10 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     setState(() => widget.currentUser =
         widget.currentUser.copyWith(phone: user.phoneNumber));
 
-    _showSnack("Telefon doğrulandı!");
+    AppSnackBar.success(context,"Telefon doğrulandı!");
   }
 
 // Kısa Snack helper
-  void _showSnack(String? msg) {
-    if (msg == null) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
 
 
 

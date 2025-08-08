@@ -12,12 +12,14 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/reservation_page.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/minimap/mini_map_preview.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/text/expandable_text.dart';
 import 'package:toplansin/ui/user_views/subscribe_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
-
 
 /// ───────────────────────── THEME CONSTANTS ─────────────────────────
 const Color kPrimary = Color(0xFF2EAC5B); // canlı çim yeşili
@@ -106,12 +108,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     });
     _comment.clear();
     _currentRating = 0;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          backgroundColor: AppColors.primary,
-          content: Text("Yorumunuz başarıyla gönderildi.",
-              style: TextStyle(color: Colors.white))),
-    );
+    AppSnackBar.success(context,"Yorumunuz başarıyla gönderildi.");
   }
 
   Future<void> _deleteReview(Reviews r) async {
@@ -124,15 +121,10 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           .doc(r.docId)
           .delete();
       setState(() => reviewList.removeWhere((e) => e.docId == r.docId));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Yorum silindi.")));
+      AppSnackBar.show(context,"Yorum silindi.");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'review');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Yorum silinemedi: $msg"),
-            backgroundColor: Colors.red),
-      );
+      AppSnackBar.error(context,"Yorum silinemedi: $msg");
     }
   }
 
@@ -148,6 +140,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   // ────────────────────────────── UI ──────────────────────────────
   @override
   Widget build(BuildContext context) {
+    bool isPhone= widget._auth.currentUser?.phoneNumber?.isNotEmpty ?? false;
+
     final s = widget.haliSaha;
     return Scaffold(
       backgroundColor: kScaffoldBg,
@@ -169,80 +163,216 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                   borderRadius:
                       BorderRadius.vertical(top: Radius.circular(kCardRadius)),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 36),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _TopInfoCard(
-                        s: s,
-                        reviewCount: reviewList.length,
-                        onCall: () => _callNumber(s.phone),
-                      ),
-                      const SizedBox(height: 20),
-                      _ActionButtons(
-                        onReserve: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ReservationPage(
-                                haliSaha: s, currentUser: widget.currentUser),
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 36),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _TopInfoCard(
+                            s: s,
+                            reviewCount: reviewList.length,
+                            onCall: () => _callNumber(s.phone),
                           ),
-                        ),
-                        onSubscribe: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SubscribePage(
-                                halisaha: s, user: widget.currentUser),
+                          const SizedBox(height: 20),
+                          MiniMapPreview(
+                            title: widget.haliSaha.name,
+                              lat: widget.haliSaha.latitude,
+                              lng: widget.haliSaha.longitude),
+                          const SizedBox(height: 20),
+                          _InfoTabs(s),
+                          const SizedBox(height: 28),
+                          _ReviewSummary(
+                            ratingCounts: _calcRatingCounts(reviewList),
+                            totalReviews: reviewList.length,
+                            avg: s.rating.toDouble(),
                           ),
-                        ),
+                          const SizedBox(height: 28),
+                          _ReviewsSection(
+                            reviews: reviewList,
+                            showAll: showAllReviews,
+                            onToggleShow: () => setState(
+                                () => showAllReviews = !showAllReviews),
+                            onSortChanged: (v) {
+                              if (v != null) setState(() => selectedSort = v);
+                            },
+                            onDelete: _deleteReview,
+                          ),
+                          const SizedBox(height: 28),
+                          _AddReviewSection(
+                            controller: _comment,
+                            currentRate: _currentRating,
+                            onRate: (v) => setState(() => _currentRating = v),
+                            onSubmit: () {
+                              if (_currentRating == 0) {
+                               AppSnackBar.warning(context,"Lütfen bir puanlama yapınız!");
+                              } else {
+                                _addReview(_comment.text, _currentRating,
+                                    widget.currentUser.name);
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 28),
-                      _InfoTabs(s),
-                      const SizedBox(height: 28),
-                      _ReviewSummary(
-                        ratingCounts: _calcRatingCounts(reviewList),
-                        totalReviews: reviewList.length,
-                        avg: s.rating.toDouble(),
-                      ),
-                      const SizedBox(height: 28),
-                      _ReviewsSection(
-                        reviews: reviewList,
-                        showAll: showAllReviews,
-                        onToggleShow: () =>
-                            setState(() => showAllReviews = !showAllReviews),
-                        onSortChanged: (v) {
-                          if (v != null) setState(() => selectedSort = v);
-                        },
-                        onDelete: _deleteReview,
-                      ),
-                      const SizedBox(height: 28),
-                      _AddReviewSection(
-                        controller: _comment,
-                        currentRate: _currentRating,
-                        onRate: (v) => setState(() => _currentRating = v),
-                        onSubmit: () {
-                          if (_currentRating == 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Lütfen bir puanlama yapınız!"),
-                                  backgroundColor: Colors.red),
-                            );
-                          } else {
-                            _addReview(_comment.text, _currentRating,
-                                widget.currentUser.name);
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+            SafeArea(
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                color: Colors.white,
+                child: Column(
+                  children: [
+                    if (!isPhone)                     // sadece telefon onaysızsa
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange.shade500, width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded,
+                                color: Colors.orange, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Rezervasyon veya abonelik yapabilmek için '
+                                    'telefon numaranı doğrulaman gerekiyor.',
+                                style: AppTextStyles.bodyMedium.copyWith(color: Colors.orange.shade800,fontWeight: FontWeight.w600)
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    SizedBox(height: 2,),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Fiyat Bölümü
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Saatlik fiyatı",
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 11
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "${widget.haliSaha.price} ₺",
+                                style: AppTextStyles.titleMedium.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Abone Ol Butonu
+                        Expanded(
+                          flex: 3,
+                          child: ElevatedButton(
+                            onPressed: isPhone ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SubscribePage(halisaha: s,user:widget.currentUser,),
+                                ),
+                              );
+                            }:null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:isPhone ? Colors.indigo.shade600 : Colors.indigo.shade200,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Abone Ol",
+                                  style: AppTextStyles.labelMedium.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        // Rezervasyon Butonu
+                        Expanded(
+                          flex: 3,
+                          child: ElevatedButton(
+                            onPressed:isPhone ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ReservationPage(
+                                      haliSaha: s,
+                                      currentUser: widget.currentUser),
+                                ),
+                              );
+                            }:null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:isPhone ? Colors.green.shade600 : Colors.grey.shade200,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Rezervasyon Yap",
+                                  style: AppTextStyles.labelMedium.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            )
           ],
         ),
       ),
     );
   }
+
+
+
+
+
 
   // ────────────────────────── HELPERS ──────────────────────────
   void _openImageViewer(int initIndex) => showDialog(
@@ -382,7 +512,7 @@ class _HeaderGalleryState extends State<_HeaderGallery> {
 }
 
 // ───────────────────────── ACTION BUTTONS ─────────────────────────
-class _ActionButtons extends StatelessWidget {
+/*class _ActionButtons extends StatelessWidget {
   const _ActionButtons({required this.onReserve, required this.onSubscribe});
 
   final VoidCallback onReserve, onSubscribe;
@@ -405,7 +535,7 @@ class _ActionButtons extends StatelessWidget {
           child: ElevatedButton(
               style: _style(kPrimary),
               onPressed: onReserve,
-              child:  Text("Rezervasyon Yap")),
+              child: Text("Rezervasyon Yap")),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -413,10 +543,10 @@ class _ActionButtons extends StatelessWidget {
           child: ElevatedButton(
               style: _style(Colors.blue.shade700),
               onPressed: onSubscribe,
-              child:  Text("Abone Ol")),
+              child: Text("Abone Ol")),
         ),
       ]);
-}
+}*/
 
 // ───────────────────────── INFO TABS ─────────────────────────
 class _InfoTabs extends StatelessWidget {
@@ -678,16 +808,25 @@ class _ReviewsSection extends StatelessWidget {
                 value: selectedSort,
                 icon: const Icon(Icons.sort, color: kPrimaryDark),
                 onChanged: onSortChanged,
-                items:  [
+                items: [
                   DropdownMenuItem(
-                      value: ReviewSortOption.newest, child: Text("En yeni",style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700))),
+                      value: ReviewSortOption.newest,
+                      child: Text("En yeni",
+                          style: AppTextStyles.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w700))),
                   DropdownMenuItem(
-                      value: ReviewSortOption.oldest, child: Text("En eski",style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700))),
+                      value: ReviewSortOption.oldest,
+                      child: Text("En eski",
+                          style: AppTextStyles.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w700))),
                   DropdownMenuItem(
-                      value: ReviewSortOption.bestRated, child: Text("En iyi",style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700))),
+                      value: ReviewSortOption.bestRated,
+                      child: Text("En iyi",
+                          style: AppTextStyles.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w700))),
                   DropdownMenuItem(
                       value: ReviewSortOption.worstRated,
-                      child: Text("En kötü",style: AppTextStyles.bodyLarge)),
+                      child: Text("En kötü", style: AppTextStyles.bodyLarge)),
                 ],
               ),
             ),
@@ -988,13 +1127,13 @@ class _TopInfoCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // ── Açıklama ──
-          Text(
-            s.description,
-            style: TextStyle(
-              color: muted,
-              height: 1.5,
-              fontSize: 15,
-            ),
+          ExpandableText(
+            text: s.description,
+            trimLength: 200,
+            style:
+                AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w200),
+            moreLabel: '...Devamını Oku',
+            lessLabel: 'Daha Az Göster',
           ),
         ],
       ),
@@ -1020,7 +1159,8 @@ class _RatingChip extends StatelessWidget {
           const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
           const SizedBox(width: 3),
           Text(rating.toStringAsFixed(1),
-              style: AppTextStyles.bodyMedium.copyWith(color: Colors.white,fontWeight: FontWeight.bold)),
+              style: AppTextStyles.bodyMedium
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(width: 4),
           Text("($count)",
               style: AppTextStyles.bodySmall.copyWith(color: Colors.white)),

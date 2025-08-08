@@ -152,13 +152,13 @@ class _UserReservationsPageState extends State<UserReservationsPage>
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Ionicons.arrow_back_outline, color: AppColors.primary),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryDark),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Text('Rezervasyonlarım',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.titleLarge.copyWith(color:AppColors.primary)),
+                        style: AppTextStyles.titleLarge.copyWith(color:AppColors.primaryDark)),
                   ),
                   const SizedBox(width: 48),
                 ],

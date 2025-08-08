@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 
 /*───────────────────────────── 1. LAUNCHER ─────────────────────────────*/
 Future<Person?> openEditProfileDialog(BuildContext context, Person user) {
@@ -37,6 +38,7 @@ class _EditProfileDialog extends StatefulWidget {
     required this.currentUser,
     required this.rootContext,
   });
+
   final Person currentUser;
   final BuildContext rootContext;
 
@@ -53,7 +55,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   @override
   void initState() {
     super.initState();
-    final String? rawPhone =  widget.currentUser.phone?.replaceFirst(RegExp(r'^\+90'), '');
+    final String? rawPhone =
+        widget.currentUser.phone?.replaceFirst(RegExp(r'^\+90'), '');
     _nameCtl = TextEditingController(text: widget.currentUser.name);
     _phoneCtl = TextEditingController(text: rawPhone);
   }
@@ -129,7 +132,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     );
   }
 
-
   /*───────────────────────── BODY ─────────────────────────*/
   Widget _dialogBody(BuildContext context) {
     return Form(
@@ -152,7 +154,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               hint: 'Ad Soyad',
               icon: Icons.person,
               validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Ad girin' : null,
+                  (v == null || v.trim().isEmpty) ? 'Ad girin' : null,
             ),
             const SizedBox(height: 18),
             /*_glassField(
@@ -213,7 +215,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           contentPadding:
-          const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           border: InputBorder.none,
           prefixIcon: Container(
             margin: const EdgeInsets.only(left: 12, right: 10),
@@ -238,57 +240,47 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
   /*──────────────────── 4. SAVE BUTTON ───────────────────*/
   Widget _saveButton() => SizedBox(
-    width: double.infinity,
-    child: ElevatedButton(
-      onPressed: () async {
-        if (!_formKey.currentState!.validate()) return;
-        setState(() => _saving = true);
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () async {
+            if (!_formKey.currentState!.validate()) return;
+            setState(() => _saving = true);
 
-        try {
-          final updated = await _saveProfile();
-          if (!mounted) return;
-          Navigator.pop(context, updated); // close dialog first
+            try {
+              final updated = await _saveProfile();
+              if (!mounted) return;
+              Navigator.pop(context, updated); // close dialog first
 
-          ScaffoldMessenger.of(widget.rootContext).showSnackBar(
-            SnackBar(
-              content: const Text('Profil başarıyla güncellendi'),
-              backgroundColor: Colors.green.shade700,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } catch (e) {
-          if (!mounted) return;
-          setState(() => _saving = false);
-          ScaffoldMessenger.of(widget.rootContext).showSnackBar(
-            SnackBar(
-              content: Text(AppErrorHandler.getMessage(e)),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.transparent,
-      ),
-      child: Ink(
-        height: 40,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
+              AppSnackBar.success(context, 'Profil başarıyla güncellendi');
+            } catch (e) {
+              if (!mounted) return;
+              setState(() => _saving = false);
+              final msg = AppErrorHandler.getMessage(e);
+              AppSnackBar.error(context, msg);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
           ),
-          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Center(
+              child: Text('Kaydet', style: TextStyle(fontSize: 16)),
+            ),
+          ),
         ),
-        child: const Center(
-          child: Text('Kaydet', style: TextStyle(fontSize: 16)),
-        ),
-      ),
-    ),
-  );
+      );
 
   /*──────────────────── 5. FIRESTORE UPDATE ───────────────────*/
   Future<Person> _saveProfile() async {
@@ -296,7 +288,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     final fullPhone = '+90$digits';
 
     final data = {
-      'name':  _nameCtl.text.trim(),
+      'name': _nameCtl.text.trim(),
     };
     try {
       await FirebaseFirestore.instance
@@ -304,11 +296,10 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
           .doc(widget.currentUser.id)
           .update(data);
 
-      widget.currentUser
-        ..name = data['name']!;
+      widget.currentUser..name = data['name']!;
 
       return widget.currentUser;
-    }catch(e){
+    } catch (e) {
       AppErrorHandler.getMessage(e);
       return Future.error(e);
     }

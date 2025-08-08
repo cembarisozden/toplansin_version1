@@ -12,6 +12,8 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 class ReservationPage extends StatefulWidget {
   final HaliSaha haliSaha;
@@ -30,21 +32,18 @@ class _ReservationPageState extends State<ReservationPage> {
   String? selectedTime;
   List<String> bookedSlots = [];
 
-  bool isConnectedToInternet = false;
-  StreamSubscription? _internetConnectionStreamSubscription;
-  StreamSubscription<QuerySnapshot>? _allBookedSlotsSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _allBookedSlotsSubscription;
+
 
   @override
   void initState() {
     super.initState();
     _initSelectedDate();
-    listenBookedSlots(widget.haliSaha);
-
+    _listenBookedSlots();
   }
 
   @override
   void dispose() {
-    _internetConnectionStreamSubscription?.cancel();
     _allBookedSlotsSubscription?.cancel();
     super.dispose();
   }
@@ -52,106 +51,62 @@ class _ReservationPageState extends State<ReservationPage> {
   void _initSelectedDate() {
     DateTime now = TimeService.now();
     if (!hasFreeSlotOnDay(now)) {
-      DateTime? nextAvailableDay = findNextAvailableDay(now);
-      if (nextAvailableDay != null) {
-        setState(() {
-          selectedDate = nextAvailableDay;
-        });
-      }
+      DateTime? next = findNextAvailableDay(now);
+      if (next != null) setState(() => selectedDate = next);
     }
   }
 
   bool hasFreeSlotOnDay(DateTime day) {
-    List<String> slots = timeSlots;
-    for (String slot in slots) {
-      if (!isSlotBooked(day, slot)) {
-        return true;
-      }
-    }
-    return false;
+    return timeSlots.any((slot) => !isSlotBooked(day, slot));
   }
 
   DateTime? findNextAvailableDay(DateTime startDay) {
     int daysInMonth = DateTime(startDay.year, startDay.month + 1, 0).day;
     for (int d = startDay.day + 1; d <= daysInMonth; d++) {
-      DateTime currentDay = DateTime(startDay.year, startDay.month, d);
-      if (hasFreeSlotOnDay(currentDay)) {
-        return currentDay;
-      }
+      DateTime day = DateTime(startDay.year, startDay.month, d);
+      if (hasFreeSlotOnDay(day)) return day;
     }
     return null;
   }
 
-  Future<void> listenBookedSlots(HaliSaha haliSaha) async {
-    var allBookedSlotsStream = FirebaseFirestore.instance
-        .collection("hali_sahalar")
-        .where("id", isEqualTo: haliSaha.id)
-        .snapshots();
+  DateTime slotToDateTime(DateTime day, String slot) {
+    final h = int.parse(slot.split('-')[0].split(':')[0]);
+    return DateTime(day.year, day.month, day.day, h);
+  }
 
-    _allBookedSlotsSubscription = allBookedSlotsStream.listen((snapshot) {
-      List<String> newbookedSlots = [];
-
-      for (var document in snapshot.docs) {
-        Map<String, dynamic> data = document.data();
-
-        if (data['bookedSlots'] != null) {
-          List<dynamic> rawSlots = data['bookedSlots'];
-          newbookedSlots.addAll(rawSlots.map((e) => e.toString()).toList());
-        }
-      }
+  void _listenBookedSlots() {
+    _allBookedSlotsSubscription = FirebaseFirestore.instance
+        .collection('hali_sahalar')
+        .doc(widget.haliSaha.id)
+        .snapshots()
+        .listen((snap) {
+      final raw = snap.data()?['bookedSlots'] as List<dynamic>? ?? [];
 
       setState(() {
-        bookedSlots = newbookedSlots;
+        bookedSlots = raw.map((e) => e.toString()).toList(); // her eleman String
       });
-
-      debugPrint("Dinlenen BookedSlots: $bookedSlots");
     });
   }
 
+
   List<String> get timeSlots {
-    // Burada artık startHour ve endHour string tipinde olduğu için:
-    // Örneğin startHour = "08:00", endHour = "20:00" gibi varsayıyoruz.
-    // Bunları saat ve dakikalarına ayırıyoruz.
-    final startParts = widget.haliSaha.startHour.split(':');
-    final endParts = widget.haliSaha.endHour.split(':');
-
-    int startHour = int.parse(startParts[0]);
-    int startMinute = int.parse(startParts[1]);
-    int endHour = int.parse(endParts[0]);
-    int endMinute = int.parse(endParts[1]);
-
-    // Eğer endHour startHour'dan küçükse, bu gece yarısını geçtiğini gösterir.
-    if (endHour < startHour ||
-        (endHour == startHour && endMinute < startMinute)) {
-      endHour += 24;
-    }
-
-    List<String> slots = [];
-    for (int hour = startHour; hour < endHour; hour++) {
-      int actualStartHour = hour % 24;
-      int actualEndHour = (hour + 1) % 24;
-      // 00:00 formatında yazmak için padLeft kullanıyoruz
-      slots.add(
-          '${actualStartHour.toString().padLeft(2, '0')}:00-${actualEndHour
-              .toString().padLeft(2, '0')}:00');
-    }
-
-    return slots;
+    final start = widget.haliSaha.startHour.split(':');
+    final end = widget.haliSaha.endHour.split(':');
+    int sH = int.parse(start[0]);
+    int sM = int.parse(start[1]);
+    int eH = int.parse(end[0]);
+    int eM = int.parse(end[1]);
+    if (eH < sH || (eH == sH && eM < sM)) eH += 24;
+    return [for (int h = sH; h < eH; h++)
+      '${(h % 24).toString().padLeft(2,'0')}:00-${((h+1)%24).toString().padLeft(2,'0')}:00'
+    ];
   }
 
-  bool isSlotBooked(DateTime date, String slot) {
-    // slot: "HH:00-HH:00" gibi bir formattadır.
-    // İlk kısmı alıp saat ve dakikayı çözüyoruz.
-    final startPart = slot.split('-')[0];
-    final slotHour = int.parse(startPart.split(':')[0]);
-    final slotMinute = int.parse(startPart.split(':')[1]);
-
-    DateTime slotDateTime =
-    DateTime(date.year, date.month, date.day, slotHour, slotMinute);
-    String bookingString =
-        "${DateFormat('yyyy-MM-dd').format(slotDateTime)} $slot";
-    return bookedSlots.contains(bookingString);
+  bool isSlotBooked(DateTime day, String slot) {
+    final slotString = '${DateFormat('yyyy-MM-dd').format(day)} $slot';
+    return bookedSlots.contains(slotString);
   }
+
 
   void handleDateClick(int day) {
     setState(() {
@@ -161,11 +116,8 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void handleTimeClick(String time) {
-    if (!isSlotBooked(selectedDate, time)) {
-      setState(() {
-        selectedTime = time;
-      });
-    }
+    if (!isSlotBooked(selectedDate, time))
+      setState(() => selectedTime = time);
   }
 
   void handlePrevMonth() {
@@ -185,11 +137,11 @@ class _ReservationPageState extends State<ReservationPage> {
 
     // Şu anki ayın son günü
     DateTime currentMonthEnd =
-    DateTime(selectedDate.year, selectedDate.month + 1, 0);
+        DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
     // Rezervasyon penceresi sonraki aya uzanıyor mu?
     bool bookingWindowExtendToNextMonth =
-    bookingWindowEnd.isAfter(currentMonthEnd);
+        bookingWindowEnd.isAfter(currentMonthEnd);
 
     if (bookingWindowExtendToNextMonth) {
       // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
@@ -199,17 +151,9 @@ class _ReservationPageState extends State<ReservationPage> {
       });
     } else {
       // Rezervasyon penceresi uzanmıyorsa, bilgi ver ve mevcut ayda kal
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(
-                today)} - ${DateFormat.yMMMd('tr_TR').format(
-                bookingWindowEnd)} arası rezervasyon yapılabilir.",
-          ),
-          duration: Duration(seconds: 3),
-          backgroundColor: AppColors.info,
-        ),
-      );
+      AppSnackBar.warning(context,
+          "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - ${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
+          d: Duration(seconds: 3));
       // Ay değişikliği yapma - mevcut ayda kalır
     }
   }
@@ -244,9 +188,9 @@ class _ReservationPageState extends State<ReservationPage> {
     // Burada diğer ayların geçerlilik kontrolü de yapılabilir, ancak şimdilik geçmiş günler problemi çözüldü
   }
 
-  bool isToday(DateTime day, DateTime now) {
-    return day.year == now.year && day.month == now.month && day.day == now.day;
-  }
+  bool _isToday(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
 
   @override
   Widget build(BuildContext context) {
@@ -261,13 +205,11 @@ class _ReservationPageState extends State<ReservationPage> {
     timeSlots.where((slot) => !isSlotBooked(selectedDate, slot)).toList();
 
     // Eğer seçili gün bugüne eşitse, geçmiş saatleri listeden çıkar
-    if (isToday(selectedDate, now)) {
+    if (_isToday(selectedDate, now)) {
       allSlots.removeWhere((slot) {
-        final startPart = slot.split('-')[0];
-        final slotHour = int.parse(startPart.split(':')[0]);
-        final slotDateTime = DateTime(
-            selectedDate.year, selectedDate.month, selectedDate.day, slotHour);
-        return slotDateTime.isBefore(now);
+        final slotHour = int.parse(slot.split('-').first.split(':')[0]);
+        // slot 08:00 ise slotHour=8, şimdi TR saati 10:xx ise 8 < 10 ⇒ geçmiş
+        return slotHour <= now.hour;
       });
     }
 
@@ -342,7 +284,7 @@ class _ReservationPageState extends State<ReservationPage> {
                     physics: NeverScrollableScrollPhysics(),
                     itemCount: daysInMonth + firstDayOfMonth,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
+                      crossAxisCount: 8,
                     ),
                     itemBuilder: (context, index) {
                       if (index < firstDayOfMonth) {
@@ -426,7 +368,7 @@ class _ReservationPageState extends State<ReservationPage> {
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.w500,
-                                fontSize: isSelected ? 16 : 14,
+                                fontSize: isSelected ? 15 : 13,
                               ),
                             ),
                           ),
@@ -634,11 +576,12 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-  Future<bool> _hasReachedDailyCancelLimit() async {
-    final today = DateFormat('yyyy-MM-dd').format(TimeService.now());
-    final start = Timestamp.fromDate(DateTime.parse('$today 00:00:00Z'));
-    final end = Timestamp.fromDate(DateTime.parse('$today 23:59:59Z'));
 
+
+  Future<bool> _hasReachedDailyCancelLimit() async {
+    final todayStr = DateFormat('yyyy-MM-dd').format(TimeService.now());
+    final start = Timestamp.fromDate(DateTime.parse('$todayStr 00:00:00Z'));
+    final end   = Timestamp.fromDate(DateTime.parse('$todayStr 23:59:59Z'));
     final snap = await FirebaseFirestore.instance
         .collection('reservation_logs')
         .where('userId', isEqualTo: _auth.currentUser!.uid)
@@ -647,193 +590,133 @@ class _ReservationPageState extends State<ReservationPage> {
         .where('createdAt', isGreaterThanOrEqualTo: start)
         .where('createdAt', isLessThanOrEqualTo: end)
         .get();
-
     return snap.size >= 5;
   }
 
   Future<bool> _hasReachedInstantReservationLimit() async {
+    /* Beklemede olan bütün rezervasyon belgelerini çek */
     final snap = await FirebaseFirestore.instance
         .collection('reservations')
-        .where('userId', isEqualTo: _auth.currentUser!.uid)
-        .where('status', isEqualTo: 'Beklemede')
+        .where('userId',  isEqualTo: _auth.currentUser!.uid)
+        .where('status',  isEqualTo: 'Beklemede')
         .get();
-    return snap.size >= 3;
+
+    final now = TimeService.now();
+
+    /* Sadece geleceğe ait olanları say */
+    int futureCount = 0;
+    for (final doc in snap.docs) {
+      final raw = doc['reservationDateTime'] as String?;
+      if (raw == null) continue;
+      try {
+        final datePart  = raw.split(' ').first;          // "2024‑12‑18"
+        final timeStart = raw.split(' ').last.split('-').first; // "17:00"
+        final dt = DateTime.parse('$datePart $timeStart');
+        if (dt.isAfter(now)) futureCount++;
+      } catch (_) {/* format hatası varsa yoksay */}
+    }
+    return futureCount >= 3;
   }
 
+  Future<void> _makeReservation(String slot) async {
+    /* 1) Rezervasyonun başlangıç DateTime’i   */
+    final start   = slotToDateTime(selectedDate, slot);
 
-  Future<void> _makeReservation(String time) async {
-    String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
-    String bookingString = "$formattedDate $time";
+    /* 2) Sınır kontrolleri ------------------------------------------------- */
+    if (await _hasReachedDailyCancelLimit()) {
+      AppSnackBar.warning(context,
+          'Günlük iptal sınırına ulaştınız, bugün yeni rezervasyon isteği gönderemezsiniz.');
+      return;
+    }
+    if (await _hasReachedInstantReservationLimit()) {
+      AppSnackBar.warning(context,
+          'Aynı anda en fazla 3 bekleyen rezervasyonunuz olabilir.');
+      return;
+    }
 
-    final cancelledReservation = await FirebaseFirestore.instance
-        .collection('reservations')
-        .where('haliSahaId', isEqualTo: widget.haliSaha.id)
-        .where('reservationDateTime', isEqualTo: bookingString)
-        .where('status', isEqualTo: 'İptal Edildi')
-        .get();
+// 1) bookingString
+    final dayStr        = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final bookingString = '$dayStr $slot'; // "2025-07-29 20:00-21:00"
 
-    try {
-      if (await _hasReachedDailyCancelLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Günlük rezervasyon iptal sınırı aşıldı. Bugün yeni rezervasyon isteği gönderemezsiniz.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        print(_hasReachedDailyCancelLimit().toString());
-        return;
-      }
+    DateTime parseStartTimeUtc(String bookingString) {
+      final parts    = bookingString.split(' ');
+      final datePart = parts[0];                   // "2025-07-29"
+      final startStr = parts[1].split('-').first;  // "22:00"
+      final ymd      = datePart.split('-').map(int.parse).toList();
+      final hm       = startStr.split(':').map(int.parse).toList();
 
-      if (await _hasReachedInstantReservationLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Şu an 3 bekleyen rezervasyonunuz var. Yenisini göndermek için önce bunların sonuçlanmasını bekleyin!'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+      // önce normal UTC DateTime
+      final dtUtc = DateTime.utc(
+        ymd[0],  // year
+        ymd[1],  // month
+        ymd[2],  // day
+        hm[0],   // hour
+        hm[1],   // minute
+      );
 
-      final success = await ReservationRemoteService().reserveSlot(
+      // sonra sadece saatten 3 çıkar:
+      return dtUtc.subtract(const Duration(hours: 3));
+    }
+
+    final startTime     = parseStartTimeUtc(bookingString);
+    print(bookingString);
+    print(startTime.toString());
+
+
+
+    final success = await ReservationRemoteService().reserveSlot(
         haliSahaId: widget.haliSaha.id,
         bookingString: bookingString,
       );
-
       if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-            Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return; // işlemi durdur
+        AppSnackBar.error(context,
+            'Slot rezerve edilemedi, lütfen başka bir saat deneyin.');
+        return;
       }
 
-      // Güncellenmiş bookedSlots listesini al
-      setState(() {
-        widget.haliSaha.bookedSlots.add(bookingString);
-      });
 
-      String userId = _auth.currentUser!.uid;
-      String userName = widget.currentUser.name ?? "Name";
-      String userEmail = widget.currentUser.email ?? 'email@example.com';
-      String? userPhone = widget.currentUser.phone;
+      /* 4) Firestore’a rezervasyon belgesi yaz ----------------------------- */
+      final docRef = FirebaseFirestore.instance.collection('reservations').doc();
 
-      DocumentReference docRef;
-
-      if (cancelledReservation.docs.isNotEmpty) {
-        // Daha önce iptal edilen rezervasyonu tekrar kullan
-        docRef = FirebaseFirestore.instance
-            .collection('reservations')
-            .doc(cancelledReservation.docs.first.id);
-      } else {
-        // Daha önce iptal edilmiş rezervasyon da yoksa yeni bir doc ID oluştur
-        docRef = FirebaseFirestore.instance.collection("reservations").doc();
-      }
-
-      Reservation newReservation = Reservation(
-        id: docRef.id,
-        // Firestore'un oluşturduğu ID'yi kullanıyoruz
-        userId: userId,
-        haliSahaId: widget.haliSaha.id,
-        haliSahaName: widget.haliSaha.name,
-        haliSahaLocation: widget.haliSaha.location,
-        haliSahaPrice: widget.haliSaha.price,
-        reservationDateTime: bookingString,
-        status: 'Beklemede',
-        // Başlangıç durumu
-        createdAt: TimeService.now(),
-        userName: userName,
-        userEmail: userEmail,
-        userPhone: userPhone ?? "",
-        lastUpdatedBy: widget.currentUser.role,
-      );
-      print("Firestore'a yazılacak veri: ${newReservation.toMap()}");
-
-// Reservation'ı Firestore'a ekleme
-      await docRef.set(newReservation.toMap(), SetOptions(merge: false));
-
-      // Başarılı mesajı göster
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon isteği başarıyla gönderildi!")),
+      final reservation = Reservation(
+        id:                  docRef.id,
+        userId:              _auth.currentUser!.uid,
+        haliSahaId:          widget.haliSaha.id,
+        haliSahaName:        widget.haliSaha.name,
+        haliSahaLocation:    widget.haliSaha.location,
+        haliSahaPrice:       widget.haliSaha.price,
+        reservationDateTime: bookingString,          // ← TEK ALAN KALDI
+        startTime: startTime,
+        status:              'Beklemede',
+        createdAt:           TimeService.nowUtc(),
+        userName:            widget.currentUser.name,
+        userEmail:           widget.currentUser.email,
+        userPhone:           widget.currentUser.phone ?? '',
+        lastUpdatedBy:       widget.currentUser.role,
       );
 
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return Dialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Rezervasyon İsteği Gönderildi!",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      "Rezervasyon durumunuzu 'Rezervasyonlarım' sekmesinden takip edebilirsiniz.",
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1.4,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                        ),
-                        child: Text(
-                          "Tamam",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
+    try {
+      await docRef.set(reservation.toMap(), SetOptions(merge: false));
     } catch (e) {
-      final errorMsg = AppErrorHandler.getMessage(e, context: 'reservation');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Rezervasyon başarısız: $errorMsg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      final msg = AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, 'Rezervasyon kaydedilirken hata: $msg');
+      return;
     }
+
+    /* 5)  Ekranda anında göstermek için local listeyi güncelle */
+    setState(() {
+      setState(() {
+        bookedSlots.add(bookingString);
+      });
+      selectedTime = null;
+    });
+
+    _showSuccessDialog();
+
+    AppSnackBar.success(context, 'Rezervasyon isteğiniz gönderildi.');
   }
+
+
 
   Future<void> _showConfirmationDialog(BuildContext context) async {
     return showDialog<void>(
@@ -871,23 +754,23 @@ class _ReservationPageState extends State<ReservationPage> {
                   ),
                   SizedBox(height: 12),
                   Center(
-                    child:Container(
-                    padding: EdgeInsets.only(top: 12, bottom: 12, left: 32, right: 32),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${DateFormat.yMMMd('tr_TR').format(
-                          selectedDate)} ${selectedTime!}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.green.shade900,
+                    child: Container(
+                      padding: EdgeInsets.only(
+                          top: 12, bottom: 12, left: 32, right: 32),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${DateFormat.yMMMd('tr_TR').format(selectedDate)} ${selectedTime!}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green.shade900,
+                        ),
                       ),
                     ),
-                  ),),
-
+                  ),
                   SizedBox(height: 18),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -908,17 +791,16 @@ class _ReservationPageState extends State<ReservationPage> {
                       ElevatedButton(
                         onPressed: () async {
                           Navigator.of(context).pop(); // varsa dialog kapat
-                          showOverlayLoader(context);  // spinner başlat
+                          showLoader(context); // spinner başlat
 
                           try {
-                            await _makeReservation(selectedTime!); // işlemi bekle
+                            await _makeReservation(selectedTime!);
                           } catch (e) {
                             print('HATA: $e');
                           } finally {
-                            hideOverlayLoader(); // spinner her durumda kapanır
+                            hideLoader(); // spinner her durumda kapanır
                           }
                         },
-
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
@@ -945,38 +827,82 @@ class _ReservationPageState extends State<ReservationPage> {
       },
     );
   }
-  OverlayEntry? _loader;
 
-  void showOverlayLoader(BuildContext context) {
-    _loader = OverlayEntry(
-      builder: (context) => Stack(
-        children: [
-          // Arka plan hafif karanlık (bulanık değil)
-          ModalBarrier(
-            color: Colors.black.withOpacity(0.2),
-            dismissible: false,
-          ),
+  Future<void> _showSuccessDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // kullanıcı ekrana dokununca kapanmasın
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ✔️ Üstte büyük bir ikon
+                CircleAvatar(
+                  backgroundColor: Colors.green.shade100,
+                  radius: 36,
+                  child: Icon(Icons.check, size: 48, color: AppColors.primary),
+                ),
+                const SizedBox(height: 16),
 
-          // Ortada sadece yeşil spinner
-          const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                // Başlık
+                Text(
+                  'Rezervasyon İsteği Gönderildi!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Açıklama
+                Text(
+                  '\' Rezervasyonlarım \' sekmesinden rezervasyonunuzun durumunu takip edebilirsiniz.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Tamam butonu
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // İstersen burada Rezervasyonlarım sayfasına da yönlendirebilirsin:
+                    // Navigator.pushNamed(context, '/my_reservations');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 12),
+                  ),
+                  child: Text(
+                    'Tamam',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
-
-    Overlay.of(context, rootOverlay: true).insert(_loader!);
   }
-
-
-  void hideOverlayLoader() {
-    _loader?.remove();
-    _loader = null;
-  }
-
-
-
 }

@@ -1,53 +1,61 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/views/onboarding_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
-import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  _SplashScreenState createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<Offset> _slideAnimation;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
 
+    // Animasyon kontrolcüsünü başlatıyoruz
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500), // Animasyon süresi
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+    // Büyüme (scale) animasyonu
+    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
+    // Yatay kayma animasyonu
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.0, 0.2),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
+    // Animasyonu başlatıyoruz
     _controller.forward();
 
+    // Belirli bir süre sonra WelcomeScreen'e geçiş
     Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>  WelcomeScreen(),
-          transitionsBuilder: (_, animation, __, child) => SlideTransition(
-            position: _slideAnimation,
-            child: FadeTransition(opacity: animation, child: child),
-          ),
+          pageBuilder: (context, animation, secondaryAnimation) => OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            // Geçiş animasyonu: Fade + Slide
+            return SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+            );
+          },
         ),
       );
     });
@@ -55,31 +63,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.dispose(); // Animasyon kontrolcüsünü temizliyoruz
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryDark],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Hero(
-              tag: 'appLogo',
-              child: Image.asset(
-                'assets/logo2.png',
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-              ),
+      backgroundColor: AppColors.primary,
+      body: Center(
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Hero(
+            tag: 'appLogo', // Animasyonun çalışacağı widget
+            child: Image.asset(
+              'assets/logo2.png',
+              fit: BoxFit.contain,
             ),
           ),
         ),

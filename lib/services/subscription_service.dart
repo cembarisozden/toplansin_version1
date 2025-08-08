@@ -5,33 +5,13 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 // ---------------------------------------------------------------------------
 // Güvenli Snackbar gösterimi (ScaffoldMessenger.maybeOf + fallback)
 // ---------------------------------------------------------------------------
-void _safeShowSnackBar(BuildContext ctx, String msg, Color bg) {
-  final messenger = ScaffoldMessenger.maybeOf(ctx);
-  if (messenger != null) {
-    messenger.showSnackBar(SnackBar(content: Text(msg), backgroundColor: bg));
-  } else {
-    // Dialog veya dispose edilmiş context – bir sonraki frame’de kök overlay’e gönder
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final rootCtx = Navigator.of(ctx, rootNavigator: true).overlay?.context;
-      if (rootCtx != null) {
-        ScaffoldMessenger.of(rootCtx)
-            .showSnackBar(SnackBar(content: Text(msg), backgroundColor: bg));
-      }
-    });
-  }
-}
 
-void _showSuccess(BuildContext ctx, String msg) =>
-    _safeShowSnackBar(ctx, msg, Colors.green.shade600);
-
-void _showError(BuildContext ctx, dynamic error, {String ctxLabel = ''}) {
-  final msg = AppErrorHandler.getMessage(error, context: ctxLabel);
-  _safeShowSnackBar(ctx, msg, Colors.red.shade600);
-}
 
 // ---------------------------------------------------------------------------
 // CRUD ► Abonelik işlemleri (tamamı merkezi Snackbar + AppErrorHandler)
@@ -61,89 +41,98 @@ Future<void> aboneOl(BuildContext context, Subscription sub) async {
     }
 
     // Kullanıcıya her iki durumda da aynı mesaj
-    _showSuccess(context, 'Abonelik isteği gönderildi');
+   AppSnackBar.success(context, "Abonelik isteği gönderildi!");
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);;
     rethrow;
   }
 }
 
 Future<void> userAboneIstegiIptalEt(
     BuildContext context, String subscriptionDocId) async {
+  showLoader(context);
   try {
     await FirebaseFirestore.instance
         .collection('subscriptions')
         .doc(subscriptionDocId)
         .update({'status': 'İptal Edildi'});
-    _showSuccess(context, 'Abonelik isteği iptal edildi');
+    AppSnackBar.show(context, "Abonelik isteği iptal edildi.");
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);
+  }finally {
+    hideLoader();
   }
 }
 
 Future<void> approveSubscription(
     BuildContext context, String subscriptionId) async {
+  showLoader(context);
   try {
     await FirebaseFirestore.instance
         .collection('subscriptions')
         .doc(subscriptionId)
         .update({'status': 'Aktif', 'lastUpdatedBy': 'owner'});
-    _showSuccess(context, 'Abonelik onaylandı');
+    AppSnackBar.show(context,"Abonelik onaylandı!");
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);
     rethrow;
+  }finally{
+    hideLoader();
   }
 }
 
-Future<void> cancelSubscription(
-    BuildContext context, String subscriptionId) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('subscriptions')
-        .doc(subscriptionId)
-        .update({'status': 'İptal Edildi', 'lastUpdatedBy': 'owner'});
-    _showSuccess(context, 'Abonelik iptal edildi');
-  } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
-  }
-}
+
 
 Future<void> userCancelSubscription(
     BuildContext context, String subscriptionId) async {
+  showLoader(context);
   try {
     await FirebaseFirestore.instance
         .collection('subscriptions')
         .doc(subscriptionId)
         .update({'status': 'Sona Erdi', 'lastUpdatedBy': 'user'});
-    _showSuccess(context, 'Abonelik sona erdi');
+    AppSnackBar.success(context,"Abonelik başarıyla sona erdirildi");
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);
+  }finally{
+    hideLoader();
   }
 }
 
 Future<void> ownerCancelSubscription(
     BuildContext context, String subscriptionId) async {
+  showLoader(context);
   try {
     await FirebaseFirestore.instance
         .collection('subscriptions')
         .doc(subscriptionId)
         .update({'status': 'Sona Erdi', 'lastUpdatedBy': 'owner'});
-    _showSuccess(context, 'Abonelik sona erdi');
+    AppSnackBar.show(context, 'Abonelik başarıyla sona erdi');
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    AppSnackBar.error(context,"Abonelik iptal edilemedi!");
+  }finally{
+    hideLoader();
   }
 }
 
 Future<void> ownerRejectSubscription(
     BuildContext context, String subscriptionId) async {
+  showLoader(context);
   try {
     await FirebaseFirestore.instance
         .collection('subscriptions')
         .doc(subscriptionId)
         .update({'status': 'İptal Edildi', 'lastUpdatedBy': 'owner'});
-    _showSuccess(context, 'Abonelik reddedildi');
+    AppSnackBar.show(context, 'Abonelik isteği başarıyla reddedildi');
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);
+  }finally{
+    hideLoader();
   }
 }
 
@@ -160,6 +149,7 @@ Future<void> addOwnerSubscription({
   required String ownerPhone,
   required String ownerEmail,
 }) async {
+  showLoader(context);
   try {
     final col = FirebaseFirestore.instance.collection('subscriptions');
     final createdAt = TimeService.now();
@@ -176,7 +166,6 @@ Future<void> addOwnerSubscription({
       price: price,
       startDate: startDate,
       endDate: '',
-      visibleSession: startDate,
       nextSession: startDate,
       lastUpdatedBy: 'owner',
       status: 'Aktif',
@@ -202,13 +191,17 @@ Future<void> addOwnerSubscription({
       await col.add(subscription.toMap());
     }
 
-    _showSuccess(context, 'Abonelik oluşturuldu');
+    AppSnackBar.show(context, "Abonelik oluşuturldu.");
   } catch (e) {
-    _showError(context, e, ctxLabel: 'subscription');
+    final msg=AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, msg);
+  }finally{
+    hideLoader();
   }
 }
 
 Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) async {
+  showLoader(context);
   try {
     final functions = FirebaseFunctions.instance;
     final callable = functions.httpsCallable('cancelThisWeekSlot');
@@ -217,13 +210,12 @@ Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) asy
       "subscriptionId": subscriptionId,
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Bu haftaki seans başarıyla iptal edildi.")),
-    );
+    AppSnackBar.success(context, "Bu haftaki seans başarıyla iptal edildi.");
   } catch (error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("İptal sırasında bir hata oluştu: $error")),
-    );
+    final msg=AppErrorHandler.getMessage(error);
+    AppSnackBar.error(context, msg);
+  }finally{
+    hideLoader();
   }
 }
 
