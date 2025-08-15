@@ -7,6 +7,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
+import 'package:toplansin/ui/user_views/dialogs/show_styled_confirm_dialog.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
@@ -56,48 +57,21 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
   }
 
   Future<void> _showCancelConfirmationDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text(
-            'Rezervasyonu İptal Et',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Bu rezervasyonu iptal etmek istediğinize emin misiniz?'),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Vazgeç',
-                style: TextStyle(color: Colors.grey.shade700),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: Text('İptal Et', style: TextStyle(color: Colors.white)),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _cancelReservation(widget.reservation.id);
-              },
-            ),
-          ],
-        );
-      },
+    final ok = await ShowStyledConfirmDialog.show(
+      context,
+      title: "Rezervasyonu İptal Et",
+      message: "Bu rezervasyonu iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      confirmText: "İptal Et",
+      cancelText: "Vazgeç",
+      isDestructive: true, // kırmızı tema
+      icon: Icons.event_busy_rounded,
     );
+
+    if (ok == true) {
+      await _cancelReservation(widget.reservation.id);
+    }
   }
+
 
   Future<void> _cancelReservation(String reservationId) async {
     showLoader(context);

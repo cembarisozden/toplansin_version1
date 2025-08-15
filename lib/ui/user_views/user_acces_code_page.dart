@@ -4,6 +4,7 @@ import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/acces_code_provider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
+import 'package:toplansin/ui/user_views/dialogs/show_styled_confirm_dialog.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
@@ -31,6 +32,7 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
   List<UserCodeEntry> _userEntries = [];
   late AnimationController _btnAnim;
   Set<String> _visibleCodes = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
       setState(() {
         _userEntries = entries;
       });
+      _isLoading=false;
     });
   }
 
@@ -78,6 +81,7 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
       _foundPitch = saha;
       if (saha == null) _errorText = 'Geçersiz veya süresi dolmuş kod';
     });
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   Future<void> _confirmAccess() async {
@@ -103,6 +107,7 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
     setState(() {
       _userEntries.removeWhere((e) => e.code == code);
     });
+
   }
 
   @override
@@ -130,7 +135,7 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
                     Icon(Icons.vpn_key_rounded, size: 48, color: Colors.white),
                     const SizedBox(height: 8),
                     Text(
-                      'Halı Saha Kodları',
+                      'Halı Saha Erişim Kodları',
                       style:
                       AppTextStyles.titleLarge.copyWith(color: Colors.white),
                     ),
@@ -337,9 +342,31 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
                 const SizedBox(height: 12),
 
 // Kart listesini bu şekilde oluşturuyoruz:
+                _isLoading
+                    ? const Center(
+                  child: SizedBox(
+                    width: 28, // daha küçük
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ):
+                _userEntries.isEmpty
+                    ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    "Erişim kodunuz bulunmamaktadır.",
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ):
                 Column(
                   children: _userEntries.map((entry) {
                     final isVisible = _visibleCodes.contains(entry.code);
+                    if(_visibleCodes.isEmpty){
+
+                    }
                     return Card(
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -415,7 +442,19 @@ class _UserAccessCodePageState extends State<UserAccessCodePage>
                             IconButton(
                               icon: const Icon(Icons.delete_outline),
                               color: AppColors.danger,
-                              onPressed: () => _removeCode(entry.code),
+                              onPressed: () async{
+                                  final confirm =
+                                      await ShowStyledConfirmDialog.show(
+                                    context,
+                                    title: "Saha Erişim Kodunu Sil",
+                                    message:
+                                    "Kodu silerseniz bu halı sahaya rezervasyon veya abonelik yapabilmek için tekrardan kod girmeniz gerekecektir. Bu işlemi onaylıyor musunuz?",
+                                    confirmText: "Evet,Sil",
+                                  );
+                                  if (confirm == true) {
+                                    _removeCode(entry.code);
+                                  }
+                              },
                             ),
                           ],
                         ),

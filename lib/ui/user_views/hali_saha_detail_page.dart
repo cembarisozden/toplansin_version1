@@ -1,4 +1,3 @@
-// ignore_for_file: constant_identifier_names
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:provider/provider.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/core/providers/acces_code_provider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
@@ -17,6 +18,7 @@ import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images
 import 'package:toplansin/ui/user_views/shared/widgets/minimap/mini_map_preview.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/text/expandable_text.dart';
 import 'package:toplansin/ui/user_views/subscribe_page.dart';
+import 'package:toplansin/ui/user_views/user_acces_code_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
@@ -28,9 +30,6 @@ const Color kScaffoldBg = Color(0xFFF5F7F6); // açık gri arka plan
 const Color kCardShadow = Color(0x14000000); // 8% siyah gölge
 const double kCardRadius = 16.0;
 
-/// ----------------------------------------------------------------------------
-///                             DETAIL PAGE
-/// ----------------------------------------------------------------------------
 enum ReviewSortOption { newest, oldest, bestRated, worstRated }
 
 ReviewSortOption selectedSort = ReviewSortOption.newest;
@@ -55,6 +54,10 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   final TextEditingController _comment = TextEditingController();
   double _currentRating = 0;
   bool showAllReviews = false;
+  bool haveAccessCode = false;
+  bool _subLoading = false;
+  bool _resLoading = false;
+
 
   @override
   void initState() {
@@ -108,7 +111,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     });
     _comment.clear();
     _currentRating = 0;
-    AppSnackBar.success(context,"Yorumunuz başarıyla gönderildi.");
+    AppSnackBar.success(context, "Yorumunuz başarıyla gönderildi.");
   }
 
   Future<void> _deleteReview(Reviews r) async {
@@ -121,10 +124,10 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           .doc(r.docId)
           .delete();
       setState(() => reviewList.removeWhere((e) => e.docId == r.docId));
-      AppSnackBar.show(context,"Yorum silindi.");
+      AppSnackBar.show(context, "Yorum silindi.");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'review');
-      AppSnackBar.error(context,"Yorum silinemedi: $msg");
+      AppSnackBar.error(context, "Yorum silinemedi: $msg");
     }
   }
 
@@ -140,7 +143,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   // ────────────────────────────── UI ──────────────────────────────
   @override
   Widget build(BuildContext context) {
-    bool isPhone= widget._auth.currentUser?.phoneNumber?.isNotEmpty ?? false;
+    bool isPhone = widget._auth.currentUser?.phoneNumber?.isNotEmpty ?? false;
 
     final s = widget.haliSaha;
     return Scaffold(
@@ -177,7 +180,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                           ),
                           const SizedBox(height: 20),
                           MiniMapPreview(
-                            title: widget.haliSaha.name,
+                              title: widget.haliSaha.name,
                               lat: widget.haliSaha.latitude,
                               lng: widget.haliSaha.longitude),
                           const SizedBox(height: 20),
@@ -206,7 +209,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             onRate: (v) => setState(() => _currentRating = v),
                             onSubmit: () {
                               if (_currentRating == 0) {
-                               AppSnackBar.warning(context,"Lütfen bir puanlama yapınız!");
+                                AppSnackBar.warning(
+                                    context, "Lütfen bir puanlama yapınız!");
                               } else {
                                 _addReview(_comment.text, _currentRating,
                                     widget.currentUser.name);
@@ -224,19 +228,22 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
             SafeArea(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 color: Colors.white,
                 child: Column(
                   children: [
-                    if (!isPhone)                     // sadece telefon onaysızsa
+                    if (!isPhone) // sadece telefon onaysızsa
                       Container(
                         width: double.infinity,
-                        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 2, vertical: 5),
                         padding: const EdgeInsets.all(9),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.shade500, width: 1),
+                          border: Border.all(
+                              color: Colors.orange.shade500, width: 1),
                         ),
                         child: Row(
                           children: [
@@ -245,15 +252,18 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Rezervasyon veya abonelik yapabilmek için '
-                                    'telefon numaranı doğrulaman gerekiyor.',
-                                style: AppTextStyles.bodyMedium.copyWith(color: Colors.orange.shade800,fontWeight: FontWeight.w600)
-                              ),
+                                  'Rezervasyon veya abonelik yapabilmek için '
+                                  'telefon numaranı doğrulaman gerekiyor.',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                      color: Colors.orange.shade800,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ],
                         ),
                       ),
-                    SizedBox(height: 2,),
+                    SizedBox(
+                      height: 2,
+                    ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -266,9 +276,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                               Text(
                                 "Saatlik fiyatı",
                                 style: AppTextStyles.labelSmall.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 11
-                                ),
+                                    color: Colors.grey.shade600, fontSize: 11),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -289,33 +297,64 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                         Expanded(
                           flex: 3,
                           child: ElevatedButton(
-                            onPressed: isPhone ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => SubscribePage(halisaha: s,user:widget.currentUser,),
-                                ),
+                            onPressed: (isPhone && !_subLoading)
+                                ? () {
+                              _runWithLoading(
+                                getFlag: () => _subLoading,
+                                setFlag: (v) => setState(() => _subLoading = v),
+                                action: () async {
+                                  await handleAccessThen(
+                                    context,
+                                    saha: s,
+                                    currentUser: widget.currentUser,
+                                    actionLabel: "Abonelik",
+                                    onSuccess: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SubscribePage(
+                                            halisaha: s,
+                                            user: widget.currentUser,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onGoAccessCodes: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const UserAccessCodePage()),
+                                      );
+                                    },
+                                  );
+                                },
                               );
-                            }:null,
+                            }
+                                : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:isPhone ? Colors.indigo.shade600 : Colors.indigo.shade200,
+                              backgroundColor: isPhone
+                                  ? Colors.indigo.shade600
+                                  : Colors.indigo.shade200,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: Row(
+                            child: _subLoading
+                                ? const SizedBox(
+                              height: 22, width: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                                : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Abone Ol",
-                                  style: AppTextStyles.labelMedium.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600,color: Colors.white),
                                 ),
                               ],
                             ),
+
                           ),
                         ),
 
@@ -325,38 +364,67 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                         Expanded(
                           flex: 3,
                           child: ElevatedButton(
-                            onPressed:isPhone ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ReservationPage(
-                                      haliSaha: s,
-                                      currentUser: widget.currentUser),
-                                ),
+                            onPressed: (isPhone && !_resLoading)
+                                ? () {
+                              _runWithLoading(
+                                getFlag: () => _resLoading,
+                                setFlag: (v) => setState(() => _resLoading = v),
+                                action: () async {
+                                  await handleAccessThen(
+                                    context,
+                                    saha: s,
+                                    currentUser: widget.currentUser,
+                                    actionLabel: "Rezervasyon",
+                                    onSuccess: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ReservationPage(
+                                            haliSaha: s,
+                                            currentUser: widget.currentUser,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onGoAccessCodes: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const UserAccessCodePage()),
+                                      );
+                                    },
+                                  );
+                                },
                               );
-                            }:null,
+                            }
+                                : null,
+
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:isPhone ? Colors.green.shade600 : Colors.grey.shade200,
+                              backgroundColor: isPhone
+                                  ? Colors.green.shade600
+                                  : Colors.grey.shade200,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: Row(
+                            child: _resLoading
+                                ? const SizedBox(
+                              height: 22, width: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                                : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Rezervasyon Yap",
-                                  style: AppTextStyles.labelMedium.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600,color: Colors.white),
                                 ),
                               ],
                             ),
+
                           ),
                         ),
-
                       ],
                     ),
                   ],
@@ -368,11 +436,233 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       ),
     );
   }
+  Future<void> _runWithLoading({
+    required bool Function() getFlag,
+    required void Function(bool) setFlag,
+    required Future<void> Function() action,
+  }) async {
+    if (getFlag()) return; // çifte tıklamayı önle
+    setFlag(true);
+    try {
+      await action();       // dialog / push vs burada await edilir
+    } finally {
+      if (!mounted) return;
+      setFlag(false);
+    }
+  }
 
 
 
+  Future<void> handleAccessThen(
+    BuildContext context, {
+    required HaliSaha saha,
+    required Person currentUser,
+    required String actionLabel, // "Rezervasyon" | "Abonelik"
+    required VoidCallback onSuccess, // erişim varsa yapılacak iş (navigate)
+    required VoidCallback onGoAccessCodes, // "Erişim Kodlarım"a götür
+    VoidCallback? onHelp, // opsiyonel yardım
+  }) async {
+    final hasAccess = await context
+        .read<AccessCodeProvider>()
+        .hasMatchingAccessCode(saha.id,context);
 
+    if (!hasAccess) {
+      await showAccessCodeRequiredDialog(
+        context,
+        actionLabel: actionLabel,
+        pitchName: saha.name,
+        onGoAccessCodes: onGoAccessCodes,
+        onHelp: onHelp,
+      );
+      return;
+    }
 
+    // erişim var → devam
+    onSuccess();
+  }
+
+  Future<void> showAccessCodeRequiredDialog(
+    BuildContext context, {
+    required VoidCallback onGoAccessCodes, // "Erişim Kodlarım" aksiyonu
+    VoidCallback? onHelp, // "Kod nasıl alınır?" (opsiyonel)
+    String actionLabel = "Rezervasyon", // "Rezervasyon" | "Abonelik"
+    String? pitchName, // Saha adı (opsiyonel)
+  }) {
+    final title = "Erişim Kodu Gerekli !";
+    final desc = StringBuffer()
+      ..write("Bu")
+      ..write(pitchName != null ? " “$pitchName” " : " ")
+      ..write(
+          "sahada $actionLabel yapmadan önce bir Erişim Kodu eklemen gerekiyor.");
+
+    return showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return Dialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // — ÜST BANNER
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment(-1, -0.6),
+                      end: Alignment(1.1, 0.9),
+                      colors: [
+                        Color(0xFF7F1D1D), // koyu bordo (başlangıç)
+                        Color(0xFFB91C1C), // zengin kırmızı
+                        Color(0xFFDC2626), // vurgu kırmızısı (bitiş)
+                      ],
+                      stops: [0.0, 0.7, 1.0],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(.18),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(.35)),
+                        ),
+                        child: const Icon(Icons.key_rounded,
+                            color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -.2,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.white),
+                        splashRadius: 18,
+                      )
+                    ],
+                  ),
+                ),
+
+                // — İÇERİK
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Bilgi chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A).withOpacity(.06),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text("Bu saha için erişim kodun yok.",
+                            style: AppTextStyles.labelSmall.copyWith(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF334155),
+                            )),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Açıklama
+                      Text(
+                        desc.toString(),
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Mini adımlar kutusu
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            _Bullet(
+                                text: "İlgili halı saha ile iletişime geç."),
+                            SizedBox(height: 6),
+                            _Bullet(text: "Erişim Kodunu talep et."),
+                            SizedBox(height: 6),
+                            _Bullet(
+                                text:
+                                    "Kodu “Saha Erişim Kodlarım” sayfasına ekle."),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // — BUTONLAR
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            onGoAccessCodes();
+                          },
+                          icon: const Icon(Icons.add_circle_outline_outlined,
+                              size: 18),
+                          label: Text("Erişim Kodu Ekle",
+                              style: AppTextStyles.labelMedium.copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            minimumSize: const Size.fromHeight(46),
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   // ────────────────────────── HELPERS ──────────────────────────
   void _openImageViewer(int initIndex) => showDialog(
@@ -511,43 +801,6 @@ class _HeaderGalleryState extends State<_HeaderGallery> {
   }
 }
 
-// ───────────────────────── ACTION BUTTONS ─────────────────────────
-/*class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.onReserve, required this.onSubscribe});
-
-  final VoidCallback onReserve, onSubscribe;
-
-  ButtonStyle _style(Color c) => ElevatedButton.styleFrom(
-        elevation: 3,
-        backgroundColor: c,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kCardRadius),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-      );
-
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-              style: _style(kPrimary),
-              onPressed: onReserve,
-              child: Text("Rezervasyon Yap")),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-              style: _style(Colors.blue.shade700),
-              onPressed: onSubscribe,
-              child: Text("Abone Ol")),
-        ),
-      ]);
-}*/
-
 // ───────────────────────── INFO TABS ─────────────────────────
 class _InfoTabs extends StatelessWidget {
   const _InfoTabs(this.s);
@@ -568,7 +821,7 @@ class _InfoTabs extends StatelessWidget {
             tabs: const [Tab(text: "Bilgiler"), Tab(text: "Özellikler")],
           ),
           SizedBox(
-            height: 210,
+            height: 240,
             child: TabBarView(children: [
               _InfoTab(s),
               _FeaturesTab(s),
@@ -618,9 +871,9 @@ class _FeaturesTab extends StatelessWidget {
   final HaliSaha s;
 
   Widget _feat(IconData ic, String lbl) => Column(children: [
-        Icon(ic, color: kPrimary, size: 30),
+        Icon(ic, color: kPrimary, size: 24),
         const SizedBox(height: 4),
-        Text(lbl, style: TextStyle(color: Colors.grey.shade700)),
+        Text(lbl, style: AppTextStyles.bodyMedium.copyWith(color: Colors.grey.shade700,fontSize: 12)),
       ]);
 
   @override
@@ -631,6 +884,17 @@ class _FeaturesTab extends StatelessWidget {
       if (s.hasShoeRental) _feat(Icons.directions_run, "Ayakkabı"),
       if (s.hasCafeteria) _feat(Icons.local_cafe, "Kafeterya"),
       if (s.hasNightLighting) _feat(Icons.nightlight, "Aydınlatma"),
+      if (s.hasMaleToilet) _feat(Icons.wc, "Erkek Tuvaleti"),
+      if (s.hasFemaleToilet) _feat(Icons.wc_outlined, "Kadın Tuvaleti"),
+      if (s.hasFoodService) _feat(Icons.restaurant, "Yemek"),
+      if (s.acceptsCreditCard) _feat(Icons.credit_card, "Kredi Kartı"),
+      if (s.hasFoosball) _feat(Icons.sports_soccer, "Langırt"),
+      if (s.hasCameras) _feat(Icons.videocam, "Kamera"),
+      if (s.hasGoalkeeper) _feat(Icons.sports_handball, "Kaleci Kiralama"),
+      if (s.hasPlayground) _feat(Icons.child_care, "Oyun Alanı"),
+      if (s.hasPrayerRoom) _feat(Icons.self_improvement, "İbadet Alanı"),
+      if (s.hasInternet) _feat(Icons.wifi, "İnternet"),
+
     ];
     if (feats.isEmpty) {
       return Center(
@@ -640,8 +904,8 @@ class _FeaturesTab extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(14),
       child: Wrap(
-        spacing: 24,
-        runSpacing: 24,
+        spacing: 14,
+        runSpacing: 14,
         alignment: WrapAlignment.center,
         children: feats,
       ),
@@ -1198,4 +1462,40 @@ class _InfoRow extends StatelessWidget {
           ),
         ],
       );
+}
+
+/// — küçük noktalı madde satırı (inline tutmak için tek widget)
+class _Bullet extends StatelessWidget {
+  final String text;
+
+  const _Bullet({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          margin: const EdgeInsets.only(top: 7, right: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.5,
+              color: Color(0xFF475569),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

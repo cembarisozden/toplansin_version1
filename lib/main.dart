@@ -1,3 +1,4 @@
+// main.dart
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +9,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -16,13 +16,17 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:toplansin/core/providers/FavoritesProvider.dart';
 import 'package:toplansin/core/providers/HomeProvider.dart';
 import 'package:toplansin/core/providers/acces_code_provider.dart';
 import 'package:toplansin/core/providers/bottomNavProvider.dart';
 import 'package:toplansin/core/providers/owner_providers/StatsProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/owner_activate_code_with_users_provider.dart';
 import 'package:toplansin/firebase_options.dart';
+import 'package:toplansin/keyboardKit.dart';
 import 'package:toplansin/services/connectivity_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/services/user_notification_service.dart';
@@ -33,7 +37,6 @@ import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/banner/pro_connectivity_banner.dart';
 import 'package:toplansin/ui/views/splash_screen.dart';
 import 'package:toplansin/core/providers/PhoneVerificationProvider.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -47,6 +50,7 @@ Future<bool> _hasNetwork() async =>
 /* ─────────────────────────────────────────────────────────────── */
 
 bool _onlineServicesReady = false;
+
 Future<void> _initOnlineServices() async {
   if (_onlineServicesReady) return;
   _onlineServicesReady = true;
@@ -72,19 +76,18 @@ Future<void> _updateServerTime() async {
 
 /* ─────────────────────────────────────────────────────────────── */
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1) Firebase + offline cache
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseFirestore.instance.settings =
-  const Settings(persistenceEnabled: true);
+      const Settings(persistenceEnabled: true);
 
-  // 2) App Check
+  // 2) App Check
   await FirebaseAppCheck.instance.activate(
-    androidProvider: kDebugMode
-        ? AndroidProvider.debug
-        : AndroidProvider.playIntegrity,
+    androidProvider:
+        kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
     appleProvider: kDebugMode
         ? AppleProvider.debug
         : AppleProvider.appAttestWithDeviceCheckFallback,
@@ -97,57 +100,46 @@ void main() async {
   // 4) Crashlytics hata handler
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
-  // 5) UI hemen ayağa kalksın!
-
+  // 5) UI — tek MaterialApp: MyApp
   runApp(
-
-    ScreenUtilInit(
-      designSize: const Size(411.42857142857144, 914.2857142857143),
-      useInheritedMediaQuery: true,    // ← EKLEDİK
-      minTextAdapt: true,
-      builder: (context, child) {
-        return DevicePreview(
-          enabled: !kReleaseMode,
-          builder: (previewContext) {
-            return MultiProvider(
-              providers: [
-                ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
-                ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
-                ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
-                ChangeNotifierProvider(create: (_) => HomeProvider()),
-                ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-                ChangeNotifierProvider(create: (_) => StatsProvider()),
-                ChangeNotifierProvider(create: (_) => BottomNavProvider()),
-                ChangeNotifierProvider(create: (_) => AccessCodeProvider()),
-              ],
-              child: MaterialApp(
-                debugShowCheckedModeBanner: false,
-                // DevicePreview için locale ve builder
-                locale: DevicePreview.locale(previewContext),
-                builder: DevicePreview.appBuilder,
-                // Orijinal başlangıç ekranınız
-                home: SplashScreen(),
-              ),
-            );
-          },
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (previewContext) {
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
+            ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
+            ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
+            ChangeNotifierProvider(create: (_) => HomeProvider()),
+            ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+            ChangeNotifierProvider(create: (_) => StatsProvider()),
+            ChangeNotifierProvider(create: (_) => BottomNavProvider()),
+            ChangeNotifierProvider(create: (_) => AccessCodeProvider()),
+            ChangeNotifierProvider(create: (_) => OwnerActivateCodeWithUsersProvider()),
+          ],
+          child: ScreenUtilInit(
+            designSize: const Size(411.42857142857144, 914.2857142857143),
+            useInheritedMediaQuery: true,
+            minTextAdapt: true,
+            builder: (context, child) => const MyApp(),
+            child: const SizedBox.shrink(),
+          ),
         );
       },
-      // child param'ı kullanmıyoruz, builder zaten tüm widget'ları sarmalıyor
-      child: const SizedBox.shrink(),
     ),
   );
 
   // ——————————————————————————
-  // 6) Artık app açıldı, arkada devam edelim
+  // 6) App açıldıktan sonra arka işler
   final onlineAtLaunch = await _hasNetwork();
   if (onlineAtLaunch) {
-    await _initOnlineServices();      // FCM, local notifications vs.
-    await _updateServerTime();        // sunucu saati
+    await _initOnlineServices(); // FCM, local notifications vs.
+    await _updateServerTime(); // Sunucu saati
   } else {
     FirebaseFirestore.instance.disableNetwork(); // Firestore çökmesin
   }
 
-  // 7) TimeService init’i offline’ı yutacak şekilde
+  // 7) TimeService init (offline toleranslı)
   try {
     await TimeService.init();
   } catch (e) {
@@ -163,47 +155,6 @@ void main() async {
   });
 }
 
-class AppRoot extends StatefulWidget {
-  const AppRoot({super.key});
-
-  @override
-  State<AppRoot> createState() => _AppRootState();
-}
-
-class _AppRootState extends State<AppRoot> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeMetrics() {
-    // Yeni yöntem: View.of(context) → viewInsets ile klavye yüksekliğini al
-    final bottomInset = View.of(context).viewInsets.bottom;
-    final isKeyboardOpen = bottomInset > 0;
-
-    final focus = FocusManager.instance.primaryFocus;
-
-    if (isKeyboardOpen && (focus == null || !focus.hasFocus)) {
-      focus?.unfocus();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const MyApp(); // senin mevcut app'in burada çağrılıyor
-  }
-} //Klavye açılmasın diye ayar
-
-
-
 /* ─────────────────────────────────────────────────────────────── */
 
 class MyApp extends StatelessWidget {
@@ -213,45 +164,52 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [KeyboardUnfocusObserver()],
+
+      // ÖNEMLİ: DevicePreview.appBuilder + TapRegion birlikte
+      builder: (context, child) {
+        final previewed = DevicePreview.appBuilder(context, child);
+        // Sadece DIŞA tıklayınca klavyeyi kapat; TextField’a tıklayınca odak kaçmasın
+        return TapRegion(
+          onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+          child: Stack(
+            children: [
+              previewed,
+              // Online/Offline banner
+              StreamBuilder<bool>(
+                stream: ConnectivityService.instance.connectivity$,
+                builder: (context, snapshot) {
+                  final isConnected = snapshot.data ?? true;
+                  return ProConnectivityBanner(offline: !isConnected);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+
       title: 'Toplansın',
       theme: ThemeData(
         colorSchemeSeed: AppColors.primary,
         useMaterial3: true,
         fontFamily: GoogleFonts.roboto().fontFamily,
-        textTheme:  AppTextStyles.textTheme,
+        textTheme: AppTextStyles.textTheme,
       ),
-      // ➊ Lokalizasyon delegeleri
+
+      // Lokalizasyon
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // ➋ Desteklenen diller
       supportedLocales: const [
-        Locale('en', ''), // İngilizce (fallback)
-        Locale('tr', ''), // Türkçe
+        Locale('en', ''),
+        Locale('tr', ''),
       ],
-      // ➌ Uygulama dili (opsiyonel; cihaz ayarını kullanmak istiyorsanız kaldırın)
       locale: const Locale('tr', 'TR'),
-      builder: (context, child) {
-        final previewed = DevicePreview.appBuilder(context, child);
-        return Stack(
-          children: [
-            previewed,
-            StreamBuilder<bool>(
-              stream: ConnectivityService.instance.connectivity$,
-              builder: (context, snapshot) {
-                final isConnected = snapshot.data ?? true;
-                return ProConnectivityBanner(offline: !isConnected);
-              },
-            ),
-          ],
-        );
-      },
 
+      // Başlangıç
       home: const SplashScreen(),
     );
   }
 }
-
-

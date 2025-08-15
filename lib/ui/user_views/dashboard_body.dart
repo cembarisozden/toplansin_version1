@@ -8,11 +8,13 @@ import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/HomeProvider.dart';
 import 'package:toplansin/core/providers/bottomNavProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/banner/phone_verify_banner.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
+import 'package:toplansin/ui/user_views/user_acces_code_page.dart';
 import 'package:toplansin/ui/user_views/user_settings_page.dart';
 import '../../data/entitiy/person.dart';
 import '../user_views/user_reservations_page.dart';
@@ -30,7 +32,6 @@ class DashboardBody extends StatefulWidget {
 
 class _DashboardBodyState extends State<DashboardBody> {
   List<HaliSaha> favoriteHaliSahalar = [];
-  List<HaliSaha> _trendHaliSahalar = [];
 
   @override
   void initState() {
@@ -42,7 +43,6 @@ class _DashboardBodyState extends State<DashboardBody> {
 
   @override
   Widget build(BuildContext context) {
-    final noPhone = (widget.user?.phone ?? '').isEmpty;
     favoriteHaliSahalar = context.watch<HomeProvider>().favoriteHaliSahalar;
     return Scaffold(
       body: SafeArea(
@@ -60,19 +60,20 @@ class _DashboardBodyState extends State<DashboardBody> {
                 stream: FirebaseAuth.instance.userChanges(),
                 builder: (context, snapshot) {
                   final user = snapshot.data;
-                  final noPhone = user?.phoneNumber == null ;
+                  final noPhone = user?.phoneNumber == null;
                   if (!noPhone) return SizedBox.shrink();
                   return PhoneVerifyBanner(
                     onAction: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => UserSettingsPage(currentUser: widget.user!),
+                        builder: (_) =>
+                            UserSettingsPage(currentUser: widget.user!),
                       ),
                     ),
                   );
                 },
               ),
-        Expanded(
+              Expanded(
                 child: CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
@@ -82,13 +83,20 @@ class _DashboardBodyState extends State<DashboardBody> {
                             child: _welcomeCard(widget.user!.name)),
                       ),
                       SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: accessCodeNote(context),
+                        ),
+                      ),
+                      SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                         sliver: SliverToBoxAdapter(
                           child: infoBanner(
                             context: context,
                             text:
                                 'Hey kaptan, tüm abonelik ve rezervasyonlarını aşağıdan görüntüleyebilirsin, kontrol sende!',
-                            icon: Ionicons.caret_down_outline, // ister başka ikon
+                            icon: Ionicons.caret_down_outline,
+                            // ister başka ikon
                             iconColor: AppColors.secondary, // marka rengin
                             // gradientStart / gradientEnd / borderColor vb. parametreleri
                             // geçmezsen varsayılanlar kullanılır.
@@ -119,8 +127,8 @@ class _DashboardBodyState extends State<DashboardBody> {
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        FavorilerPage(currentUser: widget.user!),
+                                    builder: (_) => FavorilerPage(
+                                        currentUser: widget.user!),
                                   ));
                             },
                           ),
@@ -132,7 +140,9 @@ class _DashboardBodyState extends State<DashboardBody> {
                           child: trendPitches(
                             user: widget.user!,
                             onSeeAllTrends: () {
-                              Provider.of<BottomNavProvider>(context,listen:false).setIndex(1);
+                              Provider.of<BottomNavProvider>(context,
+                                      listen: false)
+                                  .setIndex(1);
                             },
                           ),
                         ),
@@ -144,6 +154,221 @@ class _DashboardBodyState extends State<DashboardBody> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget accessCodeNote(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF8FAFC), Color(0xFFE2E8F0)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD1D5DB), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.accessOrange.withOpacity(.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Ionicons.key_outline,
+                    size: 18, color: AppColors.textPrimary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Mevcut saha erişim kodların ve rezervasyon yapabileceğin sahalar",
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+              "Yalnızca erişimin olan sahalara rezervasyon yapabilirsin. Diğer sahalar için ilgili "
+              "halı saha ile iletişime geçerek bir “Erişim Kodu” alman gerekir.",
+              style: AppTextStyles.bodySmall.copyWith(
+                fontSize: 14,
+                height: 1.35,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              )),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // — CTA: Erişim Kodlarım —
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserAccessCodePage(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.accessOrange,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(.18),
+                        blurRadius: 10,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Ionicons.key_outline, color: Colors.white, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        "Erişim Kodlarım",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.chevron_right, color: Colors.white, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // — Yardım linki —
+              TextButton(
+                onPressed: () => _showAccessCodeHelpSheet(context),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                child: Text(
+                  "Kod nasıl alınır?",
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.secondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAccessCodeHelpSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accessOrange.withOpacity(.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Ionicons.help_circle_outline,
+                        size: 18, color: AppColors.accessOrange),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Erişim Kodu nasıl alınır?",
+                      style: AppTextStyles.titleSmall.copyWith(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "1) İlgili halı sahanın profilindeki iletişim bilgilerinden saha ile görüş.\n"
+                "2) Rezervasyon yapabilmek için kişisel “Saha Erişim Kodu” talep et.\n"
+                "3) Aldığın kodu “Saha Erişim Kodlarım” sayfasına ekle.\n"
+                "4) Güvenlik için kodu kimseyle paylaşma.",
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const UserAccessCodePage(), // HaliSahaAccessCodesPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Ionicons.key_outline, size: 18),
+                  label: const Text("Erişim Kodlarım’a Git"),
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    minimumSize: const Size.fromHeight(46),
+                    backgroundColor: AppColors.accessOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -163,29 +388,29 @@ class _DashboardBodyState extends State<DashboardBody> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-                  Icon(Icons.favorite, color: Colors.red, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    'Favorilediklerin',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                    ),
+              Icon(Icons.favorite, color: Colors.red, size: 20),
+              SizedBox(width: 6),
+              Text(
+                'Favorilediklerin',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              Spacer(),
+              TextButton(
+                onPressed: onSeeAllTap,
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                child: const Text(
+                  'Tümünü Gör',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF3B82F6),
                   ),
-                  Spacer(),
-                  TextButton(
-                    onPressed: onSeeAllTap,
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                    child: const Text(
-                      'Tümünü Gör',
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF3B82F6),
-                      ),
-                    ),
-                  )
+                ),
+              )
               //  TextButton const olamıyor (callback değişken)
             ],
           ),
@@ -352,7 +577,7 @@ class _DashboardBodyState extends State<DashboardBody> {
                     fit: StackFit.expand,
                     children: [
                       Hero(
-                        tag: "trend"+saha.id,
+                        tag: "trend" + saha.id,
                         child: ProgressiveImage(
                           imageUrl: saha.imagesUrl.first,
                           width: 120,
@@ -421,81 +646,126 @@ class _DashboardBodyState extends State<DashboardBody> {
   }
 
   Widget _welcomeCard(String name) {
-    const radius = 32.0;
-    const iconSize = 72.0;
-    final firstName = name.split(' ').first;
+    final firstName =
+        (name.trim().isEmpty ? "Kaptan" : name.trim().split(' ').first);
+    final h = TimeService.now().hour;
+    final greeting =
+        h < 12 ? "Günaydın" : (h < 18 ? "İyi günler" : "İyi akşamlar");
+
+    const double cardHeight = 140; // istersen 132–156 arası oynat
+    const double radius = 20;
 
     return Container(
-      height: 160,
+      height: cardHeight,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
         gradient: const LinearGradient(
-          begin: Alignment(-1, -1.2),
-          end: Alignment(1.2, 1),
+          begin: Alignment(-1, -0.8),
+          end: Alignment(1.1, 0.9),
           colors: [AppColors.primary, AppColors.primaryDark],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(.35),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
+            color: AppColors.primary.withOpacity(.28),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned(top: -40, right: -40, child: _blurBubble(140, .18)),
-          Positioned(bottom: -20, right: 40, child: _blurBubble(90, .10)),
+          // yumuşak ışık baloncukları (mevcut _blurBubble'ını kullanıyoruz)
+          Positioned(top: -28, right: -24, child: _blurBubble(110, .14)),
+          Positioned(bottom: -20, left: -10, child: _blurBubble(80, .10)),
+
+          // diagonal parlama dokusu
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(.10),
+                    Colors.transparent,
+                    Colors.white.withOpacity(.06)
+                  ],
+                  stops: [0, .55, 1],
+                ),
+              ),
+            ),
+          ),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // sol yuvarlak ikon rozeti
                 Container(
-                  width: iconSize,
-                  height: iconSize,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    color: Colors.white.withOpacity(.22),
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(.18),
                     border: Border.all(
                         color: Colors.white.withOpacity(.35), width: 1),
                   ),
                   child: const Icon(Icons.sports_soccer,
-                      size: 40, color: Colors.white),
+                      color: Colors.white, size: 26),
                 ),
-                const SizedBox(width: 28),
+                const SizedBox(width: 14),
+
+                // metinler
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Hoş geldin,',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(.92),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
-                      Text(firstName,
-                          style: const TextStyle(
-                            fontSize: 36,
-                            height: 1.05,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -.5,
-                            color: Colors.white,
+                      // küçük selamlama satırı
+                      Text(greeting + ",",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: Colors.white.withOpacity(.92),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0.5,
                           )),
-                      const SizedBox(height: 10),
-                      Row(children: [
-                        const Icon(Icons.flash_on_rounded,
-                            size: 20, color: Colors.amber),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'Saha hazır, top hazır, peki ya sen?',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodySmall.copyWith(color: Colors.white,fontWeight: FontWeight.w200),
-                          ),
+                      const SizedBox(height: 2),
+                      // isim: ana vurgu
+                      Text(
+                        firstName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          height: 1.05,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -.2,
                         ),
-                      ]),
+                      ),
+                      const SizedBox(height: 8),
+                      // tagline (kısa ve temiz)
+                      Row(
+                        children: [
+                          const Icon(Icons.flash_on_rounded,
+                              size: 16, color: Colors.amber),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text("Müsait saatleri keşfet, sahayı kap!",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white.withOpacity(.95),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                )),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

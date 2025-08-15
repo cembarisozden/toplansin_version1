@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/providers/acces_code_provider.dart';
+import 'package:toplansin/ui/owner_views/owner_show_users_with_active_codes.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 
@@ -78,11 +79,13 @@ class _OwnerAccessCodePageState extends State<OwnerAccessCodePage> {
   }
 
   String _formatDate(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}.'
-        '${dt.month.toString().padLeft(2, '0')}.'
-        '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
+    final adjusted = dt.toUtc().add(const Duration(hours: 3));
+    return '${adjusted.day.toString().padLeft(2, '0')}.'
+        '${adjusted.month.toString().padLeft(2, '0')}.'
+        '${adjusted.year} ${adjusted.hour.toString().padLeft(2, '0')}:'
+        '${adjusted.minute.toString().padLeft(2, '0')}';
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +217,38 @@ class _OwnerAccessCodePageState extends State<OwnerAccessCodePage> {
               style: AppTextStyles.bodyMedium.copyWith(color: Colors.grey[700]),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OwnerShowUsersWithActiveCodes(
+                    haliSahaId: widget.haliSahaId,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.touch_app, color: Colors.white, size: 22),
+            label: const Text(
+              "Saha Erişim Koduna Sahip Kullanıcılar",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue, // Burayı istediğin renkle değiştir
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 3,
+            ),
+          ),
+
+          const SizedBox(height: 32),
 
             Align(
               alignment: Alignment.centerLeft,

@@ -1,109 +1,121 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import '../user_views/shared/theme/app_colors.dart';
 
-/// 𝗢𝘆𝘂𝗻𝗰𝘂 𝗕𝘂𝗹 ─ Tanıtım (Coming-Soon) Ekranı
 class ComingSoonPage extends StatelessWidget {
   const ComingSoonPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Güvenli kare görsel boyutu (ekran genişliği/ yüksekliği dikkate alınır)
+    final double imgSide = math.min(0.6.sw, 0.35.sh).clamp(160.w, 340.w);
+
     return Scaffold(
-      // ── Yumuşak gri-mavi degrade arka plan ────────────────────────────────
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF1F5F9), // açık gri-mavi
-              Color(0xFFE2E8F0), // biraz daha koyu
-            ],
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
           ),
         ),
-        // ── İçerik ───────────────────────────────────────────────────────────
-        child: Center(
+        child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // İlustrasyon
-                Image.asset(
-                  'assets/coming_soon_players2.png',
-                  width: 320,
-                  height: 320,
+                SizedBox(height: 20.h),
+
+                // Görsel ekran boyutuna göre ölçeklenir
+                Expanded(
+                  flex: 4,
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: imgSide,
+                      child: Image.asset(
+                        'assets/coming_soon_players2.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 16.h),
 
                 // Başlık
                 Text(
                   'Oyuncu mu Arıyorsun?',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                    fontSize: 22,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontSize: 22.sp,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primaryDark,
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                SizedBox(height: 10.h),
 
                 // Açıklama
-                Text(
-                  'Takımın eksik mi kaldı? Oyuncu bulmak artık çok kolay olacak! '
-                      'Bu özellikle yakında buradayız 🚀',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                    fontSize: 16,
-                    color: Colors.grey.shade800,
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
+                  child: Text(
+                    'Takımın eksik mi kaldı? Oyuncu bulmak artık çok kolay olacak! '
+                        'Bu özellikle yakında buradayız 🚀',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontSize: 16.sp,
+                      height: 1.35,
+                      color: Colors.grey.shade800,
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 18.h),
 
-                // Yakında rozeti
+                // "Yakında" rozeti — FittedBox ile dar ekranlarda otomatik küçülür
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 9.h),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF34D399),  // açık yeşil
-                        Color(0xFF059669),  // koyu yeşil
-                      ],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [Color(0xFF34D399), Color(0xFF059669)],
                     ),
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: const [
+                    borderRadius: BorderRadius.circular(32.r),
+                    boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
+                        blurRadius: 6.r,
+                        offset: Offset(0, 3.h),
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          size: 20, color: Colors.white),          // sol ikon
-                      const SizedBox(width: 8),
-                      Text(
-                        'YAKINDA HİZMETİNİZDE',
-                        style: Theme.of(context).textTheme.labelLarge!.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 1.1,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, size: 20.sp, color: Colors.white),
+                        SizedBox(width: 8.w),
+                        Text(
+                          'YAKINDA HİZMETİNİZDE',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 1.1,
+                            fontSize: 14.sp,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.star_rounded,
-                          size: 20, color: Colors.white),          // sağ ikon
-                    ],
+                        SizedBox(width: 8.w),
+                        Icon(Icons.star_rounded, size: 20.sp, color: Colors.white),
+                      ],
+                    ),
                   ),
-                )
+                ),
 
+                SizedBox(height: 20.h),
+
+                const Spacer(flex: 2),
               ],
             ),
           ),

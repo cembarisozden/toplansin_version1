@@ -8,6 +8,7 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
@@ -73,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
 
       /* ───── 5) Yönlendirme ───── */
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (_) =>
@@ -81,6 +82,7 @@ class _LoginPageState extends State<LoginPage> {
               ? OwnerMainPage(currentOwner: person)
               : MainPage(currentUser: person),
         ),
+        (route)=>false,
       );
     }
 
@@ -134,9 +136,8 @@ class _LoginPageState extends State<LoginPage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Colors.green[400]!,
-              Colors.green[500]!,
-              Colors.green[600]!
+              AppColors.primaryDark,
+              AppColors.primary,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -151,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                   radius: 50,
                   backgroundColor: Colors.white,
                   child: Icon(
-                      Icons.sports_soccer, color: Colors.green, size: 50),
+                      Icons.sports_soccer, color: AppColors.primary, size: 50),
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -220,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _showChangePasswordDialog();
                                 },
                                 child: Text('Şifremi unuttum',
-                                    style: TextStyle(color: Colors.green)),
+                                    style: TextStyle(color: AppColors.primary)),
                               ),
                             ],
                           ),
@@ -304,7 +305,7 @@ class _LoginPageState extends State<LoginPage> {
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.symmetric(
                                   vertical: 12, horizontal: 32),
-                              backgroundColor: Colors.green,
+                              backgroundColor: AppColors.primary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -322,11 +323,11 @@ class _LoginPageState extends State<LoginPage> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.person_add, color: Colors.green),
+                                Icon(Icons.person_add, color: AppColors.primary),
                                 SizedBox(width: 8),
                                 Text(
                                   'Yeni Hesap Oluştur',
-                                  style: TextStyle(color: Colors.green),
+                                  style: TextStyle(color: AppColors.primary),
                                 ),
                               ],
                             ),
@@ -357,13 +358,13 @@ class _LoginPageState extends State<LoginPage> {
     return TextFormField(
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.green),
+        prefixIcon: Icon(icon, color: AppColors.primary),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.green),
+          borderSide: BorderSide(color: AppColors.primary),
         ),
       ),
       obscureText: obscureText,
@@ -439,7 +440,7 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: "E-posta Adresi",
-                    prefixIcon: Icon(Icons.email, color: Colors.green),
+                    prefixIcon: Icon(Icons.email, color: AppColors.primary),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 12,
@@ -461,7 +462,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),

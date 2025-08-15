@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/dialogs/show_styled_confirm_dialog.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 
@@ -511,7 +512,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                                 TextButton(
                                   onPressed: () async {
                                     final confirm =
-                                        await showStyledConfirmDialog(
+                                        await ShowStyledConfirmDialog.show(
                                       context,
                                       title: "Bu Haftaki Seansı İptal Et",
                                       message:
@@ -533,11 +534,11 @@ class _AbonelikCardState extends State<AbonelikCard> {
                               if (canCancelThisWeek) SizedBox(width: 8),
                               TextButton(
                                 onPressed: () async {
-                                  final confirm = await showStyledConfirmDialog(
+                                  final confirm = await ShowStyledConfirmDialog.show(
                                     context,
                                     title: "Aboneliği İptal Et",
                                     message:
-                                        "Aboneliğiniz tamamen iptal edilecek. Emin misiniz?",
+                                        "Aboneliğiniz tamamen iptal edilecek. Emin misiniz? Bu işlem geri alınamaz.",
                                     confirmText: "Evet, İptal Et",
                                   );
                                   if (confirm == true) {
@@ -558,7 +559,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     ] else if (isPending) ...[
                       TextButton(
                         onPressed: () async {
-                          final confirm = await showStyledConfirmDialog(
+                          final confirm = await ShowStyledConfirmDialog.show(
                             context,
                             title: "Abonelik İsteğini İptal Et",
                             message: "İsteğiniz geri çekilecek. Emin misiniz?",
@@ -586,64 +587,8 @@ class _AbonelikCardState extends State<AbonelikCard> {
     );
   }
 
-  Future<bool?> showStyledConfirmDialog(
-    BuildContext context, {
-    required String title,
-    required String message,
-    required String confirmText,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text("Vazgeç"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text(confirmText),
-          ),
-        ],
-      ),
-    );
+
   }
 
-  Widget _buildButton({
-    required VoidCallback onPressed,
-    required String label,
-    required Color color,
-  }) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        backgroundColor: Colors.transparent,
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: color, width: 1),
-        ),
-        minimumSize: Size(0, 32),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}
+
+
