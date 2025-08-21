@@ -1,147 +1,104 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/data/entitiy/notification_model.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
-import 'package:toplansin/services/time_service.dart';
 
 class UserNotificationProvider with ChangeNotifier {
-  int _reservationCount  = 0;
-  int _subscriptionCount = 0;
+  final List<NotificationModel> _notifications = [];
+  StreamSubscription? _subscription;
 
-  final List<Map<String, dynamic>> _notifications = [];
-  final List<Reservation>          _userReservations = [];
+  List<NotificationModel> get notifications => _notifications;
 
-  int get reservationCount => _reservationCount;
-  int get subscriptionCount => _subscriptionCount;
-  int get totalCount        => _reservationCount + _subscriptionCount;
+  int get unreadCount =>
+      _notifications
+          .where((n) => n.read == false)
+          .length;
 
-  List<Map<String, dynamic>> get notifications    => _notifications;
-  List<Reservation>          get userReservations => _userReservations;
-
-  StreamSubscription? _resListener;
-  StreamSubscription? _subListener;
-
-  /* --------------- Dinlemeyi başlat --------------- */
   void startListening() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) return;
+    _subscription?.cancel();
+
+    _subscription = FirebaseFirestore.instance
+        .collection('notifications')
+        .where("userId", isEqualTo: uid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snap) {
+      _notifications.clear();
+      for (final doc in snap.docs) {
+        _notifications.add(NotificationModel.fromDoc(doc));
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> markAsRead(String notificationId) async {
+    await FirebaseFirestore.instance
+        .collection('notifications')
+        .doc(notificationId)
+        .update({
+      'read': true,
+    });
+  }
+
+  Future<void> markAllAsRead() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    _resListener?.cancel();
-    _subListener?.cancel();
+    // 1️⃣ Okunmamışları topluca çek
+    final qSnap = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: uid)
+        .where('read', isEqualTo: false)
+        .get();
 
-    final now        = TimeService.now();
-    final todayStart = DateTime(now.year, now.month, now.day); // 00:00
+    if (qSnap.docs.isEmpty) return;
 
-    /* ============ 1) REZERVASYON LOGLARI ============ */
-    _resListener = FirebaseFirestore.instance
-        .collection('reservation_logs')
-        .where('userId',    isEqualTo: uid)
-        .where('newStatus', whereIn: ['Onaylandı', 'İptal Edildi'])
-        .where('by',        isEqualTo: 'owner')
-        .snapshots()
-        .listen((snap) {
-      _userReservations.clear();
-      _notifications.removeWhere((n) => n['type'] == 'reservation');
+    // 2️⃣ Batch ile hepsini tek istekle güncelle
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in qSnap.docs) {
+      batch.update(doc.reference, {'read': true});
+    }
 
-      for (final doc in snap.docs) {
-        final data       = doc.data();
-        final createdAt  = data['createdAt'] as Timestamp?;
-        final resDateStr = data['reservationDateTime'] as String?;
-        if (createdAt == null || resDateStr == null) continue;
+    await batch.commit(); // 🔥 tek round‑trip
+  }
 
-        final resDate = DateTime.tryParse(resDateStr.split(' ').first);
-        if (resDate == null || resDate.isBefore(todayStart)) continue; // ↺ BUGÜN+GELECEK
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 
-        final reservation = Reservation.fromDocument(doc);
-        _userReservations.add(reservation);
-
-        _notifications.add({
-          'type'       : 'reservation',
-          'title'      : data['newStatus'] == 'Onaylandı'
-              ? 'Rezervasyon Onaylandı'
-              : 'Rezervasyon İptal Edildi',
-          'subtitle'   : '$resDateStr tarihli rezervasyonunuz '
-              '${data['newStatus'].toLowerCase()}.',
-          'createdAtMs': createdAt.millisecondsSinceEpoch,
-        });
+  Future<Reservation> userReservation({required String userId ,required String reservationId}) async {
+    var doc = await FirebaseFirestore.instance
+        .collection('reservations')
+        .doc(reservationId)
+        .get();
+    if (!doc.exists) {
+      print("${reservationId} , ${userId} ");
+      final logSnapshot = await FirebaseFirestore.instance
+          .collection('reservation_logs')
+          .where('userId', isEqualTo: userId)
+          .where('reservationId', isEqualTo: reservationId)
+          .orderBy('createdAt',descending: true)
+          .limit(1)
+          .get();
+      if (logSnapshot.docs.isEmpty) {
+        throw AppErrorHandler.getMessage("Rezervasyon Bulunamadı");
       }
+      doc = logSnapshot.docs.first;
+    }
+    if(!doc.exists){
+      throw AppErrorHandler.getMessage("Rezervasyon Bulunamadı");
+    }
 
-      _reservationCount = _userReservations.length;
-      _sortByCreatedAt();
-      notifyListeners();
-    });
-
-    /* ============ 2) ABONELİK LOGLARI ============== */
-    _subListener = FirebaseFirestore.instance
-        .collection('subscription_logs')
-        .where('userId',    isEqualTo: uid)
-        .where('newStatus', whereIn: ['Aktif', 'İptal Edildi', 'Sona Erdi'])
-        .where('by',        isEqualTo: 'owner')
-        .snapshots()
-        .listen((snap) {
-      _notifications.removeWhere((n) => n['type'] == 'subscription');
-
-      for (final doc in snap.docs) {
-        final data       = doc.data();
-        final createdAt  = data['createdAt'] as Timestamp?;
-        final int? dayNum = data ['dayOfWeek'] as int;
-        final String time = data['time'] as String? ?? '';
-        const days = [
-          'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe',
-          'Cuma', 'Cumartesi', 'Pazar'
-        ];
-        final dayText = (dayNum != null && dayNum >= 1 && dayNum <= 7)
-            ? 'Her ${days[dayNum - 1]}'
-            : '';
-        final startDate   = data['startDate'] as String?;
-        if (createdAt == null || startDate == null) continue;
-
-        final nextDate = DateTime.tryParse(startDate.split(' ').first);
-        if (nextDate == null || nextDate.isBefore(todayStart)) continue; // ↺ BUGÜN+GELECEK
-
-        final status = data['newStatus'];
-        final title  = status == 'Aktif'
-            ? 'Abonelik Onaylandı'
-            : (status == 'İptal Edildi'
-            ? 'Abonelik İptal Edildi'
-            : 'Abonelik Sona Erdi');
-
-        _notifications.add({
-          'type'       : 'subscription',
-          'title'      : title,
-          'subtitle'   : '$dayText saat $time aboneliğiniz '
-              '${status.toLowerCase()}.',
-          'createdAtMs': createdAt.millisecondsSinceEpoch,
-        });
-      }
-
-      _subscriptionCount =
-          _notifications.where((n) => n['type'] == 'subscription').length;
-
-      _sortByCreatedAt();
-      notifyListeners();
-    });
+    return Reservation.fromDocument(doc);
   }
 
-  /* --------- En yeni üste --------- */
-  void _sortByCreatedAt() {
-    _notifications.sort(
-          (a, b) => (b['createdAtMs'] as int).compareTo(a['createdAtMs'] as int),
-    );
-  }
-
-  /* ------------ Yardımcılar ------------ */
-  void clearAll() {
-    _reservationCount  = 0;
-    _subscriptionCount = 0;
-    _notifications.clear();
-    _userReservations.clear();
-    notifyListeners();
-  }
-
-  void disposeListeners() {
-    _resListener?.cancel();
-    _subListener?.cancel();
-  }
 }

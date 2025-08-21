@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/views/onboarding_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -20,12 +22,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // Animasyon kontrolcüsünü başlatıyoruz
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000), // Animasyon süresi
+      duration: const Duration(milliseconds: 1500), // Animasyon süresi
       vsync: this,
     );
 
     // Büyüme (scale) animasyonu
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
@@ -43,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => WelcomeScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => OnboardingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             // Geçiş animasyonu: Fade + Slide
             return SlideTransition(
@@ -68,14 +70,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[500],
+      backgroundColor: AppColors.primary,
       body: Center(
         child: ScaleTransition(
           scale: _scaleAnimation,
           child: Hero(
             tag: 'appLogo', // Animasyonun çalışacağı widget
             child: Image.asset(
-              'assets/logo.png',
+              'assets/logo2.png',
               fit: BoxFit.contain,
             ),
           ),

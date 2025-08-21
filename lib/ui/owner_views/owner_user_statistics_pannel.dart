@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 
-import '../../core/errors/app_error_handler.dart';   //  🔸 hata yöneticisi yolu
+import '../../core/errors/app_error_handler.dart'; //  🔸 hata yöneticisi yolu
 
 class OwnerUserStatisticsPannel extends StatefulWidget {
   const OwnerUserStatisticsPannel({Key? key}) : super(key: key);
@@ -40,19 +42,19 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
       List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
       if (sahaIds.length <= 10) {
         docs = (await FirebaseFirestore.instance
-            .collection('reservation_logs')
-            .where('newStatus', isEqualTo: 'İptal Edildi')
-            .where('oldStatus', isEqualTo: 'Onaylandı')
-            .where('by', isEqualTo: 'user')
-            .where('haliSahaId', whereIn: sahaIds)
-            .get())
+                .collection('reservation_logs')
+                .where('newStatus', isEqualTo: 'İptal Edildi')
+                .where('oldStatus', isEqualTo: 'Onaylandı')
+                .where('by', isEqualTo: 'user')
+                .where('haliSahaId', whereIn: sahaIds)
+                .get())
             .docs;
       } else {
         docs = (await FirebaseFirestore.instance
-            .collection('reservation_logs')
-            .where('newStatus', isEqualTo: 'İptal Edildi')
-            .where('by', isEqualTo: 'user')
-            .get())
+                .collection('reservation_logs')
+                .where('newStatus', isEqualTo: 'İptal Edildi')
+                .where('by', isEqualTo: 'user')
+                .get())
             .docs
             .where((d) => sahaIds.contains(d['haliSahaId']))
             .toList();
@@ -69,7 +71,7 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
 
         map.update(
           uid,
-              (old) {
+          (old) {
             old.cancelCount++;
             return old;
           },
@@ -113,18 +115,17 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.green.shade800),
+                  icon: Icon(Icons.arrow_back_ios_new, color: AppColors.primaryDark),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
                   child: Text(
                     'Kullanıcı İstatistikleri',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade800,
-                    ),
+                    style: AppTextStyles.titleLarge.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22),
                   ),
                 ),
                 const SizedBox(width: 48),
@@ -143,8 +144,8 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 0, horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,
@@ -185,7 +186,6 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
               ],
             ),
 
-
             const SizedBox(height: 16),
 
             /* Liste */
@@ -214,8 +214,8 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
                   if (_search.isNotEmpty) {
                     list = list
                         .where((u) => u.name
-                        .toLowerCase()
-                        .contains(_search.toLowerCase()))
+                            .toLowerCase()
+                            .contains(_search.toLowerCase()))
                         .toList();
                   }
 
@@ -301,8 +301,7 @@ class _OwnerUserStatisticsPannelState extends State<OwnerUserStatisticsPannel> {
               ),
             ),
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.red.shade100,
                 borderRadius: BorderRadius.circular(22),

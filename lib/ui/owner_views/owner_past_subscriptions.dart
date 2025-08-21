@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 
 enum DateFilter { all, today, last7Days, thisMonth }
@@ -135,16 +137,14 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back, color: Colors.green.shade800),
+                  icon: Icon(Icons.arrow_back, color: AppColors.secondary),
                   onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
                   child: Text('Geçmiş Aboneler',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800)),
+                      style: AppTextStyles.titleLarge.copyWith(color: AppColors.secondary),
+                ),
                 ),
                 const SizedBox(width: 48)
               ],
@@ -154,6 +154,7 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
               Expanded(
                 child: TextField(
                   decoration: InputDecoration(
+                    hintStyle: AppTextStyles.bodyMedium,
                     hintText: 'Kullanıcı ara...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
@@ -170,11 +171,11 @@ class _OwnerPastSubscriptionsPageState extends State<OwnerPastSubscriptionsPage>
               const SizedBox(width: 12),
               DropdownButton<DateFilter>(
                 value: _filter,
-                items: const [
-                  DropdownMenuItem(value: DateFilter.all, child: Text('Tümü')),
-                  DropdownMenuItem(value: DateFilter.today, child: Text('Bugün')),
-                  DropdownMenuItem(value: DateFilter.last7Days, child: Text('Son 7 Gün')),
-                  DropdownMenuItem(value: DateFilter.thisMonth, child: Text('Bu Ay')),
+                items: [
+                  DropdownMenuItem(value: DateFilter.all, child: Text('Tümü',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),)),
+                  DropdownMenuItem(value: DateFilter.today, child: Text('Bugün',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),)),
+                  DropdownMenuItem(value: DateFilter.last7Days, child: Text('Son 7 Gün',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),)),
+                  DropdownMenuItem(value: DateFilter.thisMonth, child: Text('Bu Ay',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),)),
                 ],
                 onChanged: (v) => setState(() => _filter = v!),
               ),

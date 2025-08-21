@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 /// Merkezi hata yöneticisi ― tüm katmanlardan gelen hataları kullanıcı‑dostu
@@ -17,6 +18,9 @@ class AppErrorHandler {
         String context = '',
       }) {
     if (error == null) return _unknown;
+
+    debugPrint('❌ [HATA]: ${error.toString()}');
+    debugPrint('[AppError] ${error.runtimeType}: $error');
 
     // 1️⃣ Firebase Authentication
     if (error is FirebaseAuthException) return _auth(error);
@@ -68,6 +72,11 @@ class AppErrorHandler {
     if (str.contains('quota-exceeded')) {
       return 'Depolama kotası aşıldı. Lütfen yöneticinize başvurun.';
     }
+
+    if (str.contains('play_integrity_token') || str.contains('not authorized to use Firebase')) {
+      return 'Uygulama Firebase ile yapılandırılmamış. Lütfen yöneticinize başvurun.';
+    }
+
 
     // 8️⃣ Son çare: bilinmeyen hata
     return _unknown;
@@ -157,5 +166,5 @@ class AppErrorHandler {
   // ------------------------------------------------------------
   // 🔚 Genel bilinmeyen mesaj
   // ------------------------------------------------------------
-  static const String _unknown = 'Bir hata oluştu. Lütfen tekrar deneyin.';
+  static const String _unknown = 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.';
 }

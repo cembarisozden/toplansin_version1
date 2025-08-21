@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:toplansin/data/entitiy/reviews.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 
 class OwnerReviewsPage extends StatelessWidget {
   final String haliSahaId; // Yorumların bağlı olduğu halı saha ID'si
@@ -22,24 +23,20 @@ class OwnerReviewsPage extends StatelessWidget {
         centerTitle: true,
         title: Text(
           "Değerlendirmeler",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: AppTextStyles.titleLarge.copyWith(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: Colors.blue.shade700,
         elevation: 4,
         // Geri Dönüş Okunu Beyaz Yapma
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: reviewsCollection
-            .orderBy('datetime', descending: true)
-            .snapshots(),
+        stream:
+            reviewsCollection.orderBy('datetime', descending: true).snapshots(),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
           // Hata durumu
           if (snapshot.hasError) {
@@ -92,8 +89,13 @@ class OwnerReviewsPage extends StatelessWidget {
                             radius: 25,
                             backgroundColor: Colors.blue.shade700,
                             child: Text(
-                              review.user_name.isNotEmpty ? review.user_name[0].toUpperCase() : 'U',
-                              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                              review.user_name.isNotEmpty
+                                  ? review.user_name[0].toUpperCase()
+                                  : 'U',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                           SizedBox(width: 15),
@@ -111,7 +113,8 @@ class OwnerReviewsPage extends StatelessWidget {
                               SizedBox(height: 4),
                               Text(
                                 // Tarihi Türkçe formatta gösterme
-                                DateFormat('dd MMMM yyyy • HH:mm', 'tr_TR').format(review.datetime),
+                                DateFormat('dd MMMM yyyy • HH:mm', 'tr_TR')
+                                    .format(review.datetime),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey.shade600,
@@ -129,11 +132,16 @@ class OwnerReviewsPage extends StatelessWidget {
                           Row(
                             children: List.generate(5, (starIndex) {
                               if (starIndex < review.rating.floor()) {
-                                return Icon(Icons.star, color: Colors.amber, size: 20);
-                              } else if (starIndex < review.rating && (review.rating - review.rating.floor()) >= 0.5) {
-                                return Icon(Icons.star_half, color: Colors.amber, size: 20);
+                                return Icon(Icons.star,
+                                    color: Colors.amber, size: 20);
+                              } else if (starIndex < review.rating &&
+                                  (review.rating - review.rating.floor()) >=
+                                      0.5) {
+                                return Icon(Icons.star_half,
+                                    color: Colors.amber, size: 20);
                               } else {
-                                return Icon(Icons.star_border, color: Colors.amber, size: 20);
+                                return Icon(Icons.star_border,
+                                    color: Colors.amber, size: 20);
                               }
                             }),
                           ),

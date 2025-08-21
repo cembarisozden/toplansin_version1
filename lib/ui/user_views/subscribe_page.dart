@@ -7,11 +7,16 @@ import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 class SubscribePage extends StatefulWidget {
   HaliSaha halisaha;
   Person user;
+
   SubscribePage({required this.halisaha, required this.user});
+
   @override
   State<SubscribePage> createState() => _SubscribePageState();
 }
@@ -133,7 +138,7 @@ class _SubscribePageState extends State<SubscribePage> {
 
   Future<void> _handleSubscriptionConfirmation(BuildContext context) async {
     Navigator.pop(context); // önce onay dialog’unu kapat
-
+    showLoader(context);
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
     final createdAt = TimeService.now();
@@ -150,37 +155,22 @@ class _SubscribePageState extends State<SubscribePage> {
       price: widget.halisaha.price,
       startDate: startDate,
       endDate: "",
-      visibleSession: startDate,
       nextSession: startDate,
       lastUpdatedBy: 'user',
       status: 'Beklemede',
       userName: widget.user.name,
       userEmail: widget.user.email,
-      userPhone: widget.user.phone,
+      userPhone: widget.user.phone ?? "",
     );
 
     try {
-
       if (await _hasReachedInstantSubscriptionLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.',
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackBar.warning(context, 'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
         return;
       }
 
       if (await _hasReachedDailyCancelLimit()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+          AppSnackBar.warning(context, 'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
         return;
       }
 
@@ -189,16 +179,15 @@ class _SubscribePageState extends State<SubscribePage> {
       print("userPhone: ${widget.user.phone}");
       print("userEmail: ${widget.user.email}");
 
+      hideLoader();
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Abonelik gönderilirken bir hata oluştu.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Abonelik gönderilirken bir hata oluştu.');
       print("Abone olma hatası: $e");
+    }
+    finally{
+      hideLoader();
     }
   }
 
@@ -208,6 +197,7 @@ class _SubscribePageState extends State<SubscribePage> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 4,
@@ -319,61 +309,74 @@ class _SubscribePageState extends State<SubscribePage> {
                     //  Günler kutusu  (overflow-free)
                     Container(
                       margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10),
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 10),
                         ],
                       ),
-                      child: LayoutBuilder(          // 👈 1️⃣  genişliği ölç
+                      child: LayoutBuilder(
+                        // 👈 1️⃣  genişliği ölç
                         builder: (context, constraints) {
-                          const spacing = 8.0;       // ikonlar arası boşluk
-                          final available = constraints.maxWidth - (spacing * 6); // 7 ikon → 6 boşluk
-                          final circleSize = available / 7;   // her dairenin yeni genişliği
+                          const spacing = 8.0; // ikonlar arası boşluk
+                          final available = constraints.maxWidth -
+                              (spacing * 6); // 7 ikon → 6 boşluk
+                          final circleSize =
+                              available / 7; // her dairenin yeni genişliği
 
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: List.generate(daysOfWeek.length, (index) {
                               final isSelected = selectedDay == index;
                               return Padding(
-                                padding: EdgeInsets.only(right: index == 6 ? 0 : spacing),
+                                padding: EdgeInsets.only(
+                                    right: index == 6 ? 0 : spacing),
                                 child: GestureDetector(
-                                  onTap: () => setState(() => selectedDay = index),
+                                  onTap: () =>
+                                      setState(() => selectedDay = index),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
-                                    width: circleSize,            // 👈 2️⃣  dinamik boyut
+                                    width: circleSize,
+                                    // 👈 2️⃣  dinamik boyut
                                     height: circleSize,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       gradient: isSelected
                                           ? LinearGradient(
-                                        colors: gradientColors,
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
+                                              colors: gradientColors,
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
                                           : LinearGradient(
-                                        colors: [Colors.grey.shade200, Colors.grey.shade100],
-                                      ),
+                                              colors: [
+                                                Colors.grey.shade200,
+                                                Colors.grey.shade100
+                                              ],
+                                            ),
                                       boxShadow: isSelected
                                           ? [
-                                        BoxShadow(
-                                          color: Colors.blue.shade200,
-                                          blurRadius: 5,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
+                                              BoxShadow(
+                                                color: Colors.blue.shade200,
+                                                blurRadius: 5,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ]
                                           : [],
                                     ),
                                     child: Center(
-                                      child: Text(
-                                        daysOfWeek[index]['short']!,
-                                        style: TextStyle(
-                                          color: isSelected ? Colors.white : Colors.black87,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                                      child: Text(daysOfWeek[index]['short']!,
+                                          style:
+                                              AppTextStyles.bodySmall.copyWith(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.black87,
+                                            fontWeight: FontWeight.w500,
+                                          )),
                                     ),
                                   ),
                                 ),
@@ -505,14 +508,13 @@ class _SubscribePageState extends State<SubscribePage> {
                                                 ? Colors.white
                                                 : Colors.blue.shade700,
                                           ),
-                                          label: Text(
-                                            time,
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? Colors.white
-                                                  : Colors.blue.shade700,
-                                            ),
-                                          ),
+                                          label: Text(time,
+                                              style: AppTextStyles.bodySmall
+                                                  .copyWith(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : Colors.blue.shade700,
+                                              )),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.transparent,
                                             shadowColor: Colors.transparent,

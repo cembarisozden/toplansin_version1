@@ -1,8 +1,17 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/data/entitiy/hali_saha.dart';
+import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
+import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
+import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 class UserReservationDetailPage extends StatefulWidget {
   final Reservation reservation;
@@ -15,7 +24,6 @@ class UserReservationDetailPage extends StatefulWidget {
 }
 
 class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
-  bool isLoading = false;
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -92,25 +100,22 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
   }
 
   Future<void> _cancelReservation(String reservationId) async {
+    showLoader(context);
     if (reservationId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Rezervasyon kimliği geçersiz."),
-          backgroundColor: Colors.red,
-        ),
-      );
+      hideLoader();
+      AppSnackBar.error(context, "Rezervasyon kimliği geçersiz.");
       return;
     }
-
-    setState(() {
-      isLoading = true;
-    });
 
     try {
       await FirebaseFirestore.instance
           .collection('reservations')
           .doc(reservationId)
-          .update({'status': 'İptal Edildi', 'lastUpdatedBy': 'user'});
+          .set({
+        'status': 'İptal Edildi',
+        'lastUpdatedBy': 'user',
+        'cancelReason': 'user'
+      }, SetOptions(merge: true));
 
       final success = await ReservationRemoteService().cancelSlot(
         haliSahaId: widget.reservation.haliSahaId,
@@ -118,39 +123,24 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       );
 
       if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Slot iptal edilemedi, lütfen tekrar deneyin."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, "Slot iptal edilemedi, lütfen tekrar deneyin.");
         return;
       }
 
       setState(() {
         widget.reservation.status = 'İptal Edildi';
-        isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Rezervasyon başarıyla iptal edildi."),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.success(context, "Rezervasyon başarıyla iptal edildi.");
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() {});
 
       final errorMsg = AppErrorHandler.getMessage(e, context: 'reservation');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("İptal işlemi başarısız: $errorMsg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "İptal işlemi başarısız: $errorMsg");
+    } finally {
+      hideLoader();
     }
   }
 
@@ -172,6 +162,77 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
     );
   }
 
+  void _onTap() async {
+    showLoader(context);
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+
+      final docUser = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (!docUser.exists) {
+        AppSnackBar.error(context, "Kullanıcı bulunamadı!");
+        return;
+      }
+
+      final currentUser = Person.fromMap(docUser.data()!);
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('hali_sahalar')
+          .doc(widget.reservation.haliSahaId)
+          .get();
+
+      if (!snapshot.exists) {
+        AppSnackBar.warning(context, "Saha bulunamadı");
+        return;
+      }
+
+      final haliSaha = HaliSaha.fromJson(snapshot.data()!, snapshot.id);
+      if(currentUser.role=='user') {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, animation, __) =>
+                HaliSahaDetailPage(
+                  haliSaha: haliSaha,
+                  currentUser: currentUser,
+                ),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: Duration(milliseconds: 300),
+          ),
+        );
+      }else{
+        Navigator.pushAndRemoveUntil(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, animation, __) =>
+                OwnerHalisahaPage(haliSaha: haliSaha, currentOwner: currentUser),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: Duration(milliseconds: 300),
+          ),
+                (route) => route.isFirst
+        );
+      }
+    } catch (e) {
+      final msg = AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, msg);
+    } finally {
+      hideLoader();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final parts = widget.reservation.reservationDateTime.split(' ');
@@ -185,7 +246,8 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
 
     final formattedTime = timePart;
     final formattedDate = "$day/$month/$year";
-    final String defaultImageUrl = "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg";
+    final String defaultImageUrl =
+        "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg";
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -195,6 +257,11 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
           '${widget.reservation.haliSahaName} Rezervasyonu',
           style: const TextStyle(color: Colors.white),
         ),
+        leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.arrow_back_ios_new_outlined)),
         backgroundColor: Colors.green.shade800,
         centerTitle: true,
         elevation: 4,
@@ -207,54 +274,120 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 🎯 Üst Görsel Kart
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('hali_sahalar')
-                        .doc(widget.reservation.haliSahaId)
-                        .get(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Container(
-                          width: double.infinity,
-                          height: 180,
-                          color: Colors.grey.shade200,
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _onTap,
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: FutureBuilder<DocumentSnapshot>(
+                              future: FirebaseFirestore.instance
+                                  .collection('hali_sahalar')
+                                  .doc(widget.reservation.haliSahaId)
+                                  .get(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Container(
+                                    width: double.infinity,
+                                    height: 180,
+                                    color: Colors.grey.shade200,
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  );
+                                }
 
-                      if (snapshot.hasError || !snapshot.hasData) {
-                        return Container(
-                          width: double.infinity,
-                          height: 180,
-                          color: Colors.grey.shade300,
-                          alignment: Alignment.center,
-                          child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
-                        );
-                      }
+                                if (snapshot.hasError || !snapshot.hasData) {
+                                  return Container(
+                                    width: double.infinity,
+                                    height: 180,
+                                    color: Colors.grey.shade300,
+                                    alignment: Alignment.center,
+                                    child: Icon(Icons.broken_image,
+                                        color: Colors.grey.shade600, size: 40),
+                                  );
+                                }
 
-                      final data = snapshot.data!.data() as Map<String, dynamic>?;
-                      final List images = data?['imagesUrl'] ?? [];
-                      final String imageUrl = images.isNotEmpty ? images.first : defaultImageUrl;
+                                final data = snapshot.data!.data()
+                                    as Map<String, dynamic>?;
+                                final List images = data?['imagesUrl'] ?? [];
+                                final String imageUrl = images.isNotEmpty
+                                    ? images.first
+                                    : defaultImageUrl;
 
-                      return Image.network(
-                        imageUrl,
-                        width: double.infinity,
-                        height: 180,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: double.infinity,
-                            height: 180,
-                            color: Colors.grey.shade300,
-                            alignment: Alignment.center,
-                            child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 40),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                                return SizedBox(
+                                  width: double.infinity,
+                                  // dışarıdan gelen genişlik korunur
+                                  height: 180,
+                                  // eski sabit yükseklik
+                                  child: ProgressiveImage(
+                                    imageUrl: imageUrl.isNotEmpty
+                                        ? imageUrl
+                                        : null, // yerel yedek görsel
+                                    fit: BoxFit.cover,
+                                    borderRadius: 0, // yuvarlama yok
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.vertical(
+                                    bottom: Radius.circular(12)),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black54,
+                                    Colors.black87
+                                  ], // daha koyu gradient
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 16.0, right: 16.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Sahayı incele',
+                                      style: AppTextStyles.bodyLarge.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        shadows: [
+                                          Shadow(
+                                            blurRadius: 4,
+                                            color: Colors.black54,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios_outlined,
+                                      color: Colors.white,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
 
@@ -283,9 +416,11 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
 
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: getStatusColor(widget.reservation.status).withOpacity(0.15),
+                      color: getStatusColor(widget.reservation.status)
+                          .withOpacity(0.15),
                       border: Border.all(
                         color: getStatusTextColor(widget.reservation.status),
                         width: 1.2,
@@ -320,7 +455,8 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade600,
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -331,11 +467,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
               ],
             ),
           ),
-          if (isLoading)
-            Container(
-              color: Colors.black38,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
         ],
       ),
     );

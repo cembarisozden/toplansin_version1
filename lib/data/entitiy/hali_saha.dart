@@ -1,3 +1,4 @@
+
 class HaliSaha {
   String ownerId;
   String name;
@@ -19,6 +20,8 @@ class HaliSaha {
   String surface;
   int maxPlayers;
   String phone;
+  double latitude;  // yeni alan
+  double longitude;
 
   HaliSaha({
     required this.ownerId,
@@ -41,6 +44,8 @@ class HaliSaha {
     required this.surface,
     required this.maxPlayers,
     required this.phone,
+    required this.latitude,
+    required this.longitude,
   });
 
   // JSON formatına dönüştürmek için toJson metodu
@@ -65,7 +70,9 @@ class HaliSaha {
       'size': size,
       'surface': surface,
       'maxPlayers': maxPlayers,
-      'phone':phone
+      'phone':phone,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -92,6 +99,8 @@ class HaliSaha {
       surface: json['surface'] as String,
       maxPlayers: json['maxPlayers'] as int,
       phone: json['phone'] as String,
+      latitude: json['latitude'] as double,
+      longitude: json['longitude'] as double,
     );
   }
 }

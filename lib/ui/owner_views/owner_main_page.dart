@@ -8,7 +8,8 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/ui/owner_views/owner_add_halisaha.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
 import 'package:toplansin/ui/owner_views/owner_profile_settings.dart';
-import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 import 'package:badges/badges.dart' as badges;
 
@@ -49,47 +50,18 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
         print("Okunan HaliSaha: ${hali_saha.name}");
       }
     });
-  }
 
-  void listenToReservationsRequests(String haliSahaId) {
-    try {
-      var stream = FirebaseFirestore.instance
-          .collection("reservations")
-          .where("haliSahaId", isEqualTo: haliSahaId)
-          .where("status", isEqualTo: 'Beklemede')
-          .snapshots();
-
-      stream.listen((snapshot) {
-        List<Reservation> reservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          reservations.add(reservation);
-        }
-
-        setState(() {
-          haliSahaReservationsRequests = reservations;
-        });
-
-        Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount('reservation_${haliSahaId}', reservations.length);
-
-
-        debugPrint(
-            "Beklemede rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
-      });
-    } catch (e) {
-      debugPrint("Rezervasyonları dinlerken hata oluştu: $e");
+    final notifProv = context.read<OwnerNotificationProvider>();
+    for (var saha in widget.halisahalar) {
+      notifProv.startReservationListener(saha.id);
+      notifProv.startSubscriptionListener(saha.id);
     }
   }
 
   @override
   void initState() {
     super.initState();
-    readHaliSaha().then((_) {
-      for (var saha in widget.halisahalar) {
-        listenToReservationsRequests(saha.id);
-      }
-    });
+    readHaliSaha();
   }
 
 
@@ -110,7 +82,8 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
 
   @override
   Widget build(BuildContext context) {
-    final notificationProvider = context.watch<OwnerNotificationProvider>();
+
+    final provider = context.watch<OwnerNotificationProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -221,7 +194,11 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
           itemCount: widget.halisahalar.length,
           itemBuilder: (context, index) {
             var saha = widget.halisahalar[index];
-            final notificationCount = (notificationProvider.getNotificationCount('reservation_${saha.id}')+notificationProvider.getNotificationCount('subscription_${saha.id}'));
+
+            final resCount   = provider.getNotificationCount("reservation_${saha.id}");
+            final subCount   = provider.getNotificationCount("subscription_${saha.id}");
+
+            final notificationCount=resCount+subCount;
 
             return Card(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -246,22 +223,15 @@ class _OwnerMainPageState extends State<OwnerMainPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          saha.imagesUrl.isNotEmpty
-                              ? saha.imagesUrl.first
-                              : "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg",
-                          width: 60,
+                        child: SizedBox(
                           height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 60,
-                              height: 60,
-                              color: Colors.grey.shade300,
-                              alignment: Alignment.center,
-                              child: Icon(Icons.broken_image, color: Colors.grey.shade600, size: 24),
-                            );
-                          },
+                          width: 60,
+                          child: ProgressiveImage(
+                            imageUrl:saha.imagesUrl.first,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
                         )
 
                       ),

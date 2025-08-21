@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
+import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/core/providers/owner_providers/StatsProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
@@ -12,13 +15,19 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/subscription_service.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/owner_views/owner_access_code_page.dart';
 import 'package:toplansin/ui/owner_views/owner_past_reservation_page.dart';
 import 'package:toplansin/ui/owner_views/owner_past_subscriptions.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
-import 'package:toplansin/core/providers/OwnerNotificationProvider.dart';
+import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
 import 'package:collection/collection.dart';
 import 'package:toplansin/ui/owner_views/owner_user_statistics_pannel.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -37,7 +46,6 @@ class OwnerHalisahaPage extends StatefulWidget {
 class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   DateTime selectedDate = TimeService.now();
   String? selectedTime;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<QuerySnapshot>? _allReservationsSubscription;
   StreamSubscription<QuerySnapshot>? _TodaysApprovedReservationsSubscription;
@@ -87,26 +95,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           } catch (e) {
             debugPrint(
                 "Tarih formatı hatası: ${reservation.reservationDateTime}");
-          }
-
-          // Geçmiş tarih kontrolü ve durum güncellemesi
-          if (reservationDateTime != null) {
-            if (reservationDateTime.isBefore(TimeService.now()) &&
-                reservation.status != 'Tamamlandı' &&
-                reservation.status != 'İptal Edildi') {
-              try {
-                // Firestore'da status güncellemesi
-                await FirebaseFirestore.instance
-                    .collection("reservations")
-                    .doc(document.id)
-                    .update({'status': 'Tamamlandı'});
-
-                // Yerel olarak reservation nesnesinin status'unu güncelle
-                reservation.status = 'Tamamlandı';
-              } catch (e) {
-                debugPrint("Durum güncellenirken hata oluştu: $e");
-              }
-            }
           }
 
           reservations.add(reservation);
@@ -227,11 +215,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               tempRequestCount; // Gün bazlı istek sayıları state'e atandı
         });
 
-        // Provider ile bildirim sayısını güncelle
-        Provider.of<OwnerNotificationProvider>(context, listen: false)
-            .setNotificationCount(
-                'reservation_$haliSahaId', reservations.length);
-
         debugPrint(
             "Beklemede rezervasyonlar güncellendi: ${reservations.length} adet.");
       });
@@ -284,16 +267,28 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           currentHaliSaha =
               HaliSaha.fromJson(snapshot.data()!, widget.haliSaha.id);
           var h = currentHaliSaha;
+          String rawPhone = h.phone;  // önce tümünü ata
+          if (rawPhone.startsWith('+90 ')) {
+            // '+90 ' (4 karakter) çıkar
+            rawPhone = rawPhone.substring(4);
+          } else if (rawPhone.startsWith('+90')) {
+            // sadece '+90' (3 karakter) çıkar
+            rawPhone = rawPhone.substring(3);
+          }
+
+
           nameController.text = h.name;
           locationController.text = h.location;
           priceController.text = h.price.toString();
-          phoneController.text = h.phone;
+          phoneController.text = rawPhone;
           sizeController.text = h.size;
           surfaceController.text = h.surface;
           maxPlayersController.text = h.maxPlayers.toString();
           startHourController.text = h.startHour;
           endHourController.text = h.endHour;
           descriptionController.text = h.description;
+          latController.text = h.latitude.toString();
+          lngController.text = h.longitude.toString();
 
           // Özellik durumlarını güncelle
           hasParking = h.hasParking;
@@ -314,8 +309,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-  final TextEditingController phoneController =
-      TextEditingController(text: '+90');
+  final TextEditingController latController = TextEditingController();
+  final TextEditingController lngController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
   final TextEditingController sizeController = TextEditingController();
   final TextEditingController surfaceController = TextEditingController();
@@ -658,15 +654,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                         final docs = snapshot.data!.docs;
 
-                        // Provider ile bildirim sayısını güncelle
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Provider.of<OwnerNotificationProvider>(context,
-                                  listen: false)
-                              .setNotificationCount(
-                                  'subscription_${widget.haliSaha.id}',
-                                  snapshot.data!.size);
-                        });
-
                         // Günlere göre gruplama
                         Map<int, int> pendingCountsByDay = {};
                         for (var doc in docs) {
@@ -824,6 +811,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                               child: ElevatedButton(
                                                 onPressed: () async {
                                                   if (matchingDoc == null) {
+                                                    final data =
+                                                        await showInputDialog(
+                                                            context,
+                                                            title:
+                                                                "Abone Bilgisi");
+                                                    if (data == null) return;
                                                     await addOwnerSubscription(
                                                       context: context,
                                                       haliSahaId:
@@ -841,10 +834,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                                           widget.haliSaha.price,
                                                       ownerUserId: widget
                                                           .currentOwner.id,
-                                                      ownerName: widget
-                                                          .currentOwner.name,
-                                                      ownerPhone: widget
-                                                          .currentOwner.phone,
+                                                      ownerName: data.name,
+                                                      ownerPhone: data.phone,
                                                       ownerEmail: widget
                                                           .currentOwner.email,
                                                     );
@@ -1000,17 +991,20 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
           LayoutBuilder(
             builder: (context, constraints) {
-              return GridView.count(          // ← ❶ return eklendi
-                crossAxisCount: 2,            // daima 2 sütun
+              return GridView.count(
+                // ← ❶ return eklendi
+                crossAxisCount: 2,
+                // daima 2 sütun
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio:
-                constraints.maxWidth < 360 ? 1.3 : 1.4,  // dar ekranda kart biraz uzasın
+                childAspectRatio: constraints.maxWidth < 360 ? 1.3 : 1.4,
+                // dar ekranda kart biraz uzasın
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _buildInfoCard("Günlük Gelir", "₺$todaysRevenue"),
-                  _buildInfoCard("Bugünkü Rezervasyonlar", "$todaysReservation"),
+                  _buildInfoCard(
+                      "Bugünkü Rezervasyonlar", "$todaysReservation"),
                   _buildInfoCard("Doluluk Oranı", "$occupancyRate%",
                       isProgress: true, icon: Icons.show_chart),
                   _buildInfoCard("Müşteri Memnuniyeti",
@@ -1020,123 +1014,117 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               );
             },
           ),
-
-          SizedBox(height: 24),
-          Text(
-            "Operasyonel İşlemler",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade800,
-            ),
-          ),
-          SizedBox(height: 20),
-          // Fotoğraf Yönetimi Butonu
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OwnerPhotoManagementPage(
-                    images: currentHaliSaha.imagesUrl,
-                    haliSahaId: currentHaliSaha.id,
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              elevation: 3,
-              minimumSize: Size(double.infinity, 50), // Tam genişlikte buton
-            ),
-            icon: Icon(Icons.photo_library, color: Colors.white, size: 20),
-            label: Text(
-              "Fotoğraf Yönetimi",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          SizedBox(height: 32),
-          // Yorumları Görüntüle Butonu
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OwnerReviewsPage(
-                    haliSahaId: currentHaliSaha.id,
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade700,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              elevation: 3,
-              minimumSize: Size(double.infinity, 50), // Tam genişlikte buton
-            ),
-            icon: Icon(Icons.comment, color: Colors.white, size: 20),
-            label: Text(
-              "Değerlendirmeleri Görüntüle",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-
-          SizedBox(height: 32),
-
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => OwnerUserStatisticsPannel()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent.shade700,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              elevation: 3,
-              minimumSize: Size(double.infinity, 50), // Tam genişlikte buton
-            ),
-            icon: Icon(Icons.bar_chart_rounded, color: Colors.white, size: 20),
-            label: Text(
-              "Kullanıcı İstatistikleri",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
+          ownerOperations(context, currentHaliSaha),
         ],
       ),
     );
   }
 
+  Widget actionButton({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required Color backgroundColor,
+    required Widget Function() destination,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => destination()),
+        );
+      },
+      icon: Icon(icon, color: Colors.white, size: 20),
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        elevation: 3,
+        minimumSize: const Size(double.infinity, 50),
+      ),
+    );
+  }
+
+  Widget ownerOperations(BuildContext context, HaliSaha currentHaliSaha) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Text(
+          "Operasyonel İşlemler",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.green.shade800,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Saha Erişim Kodu Yönetimi
+        actionButton(
+          context: context,
+          icon: Icons.key_outlined,
+          label: "Saha Erişim Kodu Yönetimi",
+          backgroundColor: Color(0xFFE65100),
+          destination: () => OwnerAccessCodePage(haliSahaId:currentHaliSaha.id),
+        ),
+        const SizedBox(height: 16),
+
+        // Fotoğraf Yönetimi
+        actionButton(
+          context: context,
+          icon: Icons.photo_library,
+          label: "Fotoğraf Yönetimi",
+          backgroundColor: Colors.green.shade700,
+          destination: () => OwnerPhotoManagementPage(
+            images: currentHaliSaha.imagesUrl,
+            haliSahaId: currentHaliSaha.id,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Değerlendirmeleri Görüntüle
+        actionButton(
+          context: context,
+          icon: Icons.comment,
+          label: "Değerlendirmeleri Görüntüle",
+          backgroundColor: Colors.blue.shade700,
+          destination: () => OwnerReviewsPage(
+            haliSahaId: currentHaliSaha.id,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Kullanıcı İstatistikleri
+        actionButton(
+          context: context,
+          icon: Icons.bar_chart_rounded,
+          label: "Kullanıcı İstatistikleri",
+          backgroundColor: Colors.redAccent.shade700,
+          destination: () =>  OwnerUserStatisticsPannel(),
+        ),
+      ],
+    );
+  }
+
+
   Widget _buildInfoCard(
-      String title,
-      String value, {
-        String? subtitle,
-        bool isProgress = false,
-        IconData? icon,
-      }) {
+    String title,
+    String value, {
+    String? subtitle,
+    bool isProgress = false,
+    IconData? icon,
+  }) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 3,
@@ -1151,7 +1139,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
-          mainAxisSize: MainAxisSize.min,                  // 👉  yalnızca içerik kadar yükseklik
+          mainAxisSize: MainAxisSize.min, // 👉  yalnızca içerik kadar yükseklik
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ─── Başlık satırı ───────────────────────────────
@@ -1188,7 +1176,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             Text(
               value,
               style: const TextStyle(
-                fontSize: 23,                             // 👉  daha kompakt
+                fontSize: 23, // 👉  daha kompakt
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -1198,7 +1186,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             if (subtitle != null) ...[
               const SizedBox(height: 4),
               Text(
-                subtitle!,
+                subtitle,
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
               ),
             ],
@@ -1209,7 +1197,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: occupancyRate / 100,              // mevcut değişkenini kullanıyor
+                  value: occupancyRate / 100, // mevcut değişkenini kullanıyor
                   color: Colors.green.shade600,
                   backgroundColor: Colors.green.shade100,
                 ),
@@ -1244,6 +1232,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   _buildTextField("Halı Saha Adı", nameController,
                       maxLength: 100),
                   _buildTextField("Konum", locationController, maxLength: 100),
+                  _buildTextField('Enlem (Latitude)', latController,
+                      isNumber: true, maxLength: 20),
+                  _buildTextField('Boylam (Longitude)', lngController,
+                      isNumber: true, maxLength: 20),
                   buildPhoneNumberField(phoneController),
                   _buildTextField("Saatlik Ücret (TL)", priceController,
                       isNumber: true, maxLength: 20),
@@ -1257,10 +1249,23 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   _buildTextField("Kapanış Saati", endHourController,
                       maxLength: 5),
                   _buildTextField("Açıklama", descriptionController,
-                      isMultiline: true, maxLength: 300),
+                      isMultiline: true, maxLength: 800),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _updateHaliSaha,
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            // 1) Yükleniyor durumunu başlat
+                            setState(() => _isLoading = true);
+
+                            // 2) Asenkron güncelleme metodunu çağır
+                            await _updateHaliSaha();
+
+                            // 3) Yükleniyor durumunu bitir
+                            setState(() => _isLoading = false);
+                            FocusScope.of(context).unfocus();
+
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade600,
                       shape: RoundedRectangleBorder(
@@ -1326,17 +1331,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: currentHaliSaha.imagesUrl.isNotEmpty
-                      ? Image.network(
-                          currentHaliSaha.imagesUrl.first,
+                      ? ProgressiveImage(
+                          imageUrl: currentHaliSaha.imagesUrl.first,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey.shade300,
-                              alignment: Alignment.center,
-                              child: Icon(Icons.broken_image,
-                                  color: Colors.grey.shade600),
-                            );
-                          },
                         )
                       : Center(child: Text("Fotoğraf yok")),
                 ),
@@ -1380,7 +1377,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     TextEditingController controller, {
     bool isNumber = false,
     bool isMultiline = false,
-    int maxLength = 300, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
+    int maxLength = 500, // ⚠️ karakter sınırı opsiyonel parametre olarak geldi
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1425,18 +1422,22 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   // Güncelleme Fonksiyonu
   Future<void> _updateHaliSaha() async {
+    showLoader(context);
     print("Güncelleme işlemi başlatıldı.");
+
+    final rawInput = phoneController.text.trim();
+    final newPhone = '+90${toNumericString(rawInput)}';
+    final oldPhone = currentHaliSaha.phone;
+
+    print('📞 Old Phone: $oldPhone');
+    print('📞 New Phone: $newPhone');
+
 
     // Giriş doğrulama
     String? validationError = _validateInputs();
     if (validationError != null) {
       print("Doğrulama hatası: $validationError");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, validationError);
       return;
     }
 
@@ -1450,6 +1451,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       // Sayısal alanları parse etme
       double price = double.parse(priceController.text.trim());
       int maxPlayers = int.parse(maxPlayersController.text.trim());
+      final lat = double.tryParse(latController.text.replaceAll(',', '.'));
+      final lng = double.tryParse(lngController.text.replaceAll(',', '.'));
       print("Fiyat: $price, Maksimum Oyuncu: $maxPlayers");
 
       // Güncellenmiş Halı Saha nesnesi oluşturma
@@ -1457,7 +1460,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         name: nameController.text.trim(),
         location: locationController.text.trim(),
         price: price,
-        phone: '+${toNumericString(phoneController.text.trim())}',
+        phone: newPhone,
         size: sizeController.text.trim(),
         surface: surfaceController.text.trim(),
         maxPlayers: maxPlayers,
@@ -1469,6 +1472,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         hasShoeRental: hasShoeRental,
         hasCafeteria: hasCafeteria,
         hasNightLighting: hasNightLighting,
+        longitude: lng,
+        latitude: lat,
       );
       print(
           "Güncellenmiş Halı Saha nesnesi oluşturuldu: ${updatedSaha.toJson()}");
@@ -1477,12 +1482,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       Map<String, dynamic> updateData =
           _getChangedFields(currentHaliSaha, updatedSaha);
       if (updateData.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Değişiklik yapmadınız.'),
-            backgroundColor: Colors.blue,
-          ),
-        );
+        AppSnackBar.show(context, 'Değişiklik yapmadınız.');
         setState(() {
           _isLoading = false;
         });
@@ -1520,27 +1520,18 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       print("Yerel durum güncellendi.");
 
       // Başarı mesajı gösterme
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Halı Saha başarıyla güncellendi.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.success(context, 'Halı Saha başarıyla güncellendi.');
       print("Başarı mesajı gösterildi.");
     } catch (e, stack) {
       // Hata durumunda kullanıcıya bildirim
       print("Güncelleme sırasında bir hata oluştu: $e");
       print(stack);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Güncelleme sırasında bir hata oluştu. Lütfen tekrar deneyin.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context,
+            'Güncelleme sırasında bir hata oluştu. Lütfen tekrar deneyin.');
       }
     } finally {
+      hideLoader();
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -1578,6 +1569,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       changedFields['hasCafeteria'] = newSaha.hasCafeteria;
     if (oldSaha.hasNightLighting != newSaha.hasNightLighting)
       changedFields['hasNightLighting'] = newSaha.hasNightLighting;
+    if (oldSaha.phone != newSaha.phone) changedFields['phone'] = newSaha.phone;
+    if (oldSaha.longitude != newSaha.longitude)
+      changedFields['longitude'] = newSaha.longitude;
+    if (oldSaha.latitude != newSaha.latitude)
+      changedFields['latitude'] = newSaha.latitude;
 
     return changedFields;
   }
@@ -1613,6 +1609,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     }
     if (descriptionController.text.trim().isEmpty) {
       return "Açıklama boş olamaz.";
+    }
+    if (lngController.text.trim().isEmpty) {
+      return "Boylam boş olamaz.";
+    }
+    if (latController.text.trim().isEmpty) {
+      return "Enlem boş olamaz.";
     }
     return null;
   }
@@ -1734,15 +1736,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       });
     } else {
       // Rezervasyon penceresi uzanmıyorsa, bilgi ver ve mevcut ayda kal
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - ${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
-          ),
-          duration: Duration(seconds: 3),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppSnackBar.warning(context,
+          "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - ${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.");
       // Ay değişikliği yapma - mevcut ayda kalır
     }
   }
@@ -2336,7 +2331,14 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       // Diğer durumlarda rezerve et butonu
       return ElevatedButton(
         onPressed: () async {
-          await _makeReservation(time);
+          final input = await showInputDialog(
+            context,
+            title: 'Rezervasyon Bilgisi',
+          );
+          if (input == null) return;
+
+          await _makeReservation(
+              time: time, name: input.name, phoneNo: input.phone);
         },
         child: Text(
           "Rezerve Et",
@@ -2372,138 +2374,259 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     try {
       // Seçili gün + saat dilimi anahtarını oluştur
       final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
-      print("Key: $key");
-      // Tam eşleşme ile doğru rezervasyonu bul
       final reservation = haliSahaReservations.firstWhere(
-        (r) => r.reservationDateTime == key,
+            (r) => r.reservationDateTime == key,
       );
+      final statsProvider=StatsProvider();
+      statsProvider.loadStats(reservation);
       showDialog(
         context: context,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Üst Kısım - Başlık ve İkon
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
-                      gradient: LinearGradient(
-                        colors: [Colors.green.shade400, Colors.blue.shade400],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+        builder: (context) {
+          return ChangeNotifierProvider<StatsProvider>(
+            create: (_) {
+              final svc = StatsProvider();
+              svc.loadStats(reservation);
+              return svc;
+            },
+          child: Builder(
+            builder: (ctx) {
+              final stats = ctx.watch<StatsProvider>();
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                insetPadding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 24),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTablet = constraints.maxWidth >= 600;
+                    return SafeArea(
+                      child: FractionallySizedBox(
+                        widthFactor: isTablet ? 0.6 : 0.97,
+                        heightFactor: isTablet ? 0.75 : 0.83,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ─── HEADER ─────────────────────────
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.green.shade400,
+                                      Colors.blue.shade400
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(16)),
+                                ),
+                                padding: const EdgeInsets.all(20),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.info, color: Colors.white,
+                                        size: 28),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        "Rezervasyon Detayları",
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // ─── BODY (scrollable) ─────────────────
+                              Flexible(
+                                child: SingleChildScrollView(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment
+                                          .start,
+                                      children: [
+                                        // Detay öğeleri
+                                        _detailItem(
+                                            Icons.person, "Kullanıcı Adı",
+                                            reservation.userName),
+                                        const SizedBox(height: 8),
+                                        _detailItem(Icons.phone, "Telefon",
+                                            reservation.userPhone),
+                                        const SizedBox(height: 8),
+                                        _detailItem(Icons.email, "E-posta",
+                                            reservation.userEmail),
+                                        const SizedBox(height: 8),
+                                        _detailItem(Icons.calendar_today,
+                                            "Tarih ve Saat",
+                                            reservation.reservationDateTime),
+
+                                        const SizedBox(height: 12),
+                                        const Divider(),
+                                        const SizedBox(height: 12),
+
+                                        // ─── Kullanıcı Hareketleri ────────────
+                                        const Text(
+                                          'Kullanıcı Hareketleri (Son 6 Ay)',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildStatCard(
+                                                title: 'Bu Sahadaki',
+                                                approved: statsProvider
+                                                    .ownApprovedCount,
+                                                cancelled: statsProvider
+                                                    .ownCancelledCount,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: _buildStatCard(
+                                                title: 'Tüm Sahalardaki',
+                                                approved: statsProvider
+                                                    .allApprovedCount,
+                                                cancelled: statsProvider
+                                                    .allCancelledCount,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const Divider(height: 1),
+
+                              // ─── FOOTER BUTTONS ───────────────────
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.vertical(
+                                      bottom: Radius.circular(16)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Rezervasyonu İptal Et
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          _showCancelConfirmation(
+                                              context, reservation);
+                                        },
+                                        label: Text("Rezervasyonu İptal Et",
+                                            style: AppTextStyles.labelMedium
+                                                .copyWith(color: Colors.white)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius
+                                                  .circular(8)),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 15),
+                                          textStyle: const TextStyle(
+                                              fontSize: 16),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Kapat
+                                    Expanded(
+                                      child: TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text(
+                                          "Kapat",
+                                          style: AppTextStyles.labelMedium
+                                              .copyWith(
+                                              color: Colors.grey.shade800,
+                                              fontSize: 15),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    padding: EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.white, size: 28),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            "Rezervasyon Detayları",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // İçerik Alanı
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _detailItem(Icons.person, "Kullanıcı Adı",
-                            reservation.userName),
-                        SizedBox(height: 8),
-                        _detailItem(
-                            Icons.phone, "Telefon", reservation.userPhone),
-                        SizedBox(height: 8),
-                        _detailItem(
-                            Icons.email, "E-posta", reservation.userEmail),
-                        SizedBox(height: 8),
-                        _detailItem(Icons.calendar_today, "Tarih ve Saat",
-                            reservation.reservationDateTime),
-                        // Eğer Konum bilgisi gerekli değilse aşağıdaki satırı kaldırabilirsiniz
-                        // SizedBox(height: 8),
-                        // _detailItem(Icons.location_on, "Konum", reservation.haliSahaLocation),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-                  Divider(),
-
-                  // Butonlar
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Rezervasyonu İptal Et Butonu
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            _showCancelConfirmation(context, reservation);
-                          },
-                          icon: Icon(Icons.cancel, color: Colors.white),
-                          label: Text(
-                            "Rezervasyonu İptal Et",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            textStyle: TextStyle(fontSize: 15),
-                          ),
-                        ),
-
-                        // Kapat Butonu
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            "Kapat",
-                            style: TextStyle(
-                                color: Colors.grey.shade800, fontSize: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        );
+  },
       );
     } catch (e) {
       debugPrint("Rezervasyon Detayları bulunamadı: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon detayları bulunamadı.")),
-      );
+      AppSnackBar.error(context, "Rezervasyon detayları bulunamadı.");
     }
+  }
+
+
+  void _showCancelConfirmation(BuildContext context, Reservation reservation) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text("Rezervasyonu İptal Et",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          content: Text(
+            "Bu rezervasyonu iptal etmek istediğinize emin misiniz?",
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child:
+                  Text("Vazgeç", style: TextStyle(color: Colors.grey.shade700)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await _rejectReservation(reservation);
+                Navigator.pop(context); // Onay dialogunu kapat
+                Navigator.pop(context); // Ana dialogu kapat
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              child:
+                  Text("Evet, İptal Et", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showCompletedReservationDetailDialog(String time) {
@@ -2615,9 +2738,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       );
     } catch (e) {
       debugPrint("Rezervasyon Detayları bulunamadı: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyon detayları bulunamadı.")),
-      );
+      AppSnackBar.error(context, "Rezervasyon detayları bulunamadı.");
     }
   }
 
@@ -2628,35 +2749,31 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         controller: controller,
         keyboardType: TextInputType.phone,
         inputFormatters: [
-          PhoneInputFormatter(
-            defaultCountryCode: 'TR',
-            allowEndlessPhone: false,
-          ),
+          // Eskiden kullandığın formatter aynen kalsın
+          PhoneInputFormatter(defaultCountryCode: 'TR', allowEndlessPhone: false),
         ],
-        maxLength: 17,
-        maxLines: 1,
-        buildCounter: (
-          BuildContext context, {
-          required int currentLength,
-          required bool isFocused,
-          required int? maxLength,
-        }) {
+        maxLength: 12,
+        buildCounter: (context, { required currentLength, required isFocused, required maxLength }) {
           if (maxLength == null) return null;
           return Text(
-            "$currentLength / $maxLength",
+            '$currentLength / $maxLength',
             style: TextStyle(
               fontSize: 11,
-              color:
-                  currentLength > maxLength ? Colors.red : Colors.grey.shade600,
+              color: currentLength > maxLength ? Colors.red : Colors.grey.shade600,
             ),
           );
         },
         decoration: InputDecoration(
-          labelText: "İletişim Telefon Numarası",
-          hintText: "+90 5XX XXX XX XX",
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+          // +90 kısmı artık silinemez, hep orada sabit durur
+          prefixText: '+90 ',
+          prefixStyle: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
           ),
+
+          labelText: 'İletişim Telefon Numarası',
+          hintText: '5XX XXX XX XX',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.white,
         ),
@@ -2977,297 +3094,487 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
-// İptal Onay Dialogu
-  void _showCancelConfirmation(BuildContext context, Reservation reservation) {
+  void _showReservationDialog(String time) {
+    // 1️⃣ Rezervasyonu bul
+    final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
+    final reservation = haliSahaReservations.firstWhere(
+          (r) => r.reservationDateTime == key && r.status == 'Beklemede',
+    );
+
+    // 2️⃣ Dialog’u, StatsProvider ile sarmala ve hemen yüklemeye başla
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text("Rezervasyonu İptal Et",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          content: Text(
-            "Bu rezervasyonu iptal etmek istediğinize emin misiniz?",
-            style: TextStyle(fontSize: 16),
+      builder: (context) {
+        return ChangeNotifierProvider<StatsProvider>(
+          create: (_) {
+            final svc = StatsProvider();
+            svc.loadStats(reservation);
+            return svc;
+          },
+          child: Builder(
+            builder: (ctx) {
+              // 3️⃣ Burada provider’ı dinle
+              final stats = ctx.watch<StatsProvider>();
+
+              return Dialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: SafeArea(
+                  child: FractionallySizedBox(
+                    widthFactor: MediaQuery.of(context).size.width >= 600 ? 0.6 : 0.97,
+                    heightFactor: MediaQuery.of(context).size.width >= 600 ? 0.75 : 0.83,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ─── HEADER ─────────────────────────
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.green.shade400, Colors.blue.shade400],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info, color: Colors.white, size: 28),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    "Rezervasyon Detayları",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Ionicons.close_outline, size: 26, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ─── BODY (scrollable) ─────────────────
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Detay satırları
+                                  _detailItem(Icons.person, "Kullanıcı Adı", reservation.userName),
+                                  const SizedBox(height: 8),
+                                  _detailItem(Icons.phone, "Telefon", reservation.userPhone),
+                                  const SizedBox(height: 8),
+                                  _detailItem(Icons.email, "E-posta", reservation.userEmail),
+                                  const SizedBox(height: 8),
+                                  _detailItem(Icons.calendar_today, "Tarih ve Saat", reservation.reservationDateTime),
+
+                                  const SizedBox(height: 12),
+                                  const Divider(),
+                                  const SizedBox(height: 12),
+
+                                  // Kullanıcı hareketleri başlığı
+                                  const Text(
+                                    'Kullanıcı Hareketleri (Son 6 Ay)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildStatCard(
+                                            title: 'Bu Sahadaki',
+                                            approved: stats.ownApprovedCount,
+                                            cancelled: stats.ownCancelledCount,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildStatCard(
+                                            title: 'Tüm Sahalardaki',
+                                            approved: stats.allApprovedCount,
+                                            cancelled: stats.allCancelledCount,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                  const SizedBox(height: 16),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const Divider(height: 1),
+
+                          // ─── FOOTER BUTTONS ───────────────────
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                            ),
+                            child: Row(
+                              children: [
+                                // Reddet
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      _rejectReservation(reservation);
+                                      Navigator.pop(context);
+                                    },
+                                    icon: const Icon(Icons.close, color: Colors.white),
+                                    label: const Text("Reddet", style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade600,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      textStyle: const TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Onayla
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      _approveReservation(reservation);
+                                      Navigator.pop(context);
+                                    },
+                                    icon: const Icon(Icons.check, color: Colors.white),
+                                    label: const Text("Onayla", style: TextStyle(color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      textStyle: const TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child:
-                  Text("Vazgeç", style: TextStyle(color: Colors.grey.shade700)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                await _rejectReservation(reservation);
-                Navigator.pop(context); // Onay dialogunu kapat
-                Navigator.pop(context); // Ana dialogu kapat
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-              child:
-                  Text("Evet, İptal Et", style: TextStyle(color: Colors.white)),
-            ),
-          ],
         );
       },
     );
   }
 
-  void _showReservationDialog(String time) {
-    // Seçilen gün + saat dilimini içeren tam anahtar
-    final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
-
-    // Güvenli arama: firstWhereOrNull (ya da try/catch)
-    final reservation = haliSahaReservations.firstWhere(
-      (r) => r.reservationDateTime == key && r.status == 'Beklemede',
+  Widget _infoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.grey.shade700, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
+        ),
+      ],
     );
+  }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+  Widget _buildStatCard({
+    required String title,
+    required int approved,
+    required int cancelled,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
           ),
-          insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              // Arka plan rengi
-              color: Colors.white,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _statLine(
+                icon: Icons.check_circle,
+                color: Colors.green.shade600,
+                value: approved,
+                label: 'Tamamlanan',
+              ),
+              const SizedBox(height: 6),
+              _statLine(
+                icon: Icons.cancel,
+                color: Colors.red.shade600,
+                value: cancelled,
+                label: 'İptal Edilen',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statLine({
+    required IconData icon,
+    required Color color,
+    required int value,
+    required String label,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 6),
+        //  ➜  Sığmazsa yazıları küçült ve overflow’u engelle
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
               children: [
-                // Üst kısım (Başlık, ikon)
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade400, Colors.blue.shade400],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  padding: EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.white, size: 28),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          "Rezervasyon Detayları",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                Text(
+                  '$value',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: color.withOpacity(0.9),
                   ),
                 ),
-
-                SizedBox(height: 16),
-
-                // İçerik alanı
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Kullanıcı bilgileri
-                      Row(
-                        children: [
-                          Icon(Icons.person, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              reservation.userName ?? "İsim bilgisi yok",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Icon(Icons.phone, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              reservation.userPhone ?? "Telefon yok",
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Icon(Icons.email, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              reservation.userEmail ?? "Email yok",
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Divider(),
-                      SizedBox(height: 12),
-
-                      // Tarih / Saat
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              reservation.reservationDateTime,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Durum: ${reservation.status}",
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-
-                // Alt kısım butonlar
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius:
-                        BorderRadius.vertical(bottom: Radius.circular(16)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Reddet butonu
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _rejectReservation(reservation); // Reddet
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(Icons.close, color: Colors.white),
-                        label: Text("Reddet",
-                            style: TextStyle(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          textStyle: TextStyle(fontSize: 15),
-                        ),
-                      ),
-
-                      // Onayla butonu
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _approveReservation(reservation); // Onayla
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(Icons.check, color: Colors.white),
-                        label: Text(
-                          "Onayla",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          textStyle: TextStyle(fontSize: 15),
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
+  Future<_SubInput?> showInputDialog(BuildContext context,
+      {required String title}) {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: '+90');
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<_SubInput>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header (green→blue gradient) ──
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF05C46B), Color(0xFF06A4FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(18),),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  const Icon(Ionicons.person_outline, color: Colors.white),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Lütfen aşağıyı doldur',
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Body ──
+            Container(
+
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
+                color: Colors.white,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameCtrl,
+                        textInputAction: TextInputAction.next,
+                        decoration: _decoration('👤  Ad Soyad'),
+                        validator: (v) => (v == null || v.trim().length < 2)
+                            ? 'Ad girin'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(13),
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+                        ],
+                        decoration: _decoration('📞  Telefon (+90…)'),
+                        validator: (v) => (v == null || v.length != 13)
+                            ? '11 haneli numara'
+                            : null,
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey.shade600,
+                              ),
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Vazgeç'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                              ),
+                              onPressed: () {
+                                if (formKey.currentState!.validate()) {
+                                  Navigator.pop(
+                                    ctx,
+                                    _SubInput(
+                                      name: nameCtrl.text.trim(),
+                                      phone: phoneCtrl.text.trim(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                'Gönder',
+                                style: AppTextStyles.bodyMedium
+                                    .copyWith(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// ── Input decoration helper ──
+  InputDecoration _decoration(String label) => InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      );
+
   Future<void> _approveReservation(Reservation reservation) async {
+    showLoader(context);
     try {
       await FirebaseFirestore.instance
           .collection("reservations")
           .doc(reservation.id)
           .update({"status": "Onaylandı", 'lastUpdatedBy': 'owner'});
+      AppSnackBar.success(context, 'Rezervasyon Onaylandı!');
       debugPrint("Rezervasyon onaylandı.");
     } catch (e) {
       debugPrint("Rezervasyon onaylama hatası: $e");
+    } finally {
+      hideLoader();
     }
   }
 
   Future<void> _rejectReservation(Reservation reservation) async {
+    showLoader(context);
     try {
       await FirebaseFirestore.instance
           .collection("reservations")
           .doc(reservation.id)
-          .update({"status": "İptal Edildi", 'lastUpdatedBy': 'owner'});
+          .set({
+        "status": "İptal Edildi",
+        'lastUpdatedBy': 'owner',
+        'cancelReason': 'owner'
+      }, SetOptions(merge: true));
       debugPrint("Rezervasyon reddedildi.");
+
+      final printData = await FirebaseFirestore.instance
+          .collection('reservations')
+          .doc(reservation.id)
+          .get();
+      print(printData.data());
     } catch (e) {
       debugPrint("Rezervasyon reddetme hatası: $e");
+      hideLoader();
     }
-    _cancelReservation(reservation.reservationDateTime);
+    cancelReservation(reservation.reservationDateTime);
   }
 
-  Future<void> _makeReservation(String time) async {
-    String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
-    String bookingString = "$formattedDate $time";
+  Future<void> _makeReservation(
+      {required String time,
+      required String name,
+      required String phoneNo}) async {
+    showLoader(context);
+    String formattedDate =
+        DateFormat('yyyy-MM-dd').format(selectedDate); // örn: "2025-07-28"
+    String bookingString =
+        "$formattedDate $time"; // örn: "2025-07-28 17:00-18:00"
 
     final cancelledReservation = await FirebaseFirestore.instance
         .collection('reservations')
@@ -3283,13 +3590,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       );
 
       if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text("Slot rezerve edilemedi, lütfen başka bir saat deneyin."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, "Slot rezerve edilemedi, lütfen başka bir saat deneyin.");
         return; // işlemi durdur
       }
 
@@ -3305,6 +3607,30 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         docRef = FirebaseFirestore.instance.collection("reservations").doc();
       }
 
+      DateTime parseStartTimeUtc(String bookingString) {
+        final parts = bookingString.split(' ');
+        final datePart = parts[0]; // "2025-07-29"
+        final startStr = parts[1].split('-').first; // "22:00"
+        final ymd = datePart.split('-').map(int.parse).toList();
+        final hm = startStr.split(':').map(int.parse).toList();
+
+        // önce normal UTC DateTime
+        final dtUtc = DateTime.utc(
+          ymd[0], // year
+          ymd[1], // month
+          ymd[2], // day
+          hm[0], // hour
+          hm[1], // minute
+        );
+
+        // sonra sadece saatten 3 çıkar:
+        return dtUtc.subtract(const Duration(hours: 3));
+      }
+
+      final startTime = parseStartTimeUtc(bookingString);
+      print(bookingString);
+      print(startTime.toString());
+
       Reservation reservation = Reservation(
         id: docRef.id,
         userId: _auth.currentUser!.uid,
@@ -3313,11 +3639,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         haliSahaLocation: widget.haliSaha.location,
         haliSahaPrice: widget.haliSaha.price,
         reservationDateTime: bookingString,
+        startTime: startTime,
         status: "Onaylandı",
-        createdAt: TimeService.now(),
-        userName: widget.currentOwner.name,
+        createdAt: TimeService.nowUtc(),
+        userName: name,
         userEmail: widget.currentOwner.email,
-        userPhone: widget.currentOwner.phone,
+        userPhone: phoneNo,
         lastUpdatedBy: widget.currentOwner.role,
       );
 
@@ -3325,22 +3652,17 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       await docRef.set(reservation.toMap(), SetOptions(merge: false));
 
       // Başarılı mesajı göster
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Saat $time başarıyla rezerve edildi.")),
-      );
+      AppSnackBar.success(context, "Saat $time başarıyla rezerve edildi.");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'reservation');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Rezervasyon başarısız: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, "Rezervasyon başarısız: $msg");
+    } finally {
+      hideLoader();
     }
   }
 
-  Future<void> _cancelReservation(String time) async {
+  Future<void> cancelReservation(String time) async {
     String bookingString = "$time";
     print(bookingString);
 
@@ -3351,13 +3673,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       );
 
       if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text("Rezervasyon iptal edilemedi. Lütfen tekrar deneyin."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(
+            context, 'Rezervasyon iptal edilemedi lütfen takrar deneyin!');
+
         return;
       }
 
@@ -3367,18 +3685,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       });
 
 // Başarılı mesaj
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rezervasyonunuz başarıyla iptal edildi!")),
-      );
+      AppSnackBar.success(context, 'Rezervasyon başarıyla iptal edildi.');
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'reservation');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Rezervasyon iptali başarısız: $msg"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Rezervasyon iptali başarısız!');
+    } finally {
+      hideLoader();
     }
   }
 
@@ -3414,12 +3727,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 }
 
-// HaliSaha sınıfında copyWith metodu eklenmeli
 extension HaliSahaCopyWith on HaliSaha {
   HaliSaha copyWith({
     String? name,
     String? location,
-    String? phone,
+    String? phone,            // <-- parametre
     double? price,
     String? size,
     String? surface,
@@ -3432,28 +3744,41 @@ extension HaliSahaCopyWith on HaliSaha {
     bool? hasShoeRental,
     bool? hasCafeteria,
     bool? hasNightLighting,
+    double? longitude,        // <-- parametre
+    double? latitude,         // <-- parametre
   }) {
     return HaliSaha(
       ownerId: this.ownerId,
       name: name ?? this.name,
       location: location ?? this.location,
       price: price ?? this.price,
-      phone: this.phone,
+      phone: phone ?? this.phone,                      // <-- düzeltildi
       rating: this.rating,
       imagesUrl: this.imagesUrl,
       bookedSlots: this.bookedSlots,
       startHour: startHour ?? this.startHour,
-      endHour: endHour ?? this.endHour,
+      endHour:   endHour   ?? this.endHour,
       id: this.id,
-      hasParking: hasParking ?? this.hasParking,
-      hasShowers: hasShowers ?? this.hasShowers,
-      hasShoeRental: hasShoeRental ?? this.hasShoeRental,
-      hasCafeteria: hasCafeteria ?? this.hasCafeteria,
-      hasNightLighting: hasNightLighting ?? this.hasNightLighting,
+      hasParking:      hasParking      ?? this.hasParking,
+      hasShowers:      hasShowers      ?? this.hasShowers,
+      hasShoeRental:   hasShoeRental   ?? this.hasShoeRental,
+      hasCafeteria:    hasCafeteria    ?? this.hasCafeteria,
+      hasNightLighting:hasNightLighting?? this.hasNightLighting,
       description: description ?? this.description,
-      size: size ?? this.size,
+      size:    size    ?? this.size,
       surface: surface ?? this.surface,
       maxPlayers: maxPlayers ?? this.maxPlayers,
+      latitude: latitude ?? this.latitude,              // <-- düzeltildi
+      longitude: longitude ?? this.longitude,           // <-- düzeltildi
     );
   }
+}
+
+
+/// Geri dönen model
+class _SubInput {
+  _SubInput({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
 }

@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ionicons/ionicons.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';
 
 class UserReservationsPage extends StatefulWidget {
@@ -37,6 +40,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
         }
       } catch (_) {}
       list.add(res);
+
     }
     final active = list
         .where((r) => r.status == 'Onaylandı' || r.status == 'Beklemede')
@@ -52,7 +56,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
       .where('userId', isEqualTo: uid)
       .where('newStatus', whereIn: ['Tamamlandı', 'İptal Edildi'])
       .orderBy('reservationDateTime', descending: true)
-      .snapshots()
+      .snapshots(includeMetadataChanges: false)
       .map((s) => s.docs.map(Reservation.fromDocument).toList());
 
   // ───────────────────── Helpers ─────────────────────
@@ -148,16 +152,13 @@ class _UserReservationsPageState extends State<UserReservationsPage>
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.green.shade800),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryDark),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Text('Rezervasyonlarım',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade800)),
+                        style: AppTextStyles.titleLarge.copyWith(color:AppColors.primaryDark)),
                   ),
                   const SizedBox(width: 48),
                 ],
@@ -165,6 +166,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
               const SizedBox(height: 12),
               TextField(
                 decoration: InputDecoration(
+                  hintStyle: AppTextStyles.bodyMedium,
                   hintText: 'Rezervasyon ara...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
@@ -275,8 +277,7 @@ class ReservationCard extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Text(txt,
-              style:
-              TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
         ),
       ],
     ),
@@ -295,7 +296,7 @@ class ReservationCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,  // 👈  esnek yükseklik
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           Container(
@@ -310,11 +311,8 @@ class ReservationCard extends StatelessWidget {
             ),
             child: Text(
               reservation.haliSahaName,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium.copyWith(fontWeight:FontWeight.w600,color: Colors.white,overflow: TextOverflow.ellipsis),
+
             ),
           ),
 
@@ -324,10 +322,14 @@ class ReservationCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
                 _row(Icons.calendar_today, date),
                 _row(Icons.access_time, time),
                 _row(Icons.location_on, reservation.haliSahaLocation),
                 _row(Icons.attach_money, '${reservation.haliSahaPrice} TL/saat'),
+                const Divider(),
+                _row(Icons.person, reservation.userName),
+                _row(Icons.phone, reservation.userPhone),
               ],
             ),
           ),
@@ -337,9 +339,7 @@ class ReservationCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // 250 px’ten küçükse alt alta diz (taşma yok)
                 final narrow = constraints.maxWidth < 250;
-
                 final statusBadge = Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -349,14 +349,9 @@ class ReservationCard extends StatelessWidget {
                   ),
                   child: Text(
                     reservation.status,
-                    style: TextStyle(
-                      color: _fg(reservation.status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    style: AppTextStyles.bodySmall.copyWith(color: _fg(reservation.status)),
                   ),
                 );
-
                 final actionBtn = ElevatedButton(
                   onPressed: () => Navigator.push(
                     context,
@@ -377,25 +372,17 @@ class ReservationCard extends StatelessWidget {
                     (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi')
                         ? 'Detaylar'
                         : 'Düzenle',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style:  AppTextStyles.bodySmall.copyWith(color: Colors.white,fontWeight: FontWeight.w400),
                   ),
                 );
-
                 return narrow
                     ? Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    statusBadge,
-                    const SizedBox(height: 8),
-                    actionBtn,
-                  ],
+                  children: [statusBadge, const SizedBox(height: 8), actionBtn],
                 )
                     : Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    statusBadge,
-                    actionBtn,
-                  ],
+                  children: [statusBadge, actionBtn],
                 );
               },
             ),
@@ -405,3 +392,4 @@ class ReservationCard extends StatelessWidget {
     );
   }
 }
+
