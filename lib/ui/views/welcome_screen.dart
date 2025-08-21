@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
 
@@ -64,9 +65,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.green.shade900,
-              Colors.green.shade700,
-              Colors.green.shade500,
+              AppColors.primaryDark,
+              AppColors.primary,
             ],
           ),
         ),
@@ -120,7 +120,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           setState(() => currentFeatureIndex = i),
                       itemBuilder: (_, i) {
                         return Transform.scale(
-                          scale: i == currentFeatureIndex ? 1 : 0.9,
+                          scale: i == currentFeatureIndex ? 0.95 : 0.85,
                           child: Card(
                             color: Colors.white,
                             elevation: 6,
@@ -180,14 +180,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            width: double.infinity,
+                            width: 350.w,
                             height: 56.h,
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.of(context).push(
                                   PageRouteBuilder(
                                     pageBuilder: (ctx, anim, sec) =>
-                                        LoginPage(),
+                                        AuthCheckScreen(),
                                     transitionsBuilder:
                                         (ctx, anim, sec, child) {
                                       final slide = Tween<Offset>(
@@ -232,7 +232,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                           SizedBox(height: 16.h),
                           SizedBox(
-                            width: double.infinity,
+                            width: 350.w,
                             height: 56.h,
                             child: OutlinedButton.icon(
                               onPressed: () {

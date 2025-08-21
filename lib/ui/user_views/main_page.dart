@@ -101,7 +101,7 @@ class _MainPageState extends State<MainPage> {
                 color: Colors.black12, blurRadius: 8, offset: Offset(0, -2))
           ],
           borderRadius: BorderRadius.vertical(
-              top: Radius.circular(24), bottom: Radius.circular(24)),
+              top: Radius.circular(0), bottom: Radius.circular(0)),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: GNav(

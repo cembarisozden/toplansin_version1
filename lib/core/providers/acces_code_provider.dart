@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/acces_code.dart';
@@ -45,15 +45,17 @@ class AccessCodeProvider extends ChangeNotifier {
     required String newCode,
   }) async {
     try {
-      final col = _db
-          .collection('hali_sahalar')
-          .doc(haliSahaId)
-          .collection('accessCodes');
+      print(ownerUid);
+      final col = _db.collection('hali_sahalar').doc(haliSahaId).collection('accessCodes');
+      final privateActiveRef = _db
+          .collection('hali_sahalar').doc(haliSahaId)
+          .collection('private').doc('active');
 
       final existing = await col.where('isActive', isEqualTo: true).get();
       final newDocRef = col.doc();
       final batch = _db.batch();
 
+      // mevcut aktifleri pasifleştir
       for (var doc in existing.docs) {
         batch.update(doc.reference, {
           'isActive': false,
@@ -61,25 +63,38 @@ class AccessCodeProvider extends ChangeNotifier {
         });
       }
 
+      // yeni aktif kodu ekle
       batch.set(
-          newDocRef,
-          AccessCode(
-            id: newDocRef.id,
-            code: newCode,
-            createdAt: TimeService.now(),
-            createdBy: ownerUid,
-            isActive: true,
-          ).toJson());
+        newDocRef,
+        AccessCode(
+          id: newDocRef.id,
+          code: newCode,
+          createdAt: TimeService.nowUtc(),
+          createdBy: ownerUid,
+          isActive: true,
+        ).toJson(),
+      );
+
+      // 🔒 gizli aktif kod belgesini güncelle
+      batch.set(privateActiveRef, {
+        'code': newCode,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       await batch.commit();
+
       await loadActiveCode(context, haliSahaId);
+      await loadInactiveCodes(context, haliSahaId);
+      await _cleanupInactiveCodes(haliSahaId);
+
       AppSnackBar.success(context, 'Yeni erişim kodu oluşturuldu.');
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, msg);
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
     }
     notifyListeners();
   }
+
+
 
   Future<void> activateCodeAgain({
     required BuildContext context,
@@ -87,18 +102,24 @@ class AccessCodeProvider extends ChangeNotifier {
     required String codeId,
   }) async {
     try {
-      final col = _db
-          .collection('hali_sahalar')
-          .doc(haliSahaId)
-          .collection('accessCodes');
+      final col = _db.collection('hali_sahalar').doc(haliSahaId).collection('accessCodes');
+      final privateActiveRef = _db
+          .collection('hali_sahalar').doc(haliSahaId)
+          .collection('private').doc('active');
 
-      // 1) Mevcut aktif kodları çek
+      final selectedRef = col.doc(codeId);
+      final selectedSnap = await selectedRef.get();
+      if (!selectedSnap.exists) {
+        AppSnackBar.error(context, 'Kod bulunamadı.');
+        return;
+      }
+      final selected = AccessCode.fromDoc(selectedSnap);
+
       final activeSnap = await col.where('isActive', isEqualTo: true).get();
 
-      // 2) Batch işlemi başlat
       final batch = _db.batch();
 
-      // 3) Eski aktif kodları pasifleştir
+      // mevcut aktifleri kapat
       for (var doc in activeSnap.docs) {
         batch.update(doc.reference, {
           'isActive': false,
@@ -106,24 +127,31 @@ class AccessCodeProvider extends ChangeNotifier {
         });
       }
 
-      // 4) Seçilen kodu aktifleştir
-      final selectedRef = col.doc(codeId);
+      // seçilen kodu aktifleştir
       batch.update(selectedRef, {
         'isActive': true,
         'deactivatedAt': FieldValue.delete(),
       });
 
-      // 5) Commit ve yeniden yükleme
+      // 🔒 gizli aktif kod belgesini güncelle
+      batch.set(privateActiveRef, {
+        'code': selected.code,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
       await batch.commit();
+
       await loadActiveCode(context, haliSahaId);
       await loadInactiveCodes(context, haliSahaId);
+      await _cleanupInactiveCodes(haliSahaId);
 
       AppSnackBar.success(context, 'Kod başarıyla yeniden aktifleştirildi.');
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, msg);
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
     }
   }
+
+
 
   /// Sahadaki eski (pasif) tüm kodları getir
   Future<void> loadInactiveCodes(
@@ -146,133 +174,131 @@ class AccessCodeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _cleanupInactiveCodes(String haliSahaId, {int keep = 3}) async {
+    final col = _db
+        .collection('hali_sahalar')
+        .doc(haliSahaId)
+        .collection('accessCodes');
+
+    // Pasifleri son pasifleştirme zamanına göre sırala (en yeni üstte)
+    final snap = await col
+        .where('isActive', isEqualTo: false)
+        .orderBy('deactivatedAt', descending: true)
+        .get();
+
+    if (snap.docs.length <= keep) return;
+
+    final extras = snap.docs.skip(keep); // en yeni 3’i bırak, gerisini sil
+    final batch = _db.batch();
+    for (final d in extras) {
+      batch.delete(d.reference);
+    }
+    await batch.commit();
+  }
 
 
-
-  Future<HaliSaha?> findPitchByCode(
-    BuildContext context,
-    String code,
-  ) async {
+// 1) Kodla saha bulma
+  Future<HaliSaha?> findPitchByCode(BuildContext context, String code) async {
     try {
-      print('[DEBUG] findPitchByCode code: "$code" (${code.runtimeType})');
-      // accessCodes koleksiyonlar üzerinde collectionGroup ile arama
-      final snap = await _db
-          .collectionGroup('accessCodes')
-          .where('code', isEqualTo: code)
-          .where('isActive', isEqualTo: true)
-          .limit(1)
-          .get();
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('findPitchByCode')
+          .call({'code': code});
 
-      if (snap.docs.isEmpty) {
-        AppSnackBar.error(context, 'Geçerli bir kod bulunamadı.');
+      final data = Map<String, dynamic>.from(result.data ?? {});
+
+      if (data['ok'] != true) {
+        AppSnackBar.error(context, data['message'] ?? 'Geçerli bir kod bulunamadı.');
         return null;
       }
 
-      // Kod belgesi referansından sahaId'yi çıkar
-      final accDoc = snap.docs.first;
-      final sahaRef = accDoc.reference.parent.parent!;
-      final sahaSnap = await sahaRef.get();
-
-      if (!sahaSnap.exists) {
-        AppSnackBar.error(context, 'Halı saha bulunamadı.');
-        return null;
-      }
-
-      // HaliSaha modelinin fromJson factory’si ile oluşturun
-      return HaliSaha.fromJson(sahaSnap.data()!, sahaSnap.id);
+      final pitchRaw = (data['data']?['pitch'] ?? {}) as Map;
+      final pitchData = Map<String, dynamic>.from(pitchRaw);
+      return HaliSaha.fromJson(pitchData, pitchData['id']?.toString() ?? '');
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, msg);
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
       return null;
     }
   }
 
-  /// 2) Kullanıcının `users/{uid}.fieldAccessCodes` listesine kodId ekler
-  Future<void> addUserAccessCode(
-      BuildContext context,
-      String codeId,
-      ) async {
+// 2) Kullanıcıya kod ekleme
+  Future<void> addUserAccessCode(BuildContext context, String codeId) async {
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      final userRef = _db.collection('users').doc(uid);
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('addUserAccessCode')
+          .call({'code': codeId});
 
-      // 1️⃣ Kullanıcının mevcut kod listesini çek
-      final userSnap = await userRef.get();
-      final codes = List<String>.from(userSnap.data()?['fieldAccessCodes'] ?? []);
-
-      // 2️⃣ Eğer kod zaten ekliyse bilgi ver, çık
-      if (codes.contains(codeId)) {
-        AppSnackBar.show(context, 'Bu kod zaten hesabınızda mevcut.');
-        return;
+      final data = Map<String, dynamic>.from(result.data ?? {});
+      if (data['ok'] == true) {
+        AppSnackBar.success(context, data['message'] ?? 'Kod hesabınıza eklendi.');
+      } else {
+        AppSnackBar.error(context, data['message'] ?? 'Kod eklenemedi.');
       }
-
-      // 3️⃣ Değilse arrayUnion ile ekle
-      await userRef.update({
-        'fieldAccessCodes': FieldValue.arrayUnion([codeId]),
-      });
-      AppSnackBar.success(context, 'Kod hesabınıza eklendi.');
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, msg);
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
     }
   }
 
-
-  /// 3) Kullanıcının `fieldAccessCodes` listesinden kodId çıkarır
-  Future<void> removeUserAccessCode(
-    BuildContext context,
-    String codeId,
-  ) async {
+// 3) Kullanıcıdan kod silme
+  Future<void> removeUserAccessCode(BuildContext context, String codeId) async {
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      await _db.collection('users').doc(uid).update({
-        'fieldAccessCodes': FieldValue.arrayRemove([codeId]),
-      });
-      AppSnackBar.success(context, 'Kod hesabınızdan kaldırıldı.');
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('removeUserAccessCode')
+          .call({'code': codeId});
+
+      final data = Map<String, dynamic>.from(result.data ?? {});
+      if (data['ok'] == true) {
+        AppSnackBar.success(context, data['message'] ?? 'Kod hesabınızdan kaldırıldı.');
+      } else {
+        AppSnackBar.error(context, data['message'] ?? 'Kod kaldırılamadı.');
+      }
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, msg);
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
     }
   }
 
-  /// AccessCodeProvider içinde…
-
-  /// Kullanıcının fieldAccessCodes listesinden hem kodu hem de saha bilgisini döner
+// 4) Kullanıcının kodlarını yükleme
   Future<List<UserCodeEntry>> loadUserCodes(BuildContext context) async {
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      final userSnap = await _db.collection('users').doc(uid).get();
-      final codes = List<String>.from(userSnap.data()?['fieldAccessCodes'] ?? []);
-      final List<UserCodeEntry> entries = [];
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('loadUserCodes')
+          .call();
 
-      for (var codeId in codes) {
-        // 1) accessCodes doc’unu bul
-        final accSnap = await _db
-            .collectionGroup('accessCodes')
-            .where('code', isEqualTo: codeId)       // <— burayı böyle değiştir
-            .where('isActive', isEqualTo: true)
-            .limit(1)
-            .get();
-
-
-        if (accSnap.docs.isEmpty) continue;
-        final accDoc = accSnap.docs.first;
-
-        // 2) parent hali_saha referansından saha dokümanını al
-        final sahaRef = accDoc.reference.parent.parent!;
-        final sahaSnap = await sahaRef.get();
-        if (!sahaSnap.exists) continue;
-
-        final saha = HaliSaha.fromJson(sahaSnap.data()!, sahaSnap.id);
-
-        // 3) entry listesine ekle
-        entries.add(UserCodeEntry(pitch: saha, code: AccessCode.fromDoc(accDoc).code));
+      final data = Map<String, dynamic>.from(result.data ?? {});
+      if (data['ok'] != true) {
+        AppSnackBar.error(context, data['message'] ?? 'Kodlar yüklenemedi.');
+        return [];
       }
 
-      return entries;
+      final List list = (data['data'] ?? []) as List;
+      return list.map((e) {
+        final pitchRaw = e['pitch'] as Map? ?? {};
+        final pitchData = Map<String, dynamic>.from(pitchRaw);
+        return UserCodeEntry(
+          pitch: HaliSaha.fromJson(pitchData, pitchData['id']?.toString() ?? ''),
+          code: e['code']?.toString() ?? '',
+        );
+      }).toList();
     } catch (e) {
       AppSnackBar.error(context, AppErrorHandler.getMessage(e));
       return [];
+    }
+  }
+
+// 5) Kullanıcının saha için kodu var mı kontrol etme
+  Future<bool> hasMatchingAccessCode(String haliSahaId, BuildContext context) async {
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('hasMatchingAccessCode')
+          .call({'haliSahaId': haliSahaId});
+
+      final data = Map<String, dynamic>.from(result.data ?? {});
+      if (data['ok'] != true) {
+        return false;
+      }
+      return data['data']?['hasAccess'] == true;
+    } catch (e) {
+      AppSnackBar.error(context, AppErrorHandler.getMessage(e));
+      return false;
     }
   }
 

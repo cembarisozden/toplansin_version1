@@ -94,13 +94,19 @@ class AboutHelpPage extends StatelessWidget {
                   icon: Icons.privacy_tip_outlined,
                   text: 'Gizlilik Politikası',
                   onTap: () =>
-                      _openMarkdown(context, 'assets/about_help_texts/privacy.md', 'Gizlilik'),
+                      _openMarkdown(context, 'assets/about_help_texts/privacy.md', 'Gizlilik Politikası'),
+                ),
+                _LinkCard(
+                  icon: Icons.shield_outlined,
+                  text: 'KVKK Aydınlatma Metni',
+                  onTap: () =>
+                      _openMarkdown(context, 'assets/about_help_texts/kvkk.md', 'KVKK Aydınlatma Metni'),
                 ),
                 _LinkCard(
                   icon: Icons.article_outlined,
                   text: 'Kullanım Şartları',
                   onTap: () =>
-                      _openMarkdown(context, 'assets/about_help_texts/tos.md', 'Şartlar'),
+                      _openMarkdown(context, 'assets/about_help_texts/tos.md', 'Kullanım Şartları'),
                 ),
                 _LinkCard(
                   icon: Icons.code,
@@ -109,10 +115,10 @@ class AboutHelpPage extends StatelessWidget {
                 ),
                 _LinkCard(
                   icon: Icons.email_outlined,
-                  text: 'destek@toplansin.app',
+                  text: 'info@toplansin.com',
                   subtitle: 'Bize ulaşın',
                   onTap: () =>
-                      launchUrl(Uri.parse('mailto:destek@toplansin.app')),
+                      launchUrl(Uri.parse('mailto:info@toplansin.com')),
                 ),
               ],
             );

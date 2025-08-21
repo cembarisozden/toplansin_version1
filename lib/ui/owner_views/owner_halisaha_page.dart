@@ -22,7 +22,8 @@ import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
 import 'package:collection/collection.dart';
-import 'package:toplansin/ui/owner_views/owner_user_statistics_pannel.dart';
+import 'package:toplansin/ui/owner_views/owner_show_users_with_active_codes.dart';
+import 'package:toplansin/ui/owner_views/owner_user_statistics_panel.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
@@ -267,7 +268,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           currentHaliSaha =
               HaliSaha.fromJson(snapshot.data()!, widget.haliSaha.id);
           var h = currentHaliSaha;
-          String rawPhone = h.phone;  // önce tümünü ata
+          String rawPhone = h.phone; // önce tümünü ata
           if (rawPhone.startsWith('+90 ')) {
             // '+90 ' (4 karakter) çıkar
             rawPhone = rawPhone.substring(4);
@@ -275,7 +276,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             // sadece '+90' (3 karakter) çıkar
             rawPhone = rawPhone.substring(3);
           }
-
 
           nameController.text = h.name;
           locationController.text = h.location;
@@ -296,6 +296,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           hasShoeRental = h.hasShoeRental;
           hasCafeteria = h.hasCafeteria;
           hasNightLighting = h.hasNightLighting;
+          hasCameras = h.hasCameras;
+          hasFoodService = h.hasFoodService;
+          hasFoosball = h.hasFoosball;
+          hasMaleToilet = h.hasMaleToilet;
+          hasFemaleToilet = h.hasFemaleToilet;
+          acceptsCreditCard = h.acceptsCreditCard;
+          hasGoalkeeper = h.hasGoalkeeper;
+          hasPlayground = h.hasPlayground;
+          hasPrayerRoom = h.hasPrayerRoom;
+          hasInternet = h.hasInternet;
         });
       }
     });
@@ -325,6 +335,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   bool hasShoeRental = false;
   bool hasCafeteria = false;
   bool hasNightLighting = false;
+  bool hasMaleToilet = false;
+  bool hasFoodService = false;
+  bool acceptsCreditCard = false;
+  bool hasFoosball = false;
+  bool hasCameras = false;
+  bool hasGoalkeeper = false;
+  bool hasPlayground = false;
+  bool hasPrayerRoom = false;
+  bool hasInternet = false;
+  bool hasFemaleToilet = false;
 
   // Yerel Halı Saha Durumu
   late HaliSaha currentHaliSaha = widget.haliSaha;
@@ -988,7 +1008,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 color: Colors.green.shade800),
           ),
           SizedBox(height: 16),
-
           LayoutBuilder(
             builder: (context, constraints) {
               return GridView.count(
@@ -1076,7 +1095,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           icon: Icons.key_outlined,
           label: "Saha Erişim Kodu Yönetimi",
           backgroundColor: Color(0xFFE65100),
-          destination: () => OwnerAccessCodePage(haliSahaId:currentHaliSaha.id),
+          destination: () =>
+              OwnerAccessCodePage(haliSahaId: currentHaliSaha.id),
         ),
         const SizedBox(height: 16),
 
@@ -1111,12 +1131,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           icon: Icons.bar_chart_rounded,
           label: "Kullanıcı İstatistikleri",
           backgroundColor: Colors.redAccent.shade700,
-          destination: () =>  OwnerUserStatisticsPannel(),
+          destination: () =>
+              OwnerUserStatisticPanel(haliSahaId: widget.haliSaha.id),
         ),
       ],
     );
   }
-
 
   Widget _buildInfoCard(
     String title,
@@ -1264,8 +1284,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                             // 3) Yükleniyor durumunu bitir
                             setState(() => _isLoading = false);
                             FocusScope.of(context).unfocus();
-
-                    },
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade600,
                       shape: RoundedRectangleBorder(
@@ -1313,6 +1332,59 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   (value) {
                 setState(() {
                   hasNightLighting = value;
+                });
+              }),
+              _buildFeatureSwitch("Kamera Var", hasCameras, (value) {
+                setState(() {
+                  hasCameras = value;
+                });
+              }),
+              _buildFeatureSwitch("Yemek Var", hasFoodService, (value) {
+                setState(() {
+                  hasFoodService = value;
+                });
+              }),
+              _buildFeatureSwitch("Langırt Var", hasFoosball, (value) {
+                setState(() {
+                  hasFoosball = value;
+                });
+              }),
+              _buildFeatureSwitch("Erkek Tuvaleti Var", hasMaleToilet, (value) {
+                setState(() {
+                  hasMaleToilet = value;
+                });
+              }),
+              _buildFeatureSwitch("Kadın Tuvaleti Var", hasFemaleToilet,
+                  (value) {
+                setState(() {
+                  hasFemaleToilet = value;
+                });
+              }),
+              _buildFeatureSwitch("Kredi Kartı Geçerli", acceptsCreditCard,
+                  (value) {
+                setState(() {
+                  acceptsCreditCard = value;
+                });
+              }),
+              _buildFeatureSwitch("Kiralık Kaleci Var", hasGoalkeeper, (value) {
+                setState(() {
+                  hasGoalkeeper = value;
+                });
+              }),
+              _buildFeatureSwitch("Çocuk Oyun Alanı Var", hasPlayground,
+                  (value) {
+                setState(() {
+                  hasPlayground = value;
+                });
+              }),
+              _buildFeatureSwitch("Mescit Var", hasPrayerRoom, (value) {
+                setState(() {
+                  hasPrayerRoom = value;
+                });
+              }),
+              _buildFeatureSwitch("İnternet Var", hasInternet, (value) {
+                setState(() {
+                  hasInternet = value;
                 });
               }),
             ],
@@ -1432,7 +1504,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     print('📞 Old Phone: $oldPhone');
     print('📞 New Phone: $newPhone');
 
-
     // Giriş doğrulama
     String? validationError = _validateInputs();
     if (validationError != null) {
@@ -1472,6 +1543,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         hasShoeRental: hasShoeRental,
         hasCafeteria: hasCafeteria,
         hasNightLighting: hasNightLighting,
+        hasCameras: hasCameras,
+        hasFemaleToilet: hasFemaleToilet,
+        hasFoodService: hasFoodService,
+        hasFoosball: hasFoosball,
+        hasGoalkeeper: hasGoalkeeper,
+        hasInternet: hasInternet,
+        hasMaleToilet: hasMaleToilet,
+        hasPlayground: hasPlayground,
+        hasPrayerRoom: hasPrayerRoom,
+        acceptsCreditCard: acceptsCreditCard,
         longitude: lng,
         latitude: lat,
       );
@@ -1569,6 +1650,27 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       changedFields['hasCafeteria'] = newSaha.hasCafeteria;
     if (oldSaha.hasNightLighting != newSaha.hasNightLighting)
       changedFields['hasNightLighting'] = newSaha.hasNightLighting;
+    if (oldSaha.hasMaleToilet != newSaha.hasMaleToilet)
+      changedFields['hasMaleToilet'] = newSaha.hasMaleToilet;
+    if (oldSaha.hasFemaleToilet != newSaha.hasFemaleToilet)
+      changedFields['hasFemaleToilet'] = newSaha.hasFemaleToilet;
+    if (oldSaha.hasFoodService != newSaha.hasFoodService)
+      changedFields['hasFoodService'] = newSaha.hasFoodService;
+    if (oldSaha.acceptsCreditCard != newSaha.acceptsCreditCard)
+      changedFields['acceptsCreditCard'] = newSaha.acceptsCreditCard;
+    if (oldSaha.hasFoosball != newSaha.hasFoosball)
+      changedFields['hasFoosball'] = newSaha.hasFoosball;
+    if (oldSaha.hasCameras != newSaha.hasCameras)
+      changedFields['hasCameras'] = newSaha.hasCameras;
+    if (oldSaha.hasGoalkeeper != newSaha.hasGoalkeeper)
+      changedFields['hasGoalkeeper'] = newSaha.hasGoalkeeper;
+    if (oldSaha.hasPlayground != newSaha.hasPlayground)
+      changedFields['hasPlayground'] = newSaha.hasPlayground;
+    if (oldSaha.hasPrayerRoom != newSaha.hasPrayerRoom)
+      changedFields['hasPrayerRoom'] = newSaha.hasPrayerRoom;
+    if (oldSaha.hasInternet != newSaha.hasInternet)
+      changedFields['hasInternet'] = newSaha.hasInternet;
+
     if (oldSaha.phone != newSaha.phone) changedFields['phone'] = newSaha.phone;
     if (oldSaha.longitude != newSaha.longitude)
       changedFields['longitude'] = newSaha.longitude;
@@ -2375,9 +2477,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       // Seçili gün + saat dilimi anahtarını oluştur
       final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
       final reservation = haliSahaReservations.firstWhere(
-            (r) => r.reservationDateTime == key,
+        (r) => r.reservationDateTime == key,
       );
-      final statsProvider=StatsProvider();
+      final statsProvider = StatsProvider();
       statsProvider.loadStats(reservation);
       showDialog(
         context: context,
@@ -2388,205 +2490,208 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               svc.loadStats(reservation);
               return svc;
             },
-          child: Builder(
-            builder: (ctx) {
-              final stats = ctx.watch<StatsProvider>();
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                insetPadding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 24),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isTablet = constraints.maxWidth >= 600;
-                    return SafeArea(
-                      child: FractionallySizedBox(
-                        widthFactor: isTablet ? 0.6 : 0.97,
-                        heightFactor: isTablet ? 0.75 : 0.83,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // ─── HEADER ─────────────────────────
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.green.shade400,
-                                      Colors.blue.shade400
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(16)),
-                                ),
-                                padding: const EdgeInsets.all(20),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.info, color: Colors.white,
-                                        size: 28),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        "Rezervasyon Detayları",
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+            child: Builder(
+              builder: (ctx) {
+                final stats = ctx.watch<StatsProvider>();
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  insetPadding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isTablet = constraints.maxWidth >= 600;
+                      return SafeArea(
+                        child: FractionallySizedBox(
+                          widthFactor: isTablet ? 0.6 : 0.97,
+                          heightFactor: isTablet ? 0.75 : 0.83,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // ─── HEADER ─────────────────────────
+                                Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.green.shade400,
+                                        Colors.blue.shade400
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                  ],
-                                ),
-                              ),
-
-                              // ─── BODY (scrollable) ─────────────────
-                              Flexible(
-                                child: SingleChildScrollView(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 16),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment
-                                          .start,
-                                      children: [
-                                        // Detay öğeleri
-                                        _detailItem(
-                                            Icons.person, "Kullanıcı Adı",
-                                            reservation.userName),
-                                        const SizedBox(height: 8),
-                                        _detailItem(Icons.phone, "Telefon",
-                                            reservation.userPhone),
-                                        const SizedBox(height: 8),
-                                        _detailItem(Icons.email, "E-posta",
-                                            reservation.userEmail),
-                                        const SizedBox(height: 8),
-                                        _detailItem(Icons.calendar_today,
-                                            "Tarih ve Saat",
-                                            reservation.reservationDateTime),
-
-                                        const SizedBox(height: 12),
-                                        const Divider(),
-                                        const SizedBox(height: 12),
-
-                                        // ─── Kullanıcı Hareketleri ────────────
-                                        const Text(
-                                          'Kullanıcı Hareketleri (Son 6 Ay)',
+                                    borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(16)),
+                                  ),
+                                  padding: const EdgeInsets.all(20),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.info,
+                                          color: Colors.white, size: 28),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          "Rezervasyon Detayları",
                                           style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _buildStatCard(
-                                                title: 'Bu Sahadaki',
-                                                approved: statsProvider
-                                                    .ownApprovedCount,
-                                                cancelled: statsProvider
-                                                    .ownCancelledCount,
-                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // ─── BODY (scrollable) ─────────────────
+                                Flexible(
+                                  child: SingleChildScrollView(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Detay öğeleri
+                                          _detailItem(
+                                              Icons.person,
+                                              "Kullanıcı Adı",
+                                              reservation.userName),
+                                          const SizedBox(height: 8),
+                                          _detailItem(Icons.phone, "Telefon",
+                                              reservation.userPhone),
+                                          const SizedBox(height: 8),
+                                          _detailItem(Icons.email, "E-posta",
+                                              reservation.userEmail),
+                                          const SizedBox(height: 8),
+                                          _detailItem(
+                                              Icons.calendar_today,
+                                              "Tarih ve Saat",
+                                              reservation.reservationDateTime),
+
+                                          const SizedBox(height: 12),
+                                          const Divider(),
+                                          const SizedBox(height: 12),
+
+                                          // ─── Kullanıcı Hareketleri ────────────
+                                          const Text(
+                                            'Kullanıcı Hareketleri (Son 6 Ay)',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey,
                                             ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: _buildStatCard(
-                                                title: 'Tüm Sahalardaki',
-                                                approved: statsProvider
-                                                    .allApprovedCount,
-                                                cancelled: statsProvider
-                                                    .allCancelledCount,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildStatCard(
+                                                  title: 'Bu Sahadaki',
+                                                  approved: statsProvider
+                                                      .ownApprovedCount,
+                                                  cancelled: statsProvider
+                                                      .ownCancelledCount,
+                                                ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 16),
-                                      ],
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: _buildStatCard(
+                                                  title: 'Tüm Sahalardaki',
+                                                  approved: statsProvider
+                                                      .allApprovedCount,
+                                                  cancelled: statsProvider
+                                                      .allCancelledCount,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
 
-                              const Divider(height: 1),
+                                const Divider(height: 1),
 
-                              // ─── FOOTER BUTTONS ───────────────────
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 12),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.vertical(
-                                      bottom: Radius.circular(16)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // Rezervasyonu İptal Et
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          _showCancelConfirmation(
-                                              context, reservation);
-                                        },
-                                        label: Text("Rezervasyonu İptal Et",
+                                // ─── FOOTER BUTTONS ───────────────────
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 12),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(
+                                        bottom: Radius.circular(16)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Rezervasyonu İptal Et
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () {
+                                            _showCancelConfirmation(
+                                                context, reservation);
+                                          },
+                                          label: Text("Rezervasyonu İptal Et",
+                                              style: AppTextStyles.labelMedium
+                                                  .copyWith(
+                                                      color: Colors.white)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.redAccent,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 15),
+                                            textStyle:
+                                                const TextStyle(fontSize: 16),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Kapat
+                                      Expanded(
+                                        child: TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text(
+                                            "Kapat",
                                             style: AppTextStyles.labelMedium
-                                                .copyWith(color: Colors.white)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.redAccent,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius
-                                                  .circular(8)),
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 15),
-                                          textStyle: const TextStyle(
-                                              fontSize: 16),
+                                                .copyWith(
+                                                    color: Colors.grey.shade800,
+                                                    fontSize: 15),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Kapat
-                                    Expanded(
-                                      child: TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: Text(
-                                          "Kapat",
-                                          style: AppTextStyles.labelMedium
-                                              .copyWith(
-                                              color: Colors.grey.shade800,
-                                              fontSize: 15),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        );
-  },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          );
+        },
       );
     } catch (e) {
       debugPrint("Rezervasyon Detayları bulunamadı: $e");
       AppSnackBar.error(context, "Rezervasyon detayları bulunamadı.");
     }
   }
-
 
   void _showCancelConfirmation(BuildContext context, Reservation reservation) {
     showDialog(
@@ -2750,16 +2855,19 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         keyboardType: TextInputType.phone,
         inputFormatters: [
           // Eskiden kullandığın formatter aynen kalsın
-          PhoneInputFormatter(defaultCountryCode: 'TR', allowEndlessPhone: false),
+          PhoneInputFormatter(
+              defaultCountryCode: 'TR', allowEndlessPhone: false),
         ],
         maxLength: 12,
-        buildCounter: (context, { required currentLength, required isFocused, required maxLength }) {
+        buildCounter: (context,
+            {required currentLength, required isFocused, required maxLength}) {
           if (maxLength == null) return null;
           return Text(
             '$currentLength / $maxLength',
             style: TextStyle(
               fontSize: 11,
-              color: currentLength > maxLength ? Colors.red : Colors.grey.shade600,
+              color:
+                  currentLength > maxLength ? Colors.red : Colors.grey.shade600,
             ),
           );
         },
@@ -3098,7 +3206,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     // 1️⃣ Rezervasyonu bul
     final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
     final reservation = haliSahaReservations.firstWhere(
-          (r) => r.reservationDateTime == key && r.status == 'Beklemede',
+      (r) => r.reservationDateTime == key && r.status == 'Beklemede',
     );
 
     // 2️⃣ Dialog’u, StatsProvider ile sarmala ve hemen yüklemeye başla
@@ -3118,12 +3226,16 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
               return Dialog(
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                insetPadding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                 child: SafeArea(
                   child: FractionallySizedBox(
-                    widthFactor: MediaQuery.of(context).size.width >= 600 ? 0.6 : 0.97,
-                    heightFactor: MediaQuery.of(context).size.width >= 600 ? 0.75 : 0.83,
+                    widthFactor:
+                        MediaQuery.of(context).size.width >= 600 ? 0.6 : 0.97,
+                    heightFactor:
+                        MediaQuery.of(context).size.width >= 600 ? 0.75 : 0.83,
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -3137,16 +3249,21 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                             width: double.infinity,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Colors.green.shade400, Colors.blue.shade400],
+                                colors: [
+                                  Colors.green.shade400,
+                                  Colors.blue.shade400
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16)),
                             ),
                             padding: const EdgeInsets.all(20),
                             child: Row(
                               children: [
-                                const Icon(Icons.info, color: Colors.white, size: 28),
+                                const Icon(Icons.info,
+                                    color: Colors.white, size: 28),
                                 const SizedBox(width: 10),
                                 const Expanded(
                                   child: Text(
@@ -3160,7 +3277,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                 ),
                                 IconButton(
                                   onPressed: () => Navigator.pop(context),
-                                  icon: const Icon(Ionicons.close_outline, size: 26, color: Colors.white),
+                                  icon: const Icon(Ionicons.close_outline,
+                                      size: 26, color: Colors.white),
                                 ),
                               ],
                             ),
@@ -3169,18 +3287,25 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           // ─── BODY (scrollable) ─────────────────
                           Flexible(
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   // Detay satırları
-                                  _detailItem(Icons.person, "Kullanıcı Adı", reservation.userName),
+                                  _detailItem(Icons.person, "Kullanıcı Adı",
+                                      reservation.userName),
                                   const SizedBox(height: 8),
-                                  _detailItem(Icons.phone, "Telefon", reservation.userPhone),
+                                  _detailItem(Icons.phone, "Telefon",
+                                      reservation.userPhone),
                                   const SizedBox(height: 8),
-                                  _detailItem(Icons.email, "E-posta", reservation.userEmail),
+                                  _detailItem(Icons.email, "E-posta",
+                                      reservation.userEmail),
                                   const SizedBox(height: 8),
-                                  _detailItem(Icons.calendar_today, "Tarih ve Saat", reservation.reservationDateTime),
+                                  _detailItem(
+                                      Icons.calendar_today,
+                                      "Tarih ve Saat",
+                                      reservation.reservationDateTime),
 
                                   const SizedBox(height: 12),
                                   const Divider(),
@@ -3197,25 +3322,25 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                   ),
                                   const SizedBox(height: 12),
 
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildStatCard(
-                                            title: 'Bu Sahadaki',
-                                            approved: stats.ownApprovedCount,
-                                            cancelled: stats.ownCancelledCount,
-                                          ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          title: 'Bu Sahadaki',
+                                          approved: stats.ownApprovedCount,
+                                          cancelled: stats.ownCancelledCount,
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildStatCard(
-                                            title: 'Tüm Sahalardaki',
-                                            approved: stats.allApprovedCount,
-                                            cancelled: stats.allCancelledCount,
-                                          ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          title: 'Tüm Sahalardaki',
+                                          approved: stats.allApprovedCount,
+                                          cancelled: stats.allCancelledCount,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
+                                  ),
 
                                   const SizedBox(height: 16),
                                 ],
@@ -3227,10 +3352,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                           // ─── FOOTER BUTTONS ───────────────────
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
                             decoration: const BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                              borderRadius: BorderRadius.vertical(
+                                  bottom: Radius.circular(16)),
                             ),
                             child: Row(
                               children: [
@@ -3241,12 +3368,17 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                       _rejectReservation(reservation);
                                       Navigator.pop(context);
                                     },
-                                    icon: const Icon(Icons.close, color: Colors.white),
-                                    label: const Text("Reddet", style: TextStyle(color: Colors.white)),
+                                    icon: const Icon(Icons.close,
+                                        color: Colors.white),
+                                    label: const Text("Reddet",
+                                        style: TextStyle(color: Colors.white)),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.red.shade600,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
                                       textStyle: const TextStyle(fontSize: 15),
                                     ),
                                   ),
@@ -3259,12 +3391,17 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                       _approveReservation(reservation);
                                       Navigator.pop(context);
                                     },
-                                    icon: const Icon(Icons.check, color: Colors.white),
-                                    label: const Text("Onayla", style: TextStyle(color: Colors.white)),
+                                    icon: const Icon(Icons.check,
+                                        color: Colors.white),
+                                    label: const Text("Onayla",
+                                        style: TextStyle(color: Colors.white)),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green.shade600,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
                                       textStyle: const TextStyle(fontSize: 15),
                                     ),
                                   ),
@@ -3291,7 +3428,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         Icon(icon, color: Colors.grey.shade700, size: 20),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text, style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
+          child: Text(text,
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
         ),
       ],
     );
@@ -3406,7 +3544,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(18),),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
               ),
               child: Row(
                 children: [
@@ -3437,9 +3577,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
             // ── Body ──
             Container(
-
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(18)),
                 color: Colors.white,
               ),
               child: Padding(
@@ -3731,49 +3871,71 @@ extension HaliSahaCopyWith on HaliSaha {
   HaliSaha copyWith({
     String? name,
     String? location,
-    String? phone,            // <-- parametre
-    double? price,
+    String? phone,
+    num? price,
+    num? rating,
     String? size,
     String? surface,
     int? maxPlayers,
     String? startHour,
     String? endHour,
     String? description,
+    List<String>? imagesUrl,
+    List<String>? bookedSlots,
     bool? hasParking,
     bool? hasShowers,
     bool? hasShoeRental,
     bool? hasCafeteria,
     bool? hasNightLighting,
-    double? longitude,        // <-- parametre
-    double? latitude,         // <-- parametre
+    bool? hasMaleToilet,
+    bool? hasFemaleToilet,
+    bool? hasFoodService,
+    bool? acceptsCreditCard,
+    bool? hasFoosball,
+    bool? hasCameras,
+    bool? hasGoalkeeper,
+    bool? hasPlayground,
+    bool? hasPrayerRoom,
+    bool? hasInternet,
+    double? latitude,
+    double? longitude,
   }) {
     return HaliSaha(
-      ownerId: this.ownerId,
+      ownerId: ownerId,
       name: name ?? this.name,
       location: location ?? this.location,
       price: price ?? this.price,
-      phone: phone ?? this.phone,                      // <-- düzeltildi
-      rating: this.rating,
-      imagesUrl: this.imagesUrl,
-      bookedSlots: this.bookedSlots,
+      rating: rating ?? this.rating,
+      imagesUrl: imagesUrl ?? this.imagesUrl,
+      bookedSlots: bookedSlots ?? this.bookedSlots,
       startHour: startHour ?? this.startHour,
-      endHour:   endHour   ?? this.endHour,
-      id: this.id,
-      hasParking:      hasParking      ?? this.hasParking,
-      hasShowers:      hasShowers      ?? this.hasShowers,
-      hasShoeRental:   hasShoeRental   ?? this.hasShoeRental,
-      hasCafeteria:    hasCafeteria    ?? this.hasCafeteria,
-      hasNightLighting:hasNightLighting?? this.hasNightLighting,
+      endHour: endHour ?? this.endHour,
+      id: id,
+      hasParking: hasParking ?? this.hasParking,
+      hasShowers: hasShowers ?? this.hasShowers,
+      hasShoeRental: hasShoeRental ?? this.hasShoeRental,
+      hasCafeteria: hasCafeteria ?? this.hasCafeteria,
+      hasNightLighting: hasNightLighting ?? this.hasNightLighting,
+      hasMaleToilet: hasMaleToilet ?? this.hasMaleToilet,
+      hasFemaleToilet: hasFemaleToilet ?? this.hasFemaleToilet,
+      hasFoodService: hasFoodService ?? this.hasFoodService,
+      acceptsCreditCard: acceptsCreditCard ?? this.acceptsCreditCard,
+      hasFoosball: hasFoosball ?? this.hasFoosball,
+      hasCameras: hasCameras ?? this.hasCameras,
+      hasGoalkeeper: hasGoalkeeper ?? this.hasGoalkeeper,
+      hasPlayground: hasPlayground ?? this.hasPlayground,
+      hasPrayerRoom: hasPrayerRoom ?? this.hasPrayerRoom,
+      hasInternet: hasInternet ?? this.hasInternet,
       description: description ?? this.description,
-      size:    size    ?? this.size,
+      size: size ?? this.size,
       surface: surface ?? this.surface,
       maxPlayers: maxPlayers ?? this.maxPlayers,
-      latitude: latitude ?? this.latitude,              // <-- düzeltildi
-      longitude: longitude ?? this.longitude,           // <-- düzeltildi
+      phone: phone ?? this.phone,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }
-
 
 /// Geri dönen model
 class _SubInput {

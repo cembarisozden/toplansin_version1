@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ionicons/ionicons.dart';
@@ -51,11 +52,28 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   bool hasShoeRental = false;
   bool hasCafeteria = false;
   bool hasNightLighting = false;
+  bool hasMaleToilet = false;
+  bool hasFoodService = false;
+  bool acceptsCreditCard = false;
+  bool hasFoosball = false;
+  bool hasCameras = false;
+  bool hasGoalkeeper = false;
+  bool hasPlayground = false;
+  bool hasPrayerRoom = false;
+  bool hasInternet = false;
+  bool hasFemaleToilet = false;
 // State içinde
   num   _minPrice           = 0, _maxPrice           = 5000;
   num   _selectedMinPrice   = 0, _selectedMaxPrice   = 5000;
   bool  _priceFilterActive  = false;
   int   _selectedRating     = 0;
+
+  // ── ekle
+  late final FocusNode _searchFocus;
+  final _searchHeaderKey = const ValueKey('search_header');
+  List<HaliSaha> _baseFiltered = [];          // diğer filtrelerin sonucu (isim hariç)
+  final ValueNotifier<String> _searchText = ValueNotifier<String>(''); // sadece arama metni
+
 
 
   final List<String> cities = [
@@ -72,25 +90,30 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     super.initState();
     _startHour = null;
     _endHour   = null;
+
+    _searchFocus = FocusNode();
+
     _setupRealtimeHaliSahaListener();
-    _searchController.addListener(_filterHaliSahalar);
-
-
   }
+
+
 
   // ────────────────────────────────────────────────────────────
   void _setupRealtimeHaliSahaListener() {
     _haliSahaSubscription = collectionHaliSaha.snapshots().listen((snapshot) {
-      final all =
-      snapshot.docs.map((d) => HaliSaha.fromJson(d.data(), d.id)).toList();
+      final all = snapshot.docs
+          .map((d) => HaliSaha.fromJson(d.data(), d.id))
+          .toList();
 
-      setState(() {
-        _allHaliSahalar = all;
-      });
-
-      _filterHaliSahalar(); // arama kutusu varsa tekrar uygula
+      if (!listEquals(_allHaliSahalar, all)) {
+        setState(() => _allHaliSahalar = all);
+        _recomputeBaseFiltered(); // isim aramasına dokunmuyor
+      }
     });
   }
+
+
+
 
   /// Gece geçişlerini de hesaba katarak bir saatin saha açık olup olmadığını döner.
   bool isOpenAt(int hour, int openingHour, int closingHourNormalized) {
@@ -100,133 +123,138 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     return normalizedHour >= openingHour && normalizedHour < closingHourNormalized;
   }
   bool _matchesFacilities(HaliSaha saha) {
-    if (hasParking      && !saha.hasParking)      return false;
-    if (hasShowers      && !saha.hasShowers)      return false;
-    if (hasShoeRental   && !saha.hasShoeRental)   return false;
-    if (hasCafeteria    && !saha.hasCafeteria)    return false;
-    if (hasNightLighting&& !saha.hasNightLighting)return false;
+    if (hasParking       && !saha.hasParking)       return false;
+    if (hasShowers       && !saha.hasShowers)       return false;
+    if (hasShoeRental    && !saha.hasShoeRental)    return false;
+    if (hasCafeteria     && !saha.hasCafeteria)     return false;
+    if (hasNightLighting && !saha.hasNightLighting) return false;
+    if (hasMaleToilet    && !saha.hasMaleToilet)    return false;
+    if (hasFemaleToilet  && !saha.hasFemaleToilet)  return false;
+    if (hasFoodService   && !saha.hasFoodService)   return false;
+    if (acceptsCreditCard&& !saha.acceptsCreditCard)return false;
+    if (hasFoosball      && !saha.hasFoosball)      return false;
+    if (hasCameras       && !saha.hasCameras)       return false;
+    if (hasGoalkeeper    && !saha.hasGoalkeeper)    return false;
+    if (hasPlayground    && !saha.hasPlayground)    return false;
+    if (hasPrayerRoom    && !saha.hasPrayerRoom)    return false;
+    if (hasInternet      && !saha.hasInternet)      return false;
     return true;
   }
 
 
 
-  void _filterHaliSahalar() {
-    final query     = _searchController.text.toLowerCase().trim();
+  // TÜM filtreler (isim/konum HARİÇ)
+  void _recomputeBaseFiltered() {
     final hasCity   = _selectedCity   != null;
     final hasDate   = _selectedDate   != null;
-    final hasTime   = _startHour      != null && _endHour    != null;
-    // Fiyat filtresi: seçilen aralık, min/max’den farklıysa aktif
+    final hasTime   = _startHour      != null && _endHour != null;
     final hasPrice  = _priceFilterActive;
-    // Rating filtresi: 0’dan büyükse aktif
-    final hasRating = _selectedRating   >  0;
+    final hasRating = _selectedRating > 0;
 
     final df      = DateFormat('yyyy-MM-dd');
     final today   = TimeService.now();
     final dateStr = hasDate ? df.format(_selectedDate!) : null;
 
-    // 1) Hiç filtre yoksa tüm liste
-    if (query.isEmpty
-        && !hasCity
-        && !hasDate
-        && !hasTime
-        && !hasParking
-        && !hasShowers
-        && !hasShoeRental
-        && !hasCafeteria
-        && !hasNightLighting
-        && !hasPrice
-        && !hasRating) {
-      setState(() => halisahalar = List.from(_allHaliSahalar));
+    // Filtre yoksa → tüm liste
+    if (!hasCity && !hasDate && !hasTime &&
+        !hasParking && !hasShowers && !hasShoeRental &&
+        !hasCafeteria && !hasNightLighting && !hasMaleToilet &&
+        !hasFemaleToilet && !hasFoodService && !acceptsCreditCard &&
+        !hasFoosball && !hasCameras && !hasGoalkeeper &&
+        !hasPlayground && !hasPrayerRoom && !hasInternet &&
+        !hasPrice && !hasRating) {
+      if (!listEquals(_baseFiltered, _allHaliSahalar)) {
+        setState(() {
+          _baseFiltered = List.from(_allHaliSahalar);
+          halisahalar   = List.from(_allHaliSahalar); // kritik: ekranda görünen liste
+        });
+      }
       return;
     }
 
-    // normalize kullanıcı aralığı (gece geçişi için +24)
+
     int reqStart = hasTime ? _startHour! : 6;
     int reqEnd   = hasTime ? _endHour!   : 24;
     if (reqEnd <= reqStart) reqEnd += 24;
 
-    List<HaliSaha> result = [];
+    final List<HaliSaha> result = [];
     for (final saha in _allHaliSahalar) {
-      // 2) Metin filtresi
-      if (query.isNotEmpty) {
-        final nameOk     = saha.name.toLowerCase().contains(query);
-        final locationOk = saha.location.toLowerCase().contains(query);
-        if (!(nameOk || locationOk)) continue;
+      // Şehir filtresi (case-insensitive, konumu içeriyorsa)
+      if (hasCity &&
+          !saha.location.toLowerCase().contains(_selectedCity!.toLowerCase())) {
+        continue;
       }
-
-      // 3) Şehir filtresi
-      if (hasCity && !saha.location.contains(_selectedCity!)) continue;
-
-      // 4) Tesis imkânları filtresi
       if (!_matchesFacilities(saha)) continue;
 
-      // 5) Fiyat filtresi
       if (hasPrice) {
         if (saha.price < _selectedMinPrice || saha.price > _selectedMaxPrice) {
           continue;
         }
       }
+      if (hasRating && saha.rating < _selectedRating) continue;
 
-      // 6) Rating filtresi
-      if (hasRating) {
-        if (saha.rating < _selectedRating) {
-          continue;
-        }
-      }
-
-      // 7) Çalışma saatleri
       final openH    = int.parse(saha.startHour.split(':')[0]);
       final rawClose = int.parse(saha.endHour.split(':')[0]);
       final closeH   = rawClose <= openH ? rawClose + 24 : rawClose;
 
-      // 8) En az bir boş 1 saat dilimi
       bool anyFree = false;
       final daysToCheck = hasDate ? 1 : 7;
       for (var d = 0; d < daysToCheck && !anyFree; d++) {
-        final baseDate = hasDate
-            ? df.parse(dateStr!)
-            : today.add(Duration(days: d));
-
+        final baseDate = hasDate ? df.parse(dateStr!) : today.add(Duration(days: d));
         for (var h = reqStart; h < reqEnd; h++) {
           final slotHour  = h % 24;
           final dayOffset = h ~/ 24;
-          final slotDate = baseDate.add(Duration(days: dayOffset));
+          final slotDate  = baseDate.add(Duration(days: dayOffset));
 
-          // saha açık mı?
           int normHour = slotHour < openH ? slotHour + 24 : slotHour;
           if (normHour < openH || normHour >= closeH) continue;
 
           final dayStr = df.format(slotDate);
-          final slot   = '$dayStr '
-              '${slotHour.toString().padLeft(2,'0')}:00-'
-              '${(slotHour + 1).toString().padLeft(2,'0')}:00';
+          final slot = '$dayStr ${slotHour.toString().padLeft(2, '0')}:00-'
+              '${(slotHour + 1).toString().padLeft(2, '0')}:00';
 
-          final isBooked = saha.bookedSlots.any((bs) =>
-          bs.replaceAll('–','-').trim() == slot
+          final isBooked = saha.bookedSlots.any(
+                (bs) => bs.replaceAll('–','-').trim() == slot,
           );
-          if (!isBooked) {
-            anyFree = true;
-            break;
-          }
+          if (!isBooked) { anyFree = true; break; }
         }
       }
       if (!anyFree) continue;
 
-      // tüm filtreleri geçti
       result.add(saha);
     }
 
-    setState(() => halisahalar = result);
+    if (!listEquals(_baseFiltered, result)) {
+      setState(() {
+        _baseFiltered = result;
+        halisahalar   = result; // kritik: ekranda görünen liste
+      });
+    }
   }
+
+
+// SADECE isim/konum araması (state dokunmadan hesap döner)
+  List<HaliSaha> _applyNameSearch(List<HaliSaha> source, String queryRaw) {
+    final q = queryRaw.toLowerCase().trim();
+    if (q.isEmpty) return source;
+    return source.where((saha) {
+      return saha.name.toLowerCase().contains(q) ||
+          saha.location.toLowerCase().contains(q);
+    }).toList();
+  }
+
+
 
 
 
   @override
   void dispose() {
     _haliSahaSubscription?.cancel();
+    _searchFocus.dispose();
     _searchController.dispose();
     super.dispose();
   }
+
 
   // ────────────────────────────────────────────────────────────
   @override
@@ -245,55 +273,66 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
             // Arama kutusu
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
+              child: RepaintBoundary( // header stabilize
+                key: _searchHeaderKey,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 50,
+                        child: Material(
+                          elevation: 2,
+                          borderRadius: BorderRadius.circular(25),
+                          child: TextField(
+                            key: const ValueKey('search_field'),
+                            controller: _searchController,
+                            focusNode: _searchFocus,
+                            textInputAction: TextInputAction.search,
+                            // İSİM ARAMASI: sadece ValueNotifier'ı güncelle
+                            onSubmitted: (_) => _searchText.value = _searchController.text,
+                            // onTapOutside: (_) => _searchFocus.unfocus(), // istersen kapalı kalsın
+                            decoration: InputDecoration(
+                              hintText: 'Halı saha ara...',
+                              hintStyle: AppTextStyles.bodyLarge,
+                              prefixIcon: Icon(
+                                Ionicons.search_outline,
+                                color: Colors.grey.shade600,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
                       height: 50,
                       child: Material(
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(25),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Halı saha ara...',
-                            hintStyle: AppTextStyles.bodyMedium,
-                            prefixIcon: Icon(Ionicons.search_outline,
-                                color: Colors.grey.shade600),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25),
-                              borderSide: BorderSide.none,
+                        type: MaterialType.transparency,
+                        child: Ink(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(15),
+                            splashColor: AppColors.primary.withOpacity(0.3),
+                            onTap: () => _showFilterPanel(context),
+                            child: const Padding(
+                              padding: EdgeInsets.all(15),
+                              child: Icon(
+                                Ionicons.options_sharp,
+                                color: Colors.white,
+                                size: 25,
+                              ),
                             ),
-                            filled: true,
-                            fillColor: Colors.white,
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(
-                    width: 6,
-                  ),
-                  SizedBox(
-                    height: 50,
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Ink(
-                        child: InkWell(
-                          // customBorder da aynı radius ile
-                          borderRadius: BorderRadius.circular(15),
-                          splashColor: AppColors.primary.withOpacity(0.3),
-                          onTap: () => _showFilterPanel(context),
-                          child: const Padding(
-                            padding: EdgeInsets.all(15),
-                            child: Icon(Ionicons.options_sharp,
-                                color: Colors.white, size: 25),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
@@ -364,7 +403,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   onPressed: () {
                     Navigator.of(context).pop();
                     setState(() => _selectedDate = pickedDate);
-                    _filterHaliSahalar();
+                    _recomputeBaseFiltered();
                   },
                 ),
               ),
@@ -397,212 +436,214 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   }
 
   // ────────────────────────────────────────────────────────────
-  /// SAHA LİSTESİ
   Widget _buildHaliSahaList() {
     final favProv = context.watch<FavoritesProvider>();
 
-    if (halisahalar.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.search_off, size: 64, color: Colors.white),
-              const SizedBox(height: 16),
-              Text(
-                'Aranan kritere uygun\nhalı saha bulunamadı.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _searchController.clear();
-                    _selectedCity       = null;
-                    _selectedDate       = null;
-                    _startHour          = null;
-                    _endHour            = null;
-                    hasParking          = false;
-                    hasShowers          = false;
-                    hasShoeRental       = false;
-                    hasCafeteria        = false;
-                    hasNightLighting    = false;
-                    _selectedMinPrice   = _minPrice;
-                    _selectedMaxPrice   = _maxPrice;
-                    _priceFilterActive  = false;
-                    _selectedRating     = 0;
-                  });
-                  _filterHaliSahalar();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _searchController,
+      builder: (_, textValue, __) {
+        final query = textValue.text.trim().toLowerCase();
+
+        // Görünüm: isim/konum araması yalnızca UI’da uygulanır
+        final List<HaliSaha> view = query.isEmpty
+            ? _baseFiltered
+            : _applyNameSearch(_baseFiltered, query);
+
+        if (view.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.search_off, size: 64, color: Colors.white),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Aranan kritere uygun\nhalı saha bulunamadı.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                icon: const Icon(
-                  Ionicons.refresh_outline,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  "Filtreleri Temizle",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
-      itemCount: halisahalar.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 11),
-      itemBuilder: (context, index) {
-        final saha = halisahalar[index];
-        final isFav = favProv.isFavorite(saha.id);
-
-        return GestureDetector(
-          onTap: () => _openDetail(context, saha),
-          child: Material(
-            elevation: 6,
-            shadowColor: Colors.black26,
-            borderRadius: BorderRadius.circular(24),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── GÖRSEL + BİLGİ BAR ─────────────────────────
-                Stack(
-                  children: [
-                    Hero(
-                      tag: 'saha_${saha.id}',
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: ProgressiveImage(
-                          imageUrl: saha.imagesUrl.isNotEmpty
-                              ? saha.imagesUrl.first
-                              : null,
-                          fit: BoxFit.cover,
-                          borderRadius: 0,
-                        ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        // _searchController.clear(); // arama metnini korumak istersen kapalı kalsın
+                        _selectedCity       = null;
+                        _selectedDate       = null;
+                        _startHour          = null;
+                        _endHour            = null;
+                        hasParking        = false;
+                        hasShowers        = false;
+                        hasShoeRental     = false;
+                        hasCafeteria      = false;
+                        hasNightLighting  = false;
+                        hasMaleToilet     = false;
+                        hasFemaleToilet   = false;
+                        hasFoodService    = false;
+                        acceptsCreditCard = false;
+                        hasFoosball       = false;
+                        hasCameras        = false;
+                        hasGoalkeeper     = false;
+                        hasPlayground     = false;
+                        hasPrayerRoom     = false;
+                        hasInternet       = false;
+                        _selectedMinPrice   = _minPrice;
+                        _selectedMaxPrice   = _maxPrice;
+                        _priceFilterActive  = false;
+                        _selectedRating     = 0;
+                      });
+                      _recomputeBaseFiltered();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
+                    icon: const Icon(Ionicons.refresh_outline, color: Colors.white),
+                    label: const Text(
+                      "Filtreleri Temizle",
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
 
-                    // BLUR ALT BANT
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            bottom: Radius.circular(24)),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                          child: Container(
-                            padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-                            color: Colors.black.withOpacity(.35),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(saha.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.titleMedium.copyWith(
+        return ListView.separated(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+          itemCount: view.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 11),
+          itemBuilder: (context, index) {
+            final saha = view[index];
+            final isFav = favProv.isFavorite(saha.id);
+
+            return GestureDetector(
+              onTap: () => _openDetail(context, saha),
+              child: Material(
+                elevation: 6,
+                shadowColor: Colors.black26,
+                borderRadius: BorderRadius.circular(24),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Stack(
+                      children: [
+                        Hero(
+                          tag: 'saha_${saha.id}',
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: ProgressiveImage(
+                              imageUrl: saha.imagesUrl.isNotEmpty ? saha.imagesUrl.first : null,
+                              fit: BoxFit.cover,
+                              borderRadius: 0,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0, right: 0, bottom: 0,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                                color: Colors.black.withOpacity(.35),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      saha.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.titleMedium.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w700,
-                                        fontSize: 19)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.location_on,
-                                        size: 18, color: Colors.white70),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(saha.location,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: AppTextStyles.bodySmall
-                                              .copyWith(color: Colors.white)),
+                                        fontSize: 19,
+                                      ),
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '${saha.rating.toStringAsFixed(1)} ★',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.location_on, size: 18, color: Colors.white70),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            saha.location,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
+                                          ),
                                         ),
-                                      ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${saha.rating.toStringAsFixed(1)} ★',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-
-                    // FİYAT ROZETİ
-                    Positioned(
-                      top: 14,
-                      left: 14,
-                      child: _priceBadge(saha.price),
-                    ),
-
-                    // FAVORİ BUTON
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(24),
-                        onTap: () =>
-                            context
-                                .read<FavoritesProvider>()
-                                .toggleFavorite(saha.id),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.82),
-                            shape: BoxShape.circle,
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 120),
-                            child: Icon(
-                              isFav ? Icons.favorite : Icons.favorite_border,
-                              key: ValueKey(isFav),
-                              size: 22,
-                              color: isFav
-                                  ? Colors.redAccent
-                                  : Colors.grey.shade600,
+                        Positioned(top: 14, left: 14, child: _priceBadge(saha.price)),
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(saha.id),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.82),
+                                shape: BoxShape.circle,
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 120),
+                                child: Icon(
+                                  isFav ? Icons.favorite : Icons.favorite_border,
+                                  key: ValueKey(isFav),
+                                  size: 22,
+                                  color: isFav ? Colors.redAccent : Colors.grey.shade600,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
+
+
 
   // ────────────────────────────────────────────────────────────
   Widget _priceBadge(num fiyat) =>
@@ -740,7 +781,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                         ElevatedButton(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            _filterHaliSahalar();
+                            _recomputeBaseFiltered();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFFFF7043),
@@ -766,17 +807,27 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                               _selectedDate       = null;
                               _startHour          = null;
                               _endHour            = null;
-                              hasParking          = false;
-                              hasShowers          = false;
-                              hasShoeRental       = false;
-                              hasCafeteria        = false;
-                              hasNightLighting    = false;
+                              hasParking        = false;
+                              hasShowers        = false;
+                              hasShoeRental     = false;
+                              hasCafeteria      = false;
+                              hasNightLighting  = false;
+                              hasMaleToilet     = false;
+                              hasFemaleToilet   = false;
+                              hasFoodService    = false;
+                              acceptsCreditCard = false;
+                              hasFoosball       = false;
+                              hasCameras        = false;
+                              hasGoalkeeper     = false;
+                              hasPlayground     = false;
+                              hasPrayerRoom     = false;
+                              hasInternet       = false;
                               _selectedMinPrice   = _minPrice;
                               _selectedMaxPrice   = _maxPrice;
                               _priceFilterActive  = false;
                               _selectedRating     = 0;
                             });
-                            _filterHaliSahalar();
+                            _recomputeBaseFiltered();
                           },
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: Colors.white),
@@ -927,7 +978,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 _endHour   = values.end.toInt();
               });
               // anında filtre uygula
-              _filterHaliSahalar();
+              _recomputeBaseFiltered();
             }
           },
         ),
@@ -957,11 +1008,21 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   /// Filtre panelindeki “Tesis İmkânları” bölümünü oluşturur.
   Widget _buildFacilitiesSelector(void Function(void Function()) setInner) {
     final facilities = [
-      {'label': 'Otopark',          'value': hasParking,       'setter': (bool v) => hasParking = v},
-      {'label': 'Duş',              'value': hasShowers,       'setter': (bool v) => hasShowers = v},
-      {'label': 'Kiralık Krampon', 'value': hasShoeRental,    'setter': (bool v) => hasShoeRental = v},
-      {'label': 'Kafeterya',        'value': hasCafeteria,     'setter': (bool v) => hasCafeteria = v},
-      {'label': 'Gece Aydınlatma', 'value': hasNightLighting, 'setter': (bool v) => hasNightLighting = v},
+      {'label': 'Otopark',           'value': hasParking,        'setter': (bool v) => hasParking = v},
+      {'label': 'Duş',               'value': hasShowers,        'setter': (bool v) => hasShowers = v},
+      {'label': 'Kiralık Krampon',   'value': hasShoeRental,     'setter': (bool v) => hasShoeRental = v},
+      {'label': 'Kafeterya',         'value': hasCafeteria,      'setter': (bool v) => hasCafeteria = v},
+      {'label': 'Gece Aydınlatma',   'value': hasNightLighting,  'setter': (bool v) => hasNightLighting = v},
+      {'label': 'Erkek Tuvaleti',    'value': hasMaleToilet,     'setter': (bool v) => hasMaleToilet = v},
+      {'label': 'Kadın Tuvaleti',    'value': hasFemaleToilet,   'setter': (bool v) => hasFemaleToilet = v},
+      {'label': 'Yemek Servisi',     'value': hasFoodService,    'setter': (bool v) => hasFoodService = v},
+      {'label': 'Kredi Kartı',       'value': acceptsCreditCard, 'setter': (bool v) => acceptsCreditCard = v},
+      {'label': 'Langırt',           'value': hasFoosball,       'setter': (bool v) => hasFoosball = v},
+      {'label': 'Kamera',            'value': hasCameras,        'setter': (bool v) => hasCameras = v},
+      {'label': 'Kaleci Kiralama',   'value': hasGoalkeeper,     'setter': (bool v) => hasGoalkeeper = v},
+      {'label': 'Oyun Alanı',        'value': hasPlayground,     'setter': (bool v) => hasPlayground = v},
+      {'label': 'İbadet Alanı',      'value': hasPrayerRoom,     'setter': (bool v) => hasPrayerRoom = v},
+      {'label': 'İnternet',          'value': hasInternet,       'setter': (bool v) => hasInternet = v},
     ];
 
     return Column(
@@ -1033,7 +1094,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 _selectedMaxPrice  = values.end;
                 _priceFilterActive = true;    // <-- kullanıcı oynadı
               });
-              _filterHaliSahalar();
+              _recomputeBaseFiltered();
             }
           },
         ),

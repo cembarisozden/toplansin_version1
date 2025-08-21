@@ -36,6 +36,16 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
   bool hasShoeRental = false;
   bool hasCafeteria = false;
   bool hasNightLighting = false;
+  bool hasMaleToilet = false;
+  bool hasFoodService = false;
+  bool acceptsCreditCard = false;
+  bool hasFoosball = false;
+  bool hasCameras = false;
+  bool hasGoalkeeper = false;
+  bool hasPlayground = false;
+  bool hasPrayerRoom = false;
+  bool hasInternet = false;
+  bool hasFemaleToilet = false;
 
   bool isLoading = false;
   bool isOwner = false;
@@ -101,7 +111,6 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
 
 
       final yeniSaha = HaliSaha(
-
         ownerId: user.uid,
         name: nameController.text.trim(),
         location: locationController.text.trim(),
@@ -119,16 +128,30 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         startHour: startHourController.text.trim(),
         endHour: endHourController.text.trim(),
         id: TimeService.now().millisecondsSinceEpoch.toString(),
+
+        // Özellikler
         hasParking: hasParking,
         hasShowers: hasShowers,
         hasShoeRental: hasShoeRental,
         hasCafeteria: hasCafeteria,
         hasNightLighting: hasNightLighting,
+        hasCameras: hasCameras,
+        hasFoodService: hasFoodService,
+        hasFoosball: hasFoosball,
+        hasMaleToilet: hasMaleToilet,
+        hasFemaleToilet: hasFemaleToilet,
+        acceptsCreditCard: acceptsCreditCard,
+        hasGoalkeeper: hasGoalkeeper,
+        hasPlayground: hasPlayground,
+        hasPrayerRoom: hasPrayerRoom,
+        hasInternet: hasInternet,
+
         description: descriptionController.text.trim(),
         size: sizeController.text.trim(),
         surface: surfaceController.text.trim(),
         maxPlayers: int.parse(maxPlayersController.text.trim()),
       );
+
 
       await FirebaseFirestore.instance
           .collection('hali_sahalar')
@@ -165,11 +188,21 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
       imagesController
     ].forEach((c) => c.clear());
     setState(() {
-      hasParking = false;
-      hasShowers = false;
-      hasShoeRental = false;
-      hasCafeteria = false;
-      hasNightLighting = false;
+       hasParking = false;
+       hasShowers = false;
+       hasShoeRental = false;
+       hasCafeteria = false;
+       hasNightLighting = false;
+       hasMaleToilet = false;
+       hasFoodService = false;
+       acceptsCreditCard = false;
+       hasFoosball = false;
+       hasCameras = false;
+       hasGoalkeeper = false;
+       hasPlayground = false;
+       hasPrayerRoom = false;
+       hasInternet = false;
+       hasFemaleToilet = false;
     });
   }
 
@@ -213,12 +246,98 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
             _buildTextField('Açıklama', descriptionController, isMultiline: true, maxLength: 800),
             SizedBox(height: 16),
             Text('Özellikler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            SwitchListTile(title: Text('Otopark'), value: hasParking, activeColor: Colors.green, onChanged: (v) => setState(() => hasParking = v)),
-            SwitchListTile(title: Text('Duş'), value: hasShowers, activeColor: Colors.green, onChanged: (v) => setState(() => hasShowers = v)),
-            SwitchListTile(title: Text('Ayakkabı Kiralama'), value: hasShoeRental, activeColor: Colors.green, onChanged: (v) => setState(() => hasShoeRental = v)),
-            SwitchListTile(title: Text('Kafeterya'), value: hasCafeteria, activeColor: Colors.green, onChanged: (v) => setState(() => hasCafeteria = v)),
-            SwitchListTile(title: Text('Gece Aydınlatması'), value: hasNightLighting, activeColor: Colors.green, onChanged: (v) => setState(() => hasNightLighting = v)),
+            SwitchListTile(
+              title: Text('Otopark'),
+              value: hasParking,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasParking = v),
+            ),
+            SwitchListTile(
+              title: Text('Duş'),
+              value: hasShowers,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasShowers = v),
+            ),
+            SwitchListTile(
+              title: Text('Ayakkabı Kiralama'),
+              value: hasShoeRental,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasShoeRental = v),
+            ),
+            SwitchListTile(
+              title: Text('Kafeterya'),
+              value: hasCafeteria,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasCafeteria = v),
+            ),
+            SwitchListTile(
+              title: Text('Gece Aydınlatması'),
+              value: hasNightLighting,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasNightLighting = v),
+            ),
+            SwitchListTile(
+              title: Text('Kamera'),
+              value: hasCameras,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasCameras = v),
+            ),
+            SwitchListTile(
+              title: Text('Yemek'),
+              value: hasFoodService,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasFoodService = v),
+            ),
+            SwitchListTile(
+              title: Text('Langırt'),
+              value: hasFoosball,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasFoosball = v),
+            ),
+            SwitchListTile(
+              title: Text('Erkek Tuvaleti'),
+              value: hasMaleToilet,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasMaleToilet = v),
+            ),
+            SwitchListTile(
+              title: Text('Kadın Tuvaleti'),
+              value: hasFemaleToilet,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasFemaleToilet = v),
+            ),
+            SwitchListTile(
+              title: Text('Kredi Kartı Geçerli'),
+              value: acceptsCreditCard,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => acceptsCreditCard = v),
+            ),
+            SwitchListTile(
+              title: Text('Kiralık Kaleci'),
+              value: hasGoalkeeper,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasGoalkeeper = v),
+            ),
+            SwitchListTile(
+              title: Text('Çocuk Oyun Alanı'),
+              value: hasPlayground,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasPlayground = v),
+            ),
+            SwitchListTile(
+              title: Text('Mescit'),
+              value: hasPrayerRoom,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasPrayerRoom = v),
+            ),
+            SwitchListTile(
+              title: Text('İnternet'),
+              value: hasInternet,
+              activeColor: Colors.green,
+              onChanged: (v) => setState(() => hasInternet = v),
+            ),
             SizedBox(height: 24),
+
             Center(
               child: ElevatedButton(
                 onPressed: _kaydet,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/views/onboarding_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
@@ -40,25 +41,52 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Animasyonu başlatıyoruz
     _controller.forward();
 
+    Future<bool> _shouldShowOnboarding() async {
+      final prefs = await SharedPreferences.getInstance();
+      //daha önce tamamlandı mı?
+      final done = prefs.getBool('onboardingDone') ?? false;
+      return !done;
+    }
+
+
+
     // Belirli bir süre sonra WelcomeScreen'e geçiş
-    Timer(const Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 3), () async {
+      // 1) Onboarding daha önce tamamlanmış mı?
+      final prefs = await SharedPreferences.getInstance();
+      final done = prefs.getBool('onboarding_done') ?? false;
+
+      // 2) Gideceğin sayfayı seç
+      final Widget target = done ?  WelcomeScreen() :  OnboardingScreen();
+
+      if (!mounted) return;
+
+      // 3) Animasyonlu yönlendirme (senin slide + fade'in)
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => OnboardingScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => target,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // Geçiş animasyonu: Fade + Slide
+            // Slide: sağdan sola
+            final slideAnimation = Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).chain(CurveTween(curve: Curves.easeOut))
+                .animate(animation);
+
             return SlideTransition(
-              position: _slideAnimation,
+              position: slideAnimation,
               child: FadeTransition(
-                opacity: animation,
+                opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
                 child: child,
               ),
             );
           },
+          transitionDuration: const Duration(milliseconds: 400),
         ),
       );
     });
+
   }
 
   @override

@@ -30,17 +30,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
     final list = <Reservation>[];
     for (final doc in s.docs) {
       final res = Reservation.fromDocument(doc);
-      try {
-        final dt = _parse(res.reservationDateTime);
-        if (dt.isBefore(TimeService.now()) &&
-            res.status != 'Tamamlandı' &&
-            res.status != 'İptal Edildi') {
-          await doc.reference.update({'status': 'Tamamlandı'});
-          res.status = 'Tamamlandı';
-        }
-      } catch (_) {}
       list.add(res);
-
     }
     final active = list
         .where((r) => r.status == 'Onaylandı' || r.status == 'Beklemede')
