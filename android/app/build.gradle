@@ -36,10 +36,9 @@ android {
         versionName = flutter.versionName
 
         externalNativeBuild {
-            // For ndk-build, instead use the ndkBuild block.
             cmake {
-                // Passes optional arguments to CMake.
-                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+                // CMake'e argüman geçmenin Groovy DSL karşılığı:
+                arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
             }
         }
     }
