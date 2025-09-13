@@ -1,17 +1,9 @@
-buildscript {
-    ext.kotlin_version = '2.1.0' // ✅ Kotlin sürümünü elle belirtiyoruz
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.1'
-        classpath 'com.google.gms:google-services:4.4.3' // ✅ GMS plugin (zaten vardı)
-        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.5'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+ext {
+    compileSdkVersion = 36
+    targetSdkVersion  = 36
+    minSdkVersion     = 24
+    ndkVersion        = "27.0.12077973"
 }
-
 
 allprojects {
     repositories {
@@ -24,10 +16,39 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+
+// --- TÜM PLUGIN (library) MODÜLLERİNİ compileSdk=36'ya zorla ---
+// Tüm plugin/kütüphane modüllerini SDK 36 ile derlemeye zorla
+subprojects { subproject ->
+    subproject.plugins.withId("com.android.library") {
+        if (subproject.hasProperty("android")) {
+            subproject.android {
+                // Derleme API seviyesi (AAR metadata hatasını çözer)
+                compileSdk = 36
+
+                // İsteğe bağlı: minSdk’yi de proje ile hizalamak istersen
+                defaultConfig {
+                    if (it.hasProperty("minSdk")) {
+                        minSdk = 24
+                    }
+                }
+
+                // İsteğe bağlı ama tavsiye: Java 17 hizalama
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+
+                // NDK isteyen pluginler için hizalama (gerekirse)
+                if (subproject.android.hasProperty("ndkVersion")) {
+                    ndkVersion = "27.0.12077973"
+                }
+            }
+        }
+    }
+}
+

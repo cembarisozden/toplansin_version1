@@ -2,7 +2,7 @@ plugins {
     id "com.android.application"
     id "com.google.firebase.crashlytics"
     id "com.google.gms.google-services"
-    id "kotlin-android"
+    id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -15,8 +15,8 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "com.toplansin.toplansin"
-    compileSdk = 35
-    ndkVersion = "25.2.9519653"
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -31,9 +31,17 @@ android {
     defaultConfig {
         applicationId = "com.toplansin.toplansin"
         minSdk = 24
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        externalNativeBuild {
+            // For ndk-build, instead use the ndkBuild block.
+            cmake {
+                // Passes optional arguments to CMake.
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
+        }
     }
 
     // ✅ RELEASE için imzalama ayarı
@@ -60,7 +68,7 @@ dependencies {
 
     // 🔥 Firebase Crashlytics SDK
     implementation 'com.google.firebase:firebase-crashlytics-ktx:19.4.4'
-    implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     debugImplementation "com.google.firebase:firebase-appcheck-debug"

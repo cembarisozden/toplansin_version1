@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:app_settings/app_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/dialogs/edit_profile_dialog.dart';
@@ -258,12 +258,8 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
   void _openNotificationSettings() {
-    if (Platform.isAndroid) {
-      // Yalnızca Android’ de doğrudan bildirim sayfası
-      AppSettings.openAppSettings(type: AppSettingsType.notification);
-    } else {
-      // iOS (veya eski Android) → genel uygulama ayarları
-      AppSettings.openAppSettings();
+    if (Platform.isAndroid || Platform.isIOS) {
+      openAppSettings(); // uygulamanın ayar ekranını açar
     }
   }
 
