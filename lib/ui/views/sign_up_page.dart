@@ -191,7 +191,6 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Yeşil tonlarda gradyan arkaplan
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -205,7 +204,6 @@ class _SignUpPageState extends State<SignUpPage> {
             padding: EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // Logo vb.
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.white,

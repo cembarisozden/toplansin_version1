@@ -18,6 +18,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toplansin/core/di/injector.dart';
 
 import 'package:toplansin/core/providers/FavoritesProvider.dart';
 import 'package:toplansin/core/providers/HomeProvider.dart';
@@ -100,6 +101,8 @@ Future<void> main() async {
   // 4) Crashlytics hata handler
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
 
+
+  await setup();
   // 5) UI — tek MaterialApp: MyApp
   runApp(
     DevicePreview(
@@ -154,6 +157,8 @@ Future<void> main() async {
     }
   });
 }
+
+
 
 /* ─────────────────────────────────────────────────────────────── */
 

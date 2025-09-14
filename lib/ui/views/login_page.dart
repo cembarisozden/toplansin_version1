@@ -114,7 +114,6 @@ class _LoginPageState extends State<LoginPage> {
     var snap = await getServer();
 
     if (!snap.exists || snap.data()?['role'] == null) {
-      // belge henüz yazılmamış olabilir → tek sefer daha dene
       await Future.delayed(const Duration(milliseconds: 300));
       snap = await getServer();
     }

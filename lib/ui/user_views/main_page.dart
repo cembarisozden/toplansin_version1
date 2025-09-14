@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,11 @@ import 'package:toplansin/core/providers/bottomNavProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/features/team_fill/data/datasources/fill_request_firestore_ds.dart';
+import 'package:toplansin/features/team_fill/data/repositories/fill_request_repository_impl.dart';
+import 'package:toplansin/features/team_fill/domain/repositories/fill_request_repository.dart';
+import 'package:toplansin/features/team_fill/domain/usecases/list_open_requests.dart';
+import 'package:toplansin/features/team_fill/presentation/pages/browse_requests_page.dart';
 import 'package:toplansin/ui/user_views/coming_soon_page.dart';
 import 'package:toplansin/ui/user_views/dashboard_body.dart';
 import 'package:toplansin/ui/user_views/hali_saha_page.dart';
@@ -33,6 +39,8 @@ class _MainPageState extends State<MainPage> {
   StreamSubscription<QuerySnapshot>? _reservationsSubscription;
   List<Reservation> userReservations = [];
   List<Widget> sayfalar = [];
+
+  final sl = GetIt.instance;
 
 
   @override

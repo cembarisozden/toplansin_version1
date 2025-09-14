@@ -20,6 +20,7 @@ class TimeService {
         _serverUtc = ts.toDate().toUtc();
         // 2) O an cihaz zamanı → UTC
         _fetchedAtUtc = DateTime.now().toUtc();
+        print("FETCHED AT UTC: ${_fetchedAtUtc}");
         print("📌 TimeService initialized (UTC): ${nowUtc()}");
         print("📌 TimeService initialized (TR): ${now()}");
       } else {

@@ -158,6 +158,8 @@ class AppErrorHandler {
         return 'Halı saha kaydı bulunamadı.';
       case 'subscription':
         return 'Abonelik kaydı bulunamadı.';
+      case 'fill_request':            // 🔹 yeni: team_fill list/detail için
+        return 'İlan bulunamadı veya silinmiş.';
       default:
         return 'İlgili kayıt bulunamadı.';
     }
