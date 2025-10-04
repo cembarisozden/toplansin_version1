@@ -10,6 +10,7 @@ class Subscription {
   final String startDate;
   final String endDate;
   final String nextSession;
+  final String visibleSession;
   final String lastUpdatedBy;
   final String status;
   final String userName;
@@ -28,6 +29,7 @@ class Subscription {
     required this.startDate,
     required this.endDate,
     required this.nextSession,
+    required this.visibleSession,
     required this.lastUpdatedBy,
     required this.status,
     required this.userName,
@@ -48,6 +50,7 @@ class Subscription {
       startDate: map['startDate'] ?? '',
       endDate: map['endDate'] ?? '',
       nextSession: map['nextSession'] ?? 'Bekleniyor',
+      visibleSession: map['visibleSession'] ?? 'Bekleniyor',
       lastUpdatedBy: map['lastUpdatedBy'] ?? '',
       status: map['status'] ?? map['newStatus'] ?? 'Bilinmiyor',
       userName: map['userName'] ?? '',
@@ -69,6 +72,7 @@ class Subscription {
       'startDate': startDate,
       'endDate': endDate,
       'nextSession': nextSession,
+      'visibleSession': visibleSession,
       'lastUpdatedBy': lastUpdatedBy,
       'status': status,
       'userName': userName,

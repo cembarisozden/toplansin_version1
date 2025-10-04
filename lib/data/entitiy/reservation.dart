@@ -17,6 +17,8 @@ class Reservation {
   final String userPhone;
   final String? lastUpdatedBy;
   final String? cancelReason;
+  final String? type;
+  final String? subscriptionId;
 
   Reservation({
     required this.id,
@@ -35,6 +37,8 @@ class Reservation {
     required this.userPhone,
     this.lastUpdatedBy,
     this.cancelReason,
+    this.type,
+    this.subscriptionId,
   });
 
   factory Reservation.fromDocument(DocumentSnapshot doc) {
@@ -63,6 +67,8 @@ class Reservation {
       userPhone: data['userPhone'] ?? 'Telefon Yok',
       lastUpdatedBy: data['lastUpdatedBy'] ?? '',
       cancelReason: data['cancelReason'] ?? '',
+      type: data['type'] ?? 'manual',
+      subscriptionId: data['subscriptionId'],
       startTime: start,
       endTime: end,
     );
@@ -84,6 +90,8 @@ class Reservation {
       'userPhone': userPhone,
       'lastUpdatedBy': lastUpdatedBy,
       'cancelReason': cancelReason,
+      'subscriptionId':subscriptionId,
+      'type': type,
       'startTime': startTime != null ? Timestamp.fromDate(startTime!) : null,
       'endTime': startTime != null
           ? Timestamp.fromDate(startTime!.add(const Duration(hours: 1)))
