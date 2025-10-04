@@ -141,8 +141,7 @@ class _SubscribePageState extends State<SubscribePage> {
     showLoader(context);
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
-    final startDate =
-        calculateFirstSession(selectedDay + 1, selectedTimeText);
+    final startDate = calculateFirstSession(selectedDay + 1, selectedTimeText);
     final sub = Subscription(
       docId: '',
       haliSahaId: widget.halisaha.id,
@@ -165,12 +164,14 @@ class _SubscribePageState extends State<SubscribePage> {
 
     try {
       if (await _hasReachedInstantSubscriptionLimit()) {
-        AppSnackBar.warning(context, 'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
+        AppSnackBar.warning(context,
+            'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
         return;
       }
 
       if (await _hasReachedDailyCancelLimit()) {
-          AppSnackBar.warning(context, 'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
+        AppSnackBar.warning(context,
+            'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
         return;
       }
 
@@ -181,12 +182,17 @@ class _SubscribePageState extends State<SubscribePage> {
 
       hideLoader();
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
+      // Başarılı abonelik sonrası formu resetle
+      if (mounted) {
+        setState(() {
+          selectedTime = null;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Abonelik gönderilirken bir hata oluştu.');
       print("Abone olma hatası: $e");
-    }
-    finally{
+    } finally {
       hideLoader();
     }
   }
@@ -268,8 +274,7 @@ class _SubscribePageState extends State<SubscribePage> {
 
     print("START: ${widget.halisaha.startHour}");
     print("END: ${widget.halisaha.endHour}");
-    final result =
-        calculateFirstSession(1, "20:00-21:00"); // Pazartesi için
+    final result = calculateFirstSession(1, "20:00-21:00"); // Pazartesi için
     print(result); // Beklenen: 2025-05-20 20:00-21:00
 
     // TODO: implement initState
