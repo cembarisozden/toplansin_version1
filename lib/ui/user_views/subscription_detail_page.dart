@@ -127,7 +127,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                               return AbonelikCard(sub: sub);
                             },
                           ),
-                    // 🔹 GEÇMİŞ: FutureBuilder ile log'ları bir defa oku
+                    // 🔹 "GEÇMİŞ: FutureBuilder ile log'ları bir defa oku
                     FutureBuilder<QuerySnapshot>(
                       future: FirebaseFirestore.instance
                           .collection('subscription_logs')
