@@ -326,17 +326,17 @@ class _DashboardBodyState extends State<DashboardBody> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                "1) İlgili halı sahanın profilindeki iletişim bilgilerinden saha ile görüş.\n"
-                "2) Rezervasyon yapabilmek için kişisel “Saha Erişim Kodu” talep et.\n"
-                "3) Aldığın kodu “Saha Erişim Kodlarım” sayfasına ekle.\n"
-                "4) Güvenlik için kodu kimseyle paylaşma.",
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStep(
+                      "İlgili halı sahanın profilindeki iletişim bilgilerinden saha ile görüş."),
+                  _buildStep(
+                      "Rezervasyon yapabilmek için “Saha Erişim Kodu” talep et."),
+                  _buildStep(
+                      "Aldığın kodu “Saha Erişim Kodlarım” sayfasına ekle."),
+                  _buildStep("Güvenlik için kodu kimseyle paylaşma."),
+                ],
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -371,6 +371,42 @@ class _DashboardBodyState extends State<DashboardBody> {
       },
     );
   }
+
+  Widget _buildStep(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Özel küçük nokta (gradientli)
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.accessOrange,
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Açıklama
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.bodyMedium.copyWith(
+                fontSize: 14,
+                height: 1.6,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   Widget favoritesPitches({
     required List<HaliSaha> favoriteHaliSahalar,

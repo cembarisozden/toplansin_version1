@@ -248,6 +248,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
     num price = widget.sub.price;
     String location = widget.sub.location;
     String nextSession = widget.sub.nextSession;
+    String visibleSession = widget.sub.visibleSession;
 
     final Color statusColor = _statusColor(status);
     final isActive = status == 'Aktif';
@@ -458,7 +459,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              nextSession,
+                              visibleSession,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey.shade600,
@@ -502,7 +503,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                         builder: (context) {
                           final now = TimeService.now();
                           final nextDate =
-                              DateTime.tryParse(widget.sub.nextSession ?? "");
+                              DateTime.tryParse(widget.sub.visibleSession ?? "");
                           final bool canCancelThisWeek = nextDate != null &&
                               nextDate.difference(now).inDays < 7;
 
