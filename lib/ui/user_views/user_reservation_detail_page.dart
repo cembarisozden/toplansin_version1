@@ -9,6 +9,7 @@ import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/ui/owner_views/owner_halisaha_page.dart';
 import 'package:toplansin/ui/user_views/dialogs/show_styled_confirm_dialog.dart';
 import 'package:toplansin/ui/user_views/hali_saha_detail_page.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
@@ -393,33 +394,34 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: getStatusColor(widget.reservation.status)
+                      color:  widget.reservation.type=="subscription" ? Color(0xFFE6F0FA) :  getStatusColor(widget.reservation.status)
                           .withOpacity(0.15),
                       border: Border.all(
-                        color: getStatusTextColor(widget.reservation.status),
+                        color: widget.reservation.type=="subscription" ? AppColors.secondaryDark: getStatusTextColor(widget.reservation.status),
                         width: 1.2,
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      widget.reservation.status,
+                      widget.reservation.type=="subscription" ? "Abonelik": widget.reservation.status,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: getStatusTextColor(widget.reservation.status),
+                        color:widget.reservation.type=="subscription" ? AppColors.secondaryDark:  getStatusTextColor(widget.reservation.status),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 30),
 
-                if (widget.reservation.status == 'Onaylandı' ||
+
+                if ( widget.reservation.type!="subscription" && widget.reservation.status == 'Onaylandı' ||
                     widget.reservation.status == 'Beklemede')
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _showCancelConfirmationDialog,
                       icon: const Icon(Icons.cancel, color: Colors.white),
-                      label: const Text(
+                      label:  const Text(
                         "Rezervasyonu İptal Et",
                         style: TextStyle(
                           fontSize: 16,

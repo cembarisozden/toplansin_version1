@@ -141,9 +141,8 @@ class _SubscribePageState extends State<SubscribePage> {
     showLoader(context);
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
-    final createdAt = TimeService.now();
     final startDate =
-        calculateFirstSession(createdAt, selectedDay + 1, selectedTimeText);
+        calculateFirstSession(selectedDay + 1, selectedTimeText);
     final sub = Subscription(
       docId: '',
       haliSahaId: widget.halisaha.id,
@@ -156,6 +155,7 @@ class _SubscribePageState extends State<SubscribePage> {
       startDate: startDate,
       endDate: "",
       nextSession: startDate,
+      visibleSession: startDate,
       lastUpdatedBy: 'user',
       status: 'Beklemede',
       userName: widget.user.name,
@@ -268,9 +268,8 @@ class _SubscribePageState extends State<SubscribePage> {
 
     print("START: ${widget.halisaha.startHour}");
     print("END: ${widget.halisaha.endHour}");
-    final now = DateTime(2025, 5, 18); // Cumartesi
     final result =
-        calculateFirstSession(now, 1, "20:00-21:00"); // Pazartesi için
+        calculateFirstSession(1, "20:00-21:00"); // Pazartesi için
     print(result); // Beklenen: 2025-05-20 20:00-21:00
 
     // TODO: implement initState

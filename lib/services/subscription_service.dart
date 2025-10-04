@@ -66,23 +66,53 @@ Future<void> userAboneIstegiIptalEt(
   }
 }
 
-Future<void> approveSubscription(
-    BuildContext context, String subscriptionId) async {
+Future<void> approveSubscription(BuildContext context, String subscriptionId) async {
   showLoader(context);
   try {
-    await FirebaseFirestore.instance
+    final docRef = FirebaseFirestore.instance
         .collection('subscriptions')
-        .doc(subscriptionId)
-        .update({'status': 'Aktif', 'lastUpdatedBy': 'owner'});
-    AppSnackBar.show(context,"Abonelik onaylandı!");
+        .doc(subscriptionId);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      if (!snap.exists) {
+        throw Exception('Abonelik bulunamadı.');
+      }
+
+      final data = snap.data() as Map<String, dynamic>;
+
+      // Zaten onaylanmış / iptal ise dokunma (idempotent davranış)
+      if (data['status'] != 'Beklemede') {
+        return;
+      }
+
+      // dayOfWeek: 1=Mon..7=Sun, time: "HH:mm-HH:mm"
+      final int dayOfWeek = (data['dayOfWeek'] as num).toInt();
+      final String time = (data['time'] as String);
+
+      // 🔁 Onay anında ilk seansı BUGÜNE göre yeniden hesapla
+      final String firstSession = calculateFirstSession(dayOfWeek, time);
+
+      // Tek seferde tüm alanları senkronla
+      tx.update(docRef, {
+        'status': 'Aktif',
+        'lastUpdatedBy': 'owner',
+        'firstSession': firstSession,
+        'nextSession': firstSession,    // pointer başlangıçta firstSession ile aynı
+        'visibleSession': firstSession, // UI da aynı tarihi göstersin
+      });
+    });
+
+    AppSnackBar.show(context, "Abonelik onaylandı!");
   } catch (e) {
-    final msg=AppErrorHandler.getMessage(e);
+    final msg = AppErrorHandler.getMessage(e);
     AppSnackBar.error(context, msg);
     rethrow;
-  }finally{
+  } finally {
     hideLoader();
   }
 }
+
 
 
 
@@ -90,31 +120,74 @@ Future<void> userCancelSubscription(
     BuildContext context, String subscriptionId) async {
   showLoader(context);
   try {
-    await FirebaseFirestore.instance
-        .collection('subscriptions')
-        .doc(subscriptionId)
-        .update({'status': 'Sona Erdi', 'lastUpdatedBy': 'user'});
+    final batch = FirebaseFirestore.instance.batch();
+
+    // 1) Aboneliği sona erdir
+    final subRef = FirebaseFirestore.instance.collection('subscriptions').doc(subscriptionId);
+    batch.update(subRef, {
+      'status': 'Sona Erdi',
+      'lastUpdatedBy': 'user',
+    });
+
+    // 2) İlgili rezervasyonları bul ve iptal et
+    final reservationsSnap = await FirebaseFirestore.instance
+        .collection('reservations')
+        .where('subscriptionId', isEqualTo: subscriptionId)
+        .where('status', isEqualTo: 'Onaylandı')
+        .get();
+
+    for (final doc in reservationsSnap.docs) {
+      batch.update(doc.reference, {
+        'status': 'İptal Edildi',
+        'lastUpdatedBy': 'user',
+      });
+    }
+
+    await batch.commit();
+
     AppSnackBar.success(context,"Abonelik başarıyla sona erdirildi");
   } catch (e) {
-    final msg=AppErrorHandler.getMessage(e);
+    final msg = AppErrorHandler.getMessage(e);
     AppSnackBar.error(context, msg);
-  }finally{
+  } finally {
     hideLoader();
   }
 }
+
 
 Future<void> ownerCancelSubscription(
     BuildContext context, String subscriptionId) async {
   showLoader(context);
   try {
-    await FirebaseFirestore.instance
-        .collection('subscriptions')
-        .doc(subscriptionId)
-        .update({'status': 'Sona Erdi', 'lastUpdatedBy': 'owner'});
-    AppSnackBar.show(context, 'Abonelik başarıyla sona erdi');
+    final batch = FirebaseFirestore.instance.batch();
+
+    // 1) Aboneliği sona erdir
+    final subRef = FirebaseFirestore.instance.collection('subscriptions').doc(subscriptionId);
+    batch.update(subRef, {
+      'status': 'Sona Erdi',
+      'lastUpdatedBy': 'owner',
+    });
+
+    // 2) İlgili rezervasyonları bul ve iptal et
+    final reservationsSnap = await FirebaseFirestore.instance
+        .collection('reservations')
+        .where('subscriptionId', isEqualTo: subscriptionId)
+        .where('status', isEqualTo: 'Onaylandı')
+        .get();
+
+    for (final doc in reservationsSnap.docs) {
+      batch.update(doc.reference, {
+        'status': 'İptal Edildi',
+        'lastUpdatedBy': 'owner',
+      });
+    }
+
+    await batch.commit();
+
+    AppSnackBar.success(context,"Abonelik ve ilgili rezervasyonlar başarıyla sona erdirildi");
   } catch (e) {
     AppSnackBar.error(context,"Abonelik iptal edilemedi!");
-  }finally{
+  } finally {
     hideLoader();
   }
 }
@@ -152,8 +225,7 @@ Future<void> addOwnerSubscription({
   showLoader(context);
   try {
     final col = FirebaseFirestore.instance.collection('subscriptions');
-    final createdAt = TimeService.now();
-    final startDate = calculateFirstSession(createdAt, dayOfWeek, time);
+    final startDate = calculateFirstSession(dayOfWeek, time);
 
     final subscription = Subscription(
       docId: '',
@@ -167,6 +239,7 @@ Future<void> addOwnerSubscription({
       startDate: startDate,
       endDate: '',
       nextSession: startDate,
+      visibleSession: startDate,
       lastUpdatedBy: 'owner',
       status: 'Aktif',
       userName: ownerName,
@@ -223,26 +296,29 @@ Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) asy
 // Utility helpers
 // ---------------------------------------------------------------------------
 
-String calculateFirstSession(DateTime createdAt, int dayOfWeek, String time) {
-  final daysUntilTarget = (dayOfWeek - createdAt.weekday + 7) % 7;
-  final targetDay = createdAt.add(Duration(days: daysUntilTarget + 7));
 
-  final hour = int.parse(time.split('-').first.split(':')[0]);
-  final minute = int.parse(time.split('-').first.split(':')[1]);
+/// time = "HH:mm-HH:mm"  (örn: "19:00-20:00")
+/// dayOfWeek: 1=Mon ... 7=Sun (DateTime.weekday ile uyumlu)
+String calculateFirstSession(int dayOfWeek, String time) {
+  final now = TimeService.now(); // TR'ye göre çalıştığını varsayıyoruz
 
-  final sessionDateTime =
-      DateTime(targetDay.year, targetDay.month, targetDay.day, hour, minute);
-  final formattedDate = DateFormat('yyyy-MM-dd').format(sessionDateTime);
-  return '$formattedDate $time';
+  final start = time.split('-').first; // "HH:mm"
+  final hhmm = start.split(':');
+  final hour = int.parse(hhmm[0]);
+  final minute = int.parse(hhmm[1]);
+
+  final rawDelta = (dayOfWeek - now.weekday + 7) % 7;
+
+  // KURAL: bugün (rawDelta==0) ise → +14 gün, değilse → rawDelta gün
+  final daysToAdd = (rawDelta == 0) ? 14 : rawDelta +7;
+
+  final targetDay = DateTime(now.year, now.month, now.day).add(Duration(days: daysToAdd));
+  final sessionStart = DateTime(targetDay.year, targetDay.month, targetDay.day, hour, minute);
+
+  final ymd = DateFormat('yyyy-MM-dd').format(sessionStart);
+  return '$ymd $time'; // "YYYY-MM-DD HH:mm-HH:mm"
 }
 
-String calculateNextSession(String currentSession) {
-  final parts = currentSession.split(' ');
-  if (parts.length != 2) return currentSession;
-  final date =
-      DateFormat('yyyy-MM-dd').parse(parts[0]).add(const Duration(days: 7));
-  return '${DateFormat('yyyy-MM-dd').format(date)} ${parts[1]}';
-}
 
 List<String> generateTimeSlots(String startHour, String endHour) {
   final startParts = startHour.split(':');

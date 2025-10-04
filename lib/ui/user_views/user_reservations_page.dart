@@ -246,6 +246,7 @@ class ReservationCard extends StatelessWidget {
       case 'Beklemede':   return Colors.yellow.shade100;
       case 'Tamamlandı':  return Colors.blue.shade100;
       case 'İptal Edildi':return Colors.red.shade100;
+      case 'Abonelik' : return Color(0xFFE6F0FA);
       default:            return Colors.grey.shade100;
     }
   }
@@ -255,6 +256,7 @@ class ReservationCard extends StatelessWidget {
       case 'Beklemede':   return Colors.yellow.shade800;
       case 'Tamamlandı':  return Colors.blue.shade800;
       case 'İptal Edildi':return Colors.red.shade800;
+      case 'Abonelik' : return AppColors.secondaryDark;
       default:            return Colors.grey.shade800;
     }
   }
@@ -333,11 +335,14 @@ class ReservationCard extends StatelessWidget {
                 final statusBadge = Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _bg(reservation.status),
+                    color:  reservation.type=="subscription" ?_bg('Abonelik') : _bg(reservation.status),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _fg(reservation.status)),
+                    border: reservation.type=="subscription" ? Border.all(color: _fg('Abonelik')) : Border.all(color: _fg(reservation.status)),
                   ),
-                  child: Text(
+                  child: reservation.type=="subscription" ? Text(
+                    'Abonelik',
+                    style: AppTextStyles.bodySmall.copyWith(color: _fg('Abonelik')),
+                  ): Text(
                     reservation.status,
                     style: AppTextStyles.bodySmall.copyWith(color: _fg(reservation.status)),
                   ),
@@ -352,14 +357,14 @@ class ReservationCard extends StatelessWidget {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                    (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi')
+                    (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi' || reservation.type=="subscription")
                         ? Colors.blue
                         : Colors.green,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: Text(
-                    (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi')
+                    (reservation.status == 'Tamamlandı' || reservation.status == 'İptal Edildi' || reservation.type=="subscription")
                         ? 'Detaylar'
                         : 'Düzenle',
                     style:  AppTextStyles.bodySmall.copyWith(color: Colors.white,fontWeight: FontWeight.w400),

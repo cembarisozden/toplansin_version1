@@ -12,7 +12,8 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
@@ -48,8 +49,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       return !done;
     }
 
-
-
     // Belirli bir süre sonra WelcomeScreen'e geçiş
     Timer(const Duration(seconds: 3), () async {
       // 1) Onboarding daha önce tamamlanmış mı?
@@ -57,7 +56,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       final done = prefs.getBool('onboarding_done') ?? false;
 
       // 2) Gideceğin sayfayı seç
-      final Widget target = done ?  WelcomeScreen() :  OnboardingScreen();
+      Widget target;
+
+      target = done ? WelcomeScreen() : OnboardingScreen();
 
       if (!mounted) return;
 
@@ -71,13 +72,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             final slideAnimation = Tween<Offset>(
               begin: const Offset(1, 0),
               end: Offset.zero,
-            ).chain(CurveTween(curve: Curves.easeOut))
-                .animate(animation);
+            ).chain(CurveTween(curve: Curves.easeOut)).animate(animation);
 
             return SlideTransition(
               position: slideAnimation,
               child: FadeTransition(
-                opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
+                opacity:
+                    CurvedAnimation(parent: animation, curve: Curves.easeIn),
                 child: child,
               ),
             );
@@ -86,7 +87,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         ),
       );
     });
-
   }
 
   @override

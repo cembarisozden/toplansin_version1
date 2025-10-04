@@ -2239,6 +2239,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               bool reserved = isReserved(time);
               bool pending = hasPendingRequest(time);
               bool completed = isCompleted(time);
+              bool subscriptionReserved = isSubscriptionReserved(time);
+
 
               DateTime now = TimeService.now();
               bool isPastTimeToday = isTodaySelected() && slotHour <= now.hour;
@@ -2251,9 +2253,13 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                 statusIcon = Icons.check_circle_outline;
                 statusColor = Colors.blue;
                 statusText = "Tamamlandı";
+              } else if (subscriptionReserved) {
+                statusIcon = Icons.check_circle;
+                statusColor = AppColors.secondary;
+                statusText = "Abone";
               } else if (reserved) {
                 statusIcon = Icons.check_circle;
-                statusColor = Colors.green;
+                statusColor = AppColors.primary;
                 statusText = "Rezerve";
               } else if (pending) {
                 statusIcon = Icons.priority_high;
@@ -2472,6 +2478,19 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         reservation.status == "Onaylandı");
   }
 
+  bool isSubscriptionReserved(String time) {
+    final bookingDateTime =
+        "${DateFormat('yyyy-MM-dd').format(selectedDate)} $time";
+
+    return haliSahaReservations.any(
+          (reservation) =>
+      reservation.reservationDateTime == bookingDateTime &&
+          reservation.status == "Onaylandı" &&
+          reservation.type == "subscription", // ✅ sadece abonelik rezervasyonları
+    );
+  }
+
+
   void _showReservationDetailDialog(String time) {
     try {
       // Seçili gün + saat dilimi anahtarını oluştur
@@ -2635,12 +2654,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                     children: [
                                       // Rezervasyonu İptal Et
                                       Expanded(
-                                        child: ElevatedButton.icon(
+                                        child: reservation.type=="subscription" ? SizedBox.shrink() : ElevatedButton.icon(
                                           onPressed: () {
                                             _showCancelConfirmation(
                                                 context, reservation);
                                           },
-                                          label: Text("Rezervasyonu İptal Et",
+                                          label:Text("Rezervasyonu İptal Et",
                                               style: AppTextStyles.labelMedium
                                                   .copyWith(
                                                       color: Colors.white)),
@@ -3785,6 +3804,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         userName: name,
         userEmail: widget.currentOwner.email,
         userPhone: phoneNo,
+        type: "manual",
         lastUpdatedBy: widget.currentOwner.role,
       );
 

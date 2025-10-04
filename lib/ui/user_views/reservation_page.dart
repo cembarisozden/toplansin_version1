@@ -688,6 +688,7 @@ class _ReservationPageState extends State<ReservationPage> {
         reservationDateTime: bookingString,          // ← TEK ALAN KALDI
         startTime: startTime,
         status:              'Beklemede',
+        type: "manual",
         createdAt:           TimeService.nowUtc(),
         userName:            widget.currentUser.name,
         userEmail:           widget.currentUser.email,
