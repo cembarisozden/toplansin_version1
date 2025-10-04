@@ -25,8 +25,8 @@ class UserReservationDetailPage extends StatefulWidget {
       _UserReservationDetailPageState();
 }
 
-class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
 
+class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
   Color getStatusColor(String status) {
     switch (status) {
       case 'Onaylandı':
@@ -41,6 +41,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
         return Colors.grey.shade100;
     }
   }
+
 
   Color getStatusTextColor(String status) {
     switch (status) {
@@ -61,10 +62,12 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
     final ok = await ShowStyledConfirmDialog.show(
       context,
       title: "Rezervasyonu İptal Et",
-      message: "Bu rezervasyonu iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      message:
+      "Bu rezervasyonu iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
       confirmText: "İptal Et",
       cancelText: "Vazgeç",
-      isDestructive: true, // kırmızı tema
+      isDestructive: true,
+      // kırmızı tema
       icon: Icons.event_busy_rounded,
     );
 
@@ -72,7 +75,6 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       await _cancelReservation(widget.reservation.id);
     }
   }
-
 
   Future<void> _cancelReservation(String reservationId) async {
     showLoader(context);
@@ -165,7 +167,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
       }
 
       final haliSaha = HaliSaha.fromJson(snapshot.data()!, snapshot.id);
-      if(currentUser.role=='user') {
+      if (currentUser.role == 'user') {
         Navigator.push(
           context,
           PageRouteBuilder(
@@ -183,22 +185,22 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
             transitionDuration: Duration(milliseconds: 300),
           ),
         );
-      }else{
+      } else {
         Navigator.pushAndRemoveUntil(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, animation, __) =>
-                OwnerHalisahaPage(haliSaha: haliSaha, currentOwner: currentUser),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: Duration(milliseconds: 300),
-          ),
-                (route) => route.isFirst
-        );
+            context,
+            PageRouteBuilder(
+              pageBuilder: (_, animation, __) =>
+                  OwnerHalisahaPage(
+                      haliSaha: haliSaha, currentOwner: currentUser),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              transitionDuration: Duration(milliseconds: 300),
+            ),
+                (route) => route.isFirst);
       }
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
@@ -223,6 +225,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
     final formattedDate = "$day/$month/$year";
     final String defaultImageUrl =
         "https://firebasestorage.googleapis.com/your-default-url/halisaha0.jpg";
+
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -286,7 +289,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                                 }
 
                                 final data = snapshot.data!.data()
-                                    as Map<String, dynamic>?;
+                                as Map<String, dynamic>?;
                                 final List images = data?['imagesUrl'] ?? [];
                                 final String imageUrl = images.isNotEmpty
                                     ? images.first
@@ -333,7 +336,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                                     left: 16.0, right: 16.0),
                                 child: Row(
                                   mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Sahayı incele',
@@ -394,34 +397,98 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color:  widget.reservation.type=="subscription" ? Color(0xFFE6F0FA) :  getStatusColor(widget.reservation.status)
+                      color: widget.reservation.type == "subscription"
+                          ? Color(0xFFE6F0FA)
+                          : getStatusColor(widget.reservation.status)
                           .withOpacity(0.15),
                       border: Border.all(
-                        color: widget.reservation.type=="subscription" ? AppColors.secondaryDark: getStatusTextColor(widget.reservation.status),
+                        color: widget.reservation.type == "subscription"
+                            ? AppColors.secondaryDark
+                            : getStatusTextColor(widget.reservation.status),
                         width: 1.2,
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      widget.reservation.type=="subscription" ? "Abonelik": widget.reservation.status,
+                      widget.reservation.type == "subscription"
+                          ? "Abonelik"
+                          : widget.reservation.status,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color:widget.reservation.type=="subscription" ? AppColors.secondaryDark:  getStatusTextColor(widget.reservation.status),
+                        color: widget.reservation.type == "subscription"
+                            ? AppColors.secondaryDark
+                            : getStatusTextColor(widget.reservation.status),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 30),
 
 
-                if ( widget.reservation.type!="subscription" && widget.reservation.status == 'Onaylandı' ||
+                if (widget.reservation.type == "subscription" &&
+                    widget.reservation.status != 'Beklemede' &&
+                    widget.reservation.status != 'Onaylandı') ...[
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (widget.reservation.status == 'Tamamlandı'
+                            ? AppColors.secondary
+                            : AppColors.danger)
+                            .withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: (widget.reservation.status == 'Tamamlandı'
+                              ? AppColors.secondary
+                              : AppColors.danger)
+                              .withOpacity(0.35),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            widget.reservation.status == 'Tamamlandı'
+                                ? Icons.check_circle_rounded
+                                : Icons.error_outline_rounded,
+                            size: 16,
+                            color: widget.reservation.status == 'Tamamlandı'
+                                ? AppColors.secondary
+                                : AppColors.danger,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.reservation.status,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: widget.reservation.status == 'Tamamlandı'
+                                  ? AppColors.secondary
+                                  : AppColors.danger,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ]
+                else
+                  SizedBox.shrink(),
+
+                const SizedBox(height: 15),
+
+
+                if (widget.reservation.type != "subscription" &&
+                    widget.reservation.status == 'Onaylandı' ||
                     widget.reservation.status == 'Beklemede')
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: _showCancelConfirmationDialog,
                       icon: const Icon(Icons.cancel, color: Colors.white),
-                      label:  const Text(
+                      label: const Text(
                         "Rezervasyonu İptal Et",
                         style: TextStyle(
                           fontSize: 16,
