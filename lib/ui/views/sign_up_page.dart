@@ -489,7 +489,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => AuthCheckScreen()),
+                                    builder: (context) => LoginPage()),
                               );
                             },
                             child: Row(

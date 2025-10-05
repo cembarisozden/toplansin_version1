@@ -7,6 +7,7 @@ import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
 import 'package:toplansin/ui/views/login_page.dart';
+import 'package:toplansin/ui/views/welcome_screen.dart';
 
 /// Uygulama açıldığında:
 ///  1. authStateChanges() > kullanıcı var mı?
@@ -29,7 +30,7 @@ class AuthCheckScreen extends StatelessWidget {
 
         /* ── 2. Kullanıcı yoksa Login ── */
         if (!authSnap.hasData || authSnap.data == null || !authSnap.data!.emailVerified) {
-          return  LoginPage();
+          return  WelcomeScreen();
         }
 
         final uid = authSnap.data!.uid;

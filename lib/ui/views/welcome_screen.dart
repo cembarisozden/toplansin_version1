@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:toplansin/ui/user_views/explore_pitches_page.dart';
+import 'package:toplansin/ui/user_views/hali_saha_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
-import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/views/sign_up_page.dart';
+
+
 
 class WelcomeScreen extends StatefulWidget {
   @override
@@ -187,7 +190,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 Navigator.of(context).push(
                                   PageRouteBuilder(
                                     pageBuilder: (ctx, anim, sec) =>
-                                        AuthCheckScreen(),
+                                       LoginPage(),
                                     transitionsBuilder:
                                         (ctx, anim, sec, child) {
                                       final slide = Tween<Offset>(
@@ -281,10 +284,23 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               ),
                             ),
                           ),
+                          SizedBox(height: 18.h),
+                          Text('Ya da Hemen Şimdi', style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
+                          SizedBox(height: 8.h),
+                          ExploreNowButton(
+                            onTap: () {
+
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) =>  ExplorePitchesPage()));
+
+                            },
+                          ),
                         ],
                       ),
                     ),
                   ),
+
+
+
 
                   // 4) Footer
                   Padding(
@@ -351,3 +367,97 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
   }
 }
+// imports üstte kalsın
+// import 'package:material_symbols/material_symbols.dart'; // kullanıyorsan
+
+class ExploreNowButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const ExploreNowButton({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(28.r),
+      onTap: onTap,
+      child: Container(
+        width: 350.w,
+        height: 56.h,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28.r),
+          gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2962FF), // turkuaz (Cyan 600)
+            Color(0xFF00B8D4), // koyu mavi (Blue A700)
+          ],
+            stops: [
+              0.2,  // koyu başlar
+              1.0,  // 0.70–1.0 arası koyudan turkuaza yumuşak geçiş
+            ],
+        ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2962FF).withOpacity(0.30),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 14.w),
+        child: Row(
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // material_symbols kullanıyorsan:
+                // Icon(Symbols.explore, size: 22, color: Colors.white, weight: 700, grade: 200)
+                const Icon(Icons.explore, size: 22, color: Colors.white),
+                SizedBox(width: 10.w),
+                Text(
+                  'Sahaları Keşfet',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+            Spacer(),
+            Container(
+              width: 42.h,
+              height: 42.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.transparent,
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 22,
+                color: Colors.white,
+                // Symbols kullanıyorsan weight/grade ekleyebilirsin
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

@@ -5,10 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/about_help_page.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
+import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/user_views/subscription_detail_page.dart';
 import 'package:toplansin/ui/user_views/user_acces_code_page.dart';
@@ -16,6 +18,7 @@ import 'package:toplansin/ui/user_views/user_reservations_page.dart';
 import 'package:toplansin/ui/user_views/user_settings_page.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/views/welcome_screen.dart';
 
 class ModernDrawer extends StatelessWidget {
   const ModernDrawer({
@@ -215,19 +218,37 @@ class ModernDrawer extends StatelessWidget {
     ),
   );
 
-  Future<void> _signOut(BuildContext ctx) async {
-    if (firebaseUser != null) {
-      showLoader(ctx);
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(firebaseUser!.uid)
-          .update({'fcmToken': FieldValue.delete()});
+  Future<void> _signOut(BuildContext context) async {
+    showLoader(context);
+    try {
+      // 1) Güncel user'ı *o anda* oku
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+
+      // 2) Varsa fcmToken'ı silmeyi DENE (başaramazsa yut)
+      if (uid != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .update({'fcmToken': FieldValue.delete()});
+        } on FirebaseException catch (e) {
+          AppSnackBar.error(context, AppErrorHandler.getMessage(e));
+        }
+      }
+
+      // 3) Oturum kapat
+      await FirebaseAuth.instance.signOut();
+
+      // 4) Stack’i temizleyerek Login’e git
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) =>  WelcomeScreen()),
+              (route) => false,
+        );
+      }
+    } finally {
+      hideLoader();
     }
-    await FirebaseAuth.instance.signOut();
-    if (ctx.mounted) {
-      Navigator.pushReplacement(
-          ctx, MaterialPageRoute(builder: (_) =>  LoginPage()));
-    }
-    hideLoader();
   }
+
 }

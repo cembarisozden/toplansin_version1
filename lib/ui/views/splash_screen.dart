@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/onboarding_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 
@@ -42,13 +43,6 @@ class _SplashScreenState extends State<SplashScreen>
     // Animasyonu başlatıyoruz
     _controller.forward();
 
-    Future<bool> _shouldShowOnboarding() async {
-      final prefs = await SharedPreferences.getInstance();
-      //daha önce tamamlandı mı?
-      final done = prefs.getBool('onboardingDone') ?? false;
-      return !done;
-    }
-
     // Belirli bir süre sonra WelcomeScreen'e geçiş
     Timer(const Duration(seconds: 3), () async {
       // 1) Onboarding daha önce tamamlanmış mı?
@@ -58,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen>
       // 2) Gideceğin sayfayı seç
       Widget target;
 
-      target = done ? WelcomeScreen() : OnboardingScreen();
+      target = done ? AuthCheckScreen() : OnboardingScreen();
 
       if (!mounted) return;
 
