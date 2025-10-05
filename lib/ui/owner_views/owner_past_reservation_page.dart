@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ⬅️ eklendi
 import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
@@ -25,15 +26,32 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
   String _search = '';
   DateFilter _filter = DateFilter.all;
 
+  // İstersen maliyeti sınırlamak için son N kaydı göster
+  static const int _logLimit = 200;
+
   // ────────────────── LOG SORGUSU (status parametreli) ──────────────────
-  Stream<List<Reservation>> _logStream(String status) =>
-      FirebaseFirestore.instance
+  Stream<List<Reservation>> _logStream(String status) {
+    return FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+      if (user == null) {
+        // Oturum yoksa Firestore’a bağlanma → boş liste
+        return Stream.value(const <Reservation>[]);
+      }
+
+      Query<Map<String, dynamic>> q = FirebaseFirestore.instance
           .collection('reservation_logs')
           .where('haliSahaId', isEqualTo: widget.haliSahaId)
           .where('newStatus', isEqualTo: status)
           .orderBy('reservationDateTime', descending: true)
-          .snapshots()
-          .map((s) => s.docs.map(Reservation.fromDocument).toList());
+          .limit(_logLimit);
+
+      return q.snapshots().map(
+            (s) => s.docs.map(Reservation.fromDocument).toList(growable: false),
+      );
+    }).handleError((e, st) {
+      // Stream zincirinde hata olursa UI'yı düşürme
+      debugPrint('logStream($status) error: $e');
+    });
+  }
 
   // ────────────────── YARDIMCILAR ──────────────────
   DateTime? _parse(String raw) {
@@ -62,11 +80,12 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
         start = null;
         break;
     }
+    final q = _search.toLowerCase();
     return list.where((r) {
       final dt = _parse(r.reservationDateTime);
-      final matchDate = start == null || (dt != null && dt.isAfter(start));
-      final matchSearch =
-          r.userName.toLowerCase().contains(_search.toLowerCase()) ?? false;
+      final matchDate = start == null || (dt != null && !dt.isBefore(start));
+      final name = (r.userName ?? '').toLowerCase(); // ⬅️ NPE yok
+      final matchSearch = q.isEmpty || name.contains(q);
       return matchDate && matchSearch;
     }).toList();
   }
@@ -102,7 +121,7 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
 
     /*──── 2-4 sütun → GridView, oranı dinamik ────*/
     final aspect = cols == 2
-        ? 0.9   // biraz daha uzun hücre
+        ? 0.9 // biraz daha uzun hücre
         : cols == 3
         ? 1.1
         : 1.3; // 4 sütunda yaklaşık 3/2
@@ -119,7 +138,6 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
       itemBuilder: (_, i) => ReservationCard(reservation: items[i]),
     );
   }
-
 
   // ────────────────── LIFECYCLE ──────────────────
   @override
@@ -156,7 +174,8 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
                 Expanded(
                   child: Text('Geçmiş Rezervasyonlar',
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.titleLarge.copyWith(color: AppColors.primary)),
+                      style: AppTextStyles.titleLarge
+                          .copyWith(color: AppColors.primary)),
                 ),
                 const SizedBox(width: 48)
               ],
@@ -174,7 +193,7 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding:
-                        const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                    const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none),
@@ -185,14 +204,33 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
               const SizedBox(width: 12),
               DropdownButton<DateFilter>(
                 value: _filter,
-                items:  [
-                  DropdownMenuItem(value: DateFilter.all, child: Text('Tümü',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),),),
+                items: [
                   DropdownMenuItem(
-                      value: DateFilter.today, child: Text('Bugün',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800))),
+                    value: DateFilter.all,
+                    child: Text(
+                      'Tümü',
+                      style: AppTextStyles.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
                   DropdownMenuItem(
-                      value: DateFilter.last7Days, child: Text('Son 7 Gün',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),)),
+                      value: DateFilter.today,
+                      child: Text('Bugün',
+                          style: AppTextStyles.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w800))),
                   DropdownMenuItem(
-                      value: DateFilter.thisMonth, child: Text('Bu Ay',style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w800),),),
+                      value: DateFilter.last7Days,
+                      child: Text('Son 7 Gün',
+                          style: AppTextStyles.bodyLarge
+                              .copyWith(fontWeight: FontWeight.w800))),
+                  DropdownMenuItem(
+                    value: DateFilter.thisMonth,
+                    child: Text(
+                      'Bu Ay',
+                      style: AppTextStyles.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _filter = v!),
               ),
@@ -231,15 +269,18 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
                               style: const TextStyle(color: Colors.red)),
                         );
                       }
-                      if (!snap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
+                      // auth guard nedeniyle her durumda data gelir (boş liste olabilir)
+                      final data = snap.data;
+                      if (data == null) {
+                        return const Center(
+                            child: CircularProgressIndicator());
                       }
-                      final list = _applyFilters(snap.data!);
+                      final list = _applyFilters(data);
                       return _buildGrid(list);
                     },
                   ),
 
-// ── İPTAL EDİLEN ──────────────────────────────────────────
+                  // ── İPTAL EDİLEN ──────────────────────────────────────────
                   StreamBuilder<List<Reservation>>(
                     stream: _logStream('İptal Edildi'),
                     builder: (_, snap) {
@@ -253,10 +294,12 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
                               style: const TextStyle(color: Colors.red)),
                         );
                       }
-                      if (!snap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
+                      final data = snap.data;
+                      if (data == null) {
+                        return const Center(
+                            child: CircularProgressIndicator());
                       }
-                      final list = _applyFilters(snap.data!);
+                      final list = _applyFilters(data);
                       return _buildGrid(list);
                     },
                   ),

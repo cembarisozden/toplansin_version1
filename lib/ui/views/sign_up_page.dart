@@ -11,6 +11,7 @@ import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
+import 'package:toplansin/ui/views/welcome_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -489,7 +490,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => LoginPage()),
+                                    builder: (context) => WelcomeScreen()),
                               );
                             },
                             child: Row(
@@ -499,7 +500,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                     color: AppColors.primary),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Giriş Sayfasına Dön',
+                                  'Ana Sayfaya Dön',
                                   style: TextStyle(color: AppColors.primary),
                                 ),
                               ],

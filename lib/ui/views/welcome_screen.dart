@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:toplansin/ui/user_views/explore_pitches_page.dart';
@@ -22,17 +23,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     {
       "title": "Hızlı Rezervasyon",
       "description": "Tek tıkla halı saha rezervasyonu yap",
-      "icon": "⚡"
+      'image': 'assets/onboarding2.png',
     },
     {
       "title": "Saha Değerlendirmeleri",
       "description": "En iyi sahaları keşfet",
-      "icon": "⭐"
+      'image': 'assets/onboarding1.png',
     },
     {
       "title": "Maç Organizasyonu",
       "description": "Takımını kur, rakip bul (Çok Yakında!)",
-      "icon": "🏆"
+      'image': 'assets/coming_soon_players2.png',
     },
   ];
 
@@ -84,92 +85,176 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   // 1) Başlık
                   Padding(
                     padding: EdgeInsets.all(20.r),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Toplansın',
-                          style: TextStyle(
-                            fontSize: 48.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                  blurRadius: 10.r,
-                                  color: Colors.black26,
-                                  offset: Offset(2.w, 2.h)),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 10.h),
-                        Text(
-                          'Yeşil Sahalarda Buluşmanın Adresi',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            color: Colors.white70,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+
+                        // cihaz genişliğine göre boyut hesaplama
+                        double titleSize;
+                        double subtitleSize;
+                        if (width > 400) {
+                          // büyük ekran (örneğin tablet veya geniş telefon)
+                          titleSize = 46.sp;
+                          subtitleSize = 18.sp;
+                        } else if (width > 320) {
+                          // orta seviye cihazlar
+                          titleSize = 40.sp;
+                          subtitleSize = 16.sp;
+                        } else {
+                          // küçük ekran (örneğin iPhone SE, küçük Android)
+                          titleSize = 34.sp;
+                          subtitleSize = 14.sp;
+                        }
+
+                        return Column(
+                          children: [
+                            Text(
+                              'Toplansın',
+                              style: TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 8.r,
+                                    color: Colors.black26,
+                                    offset: Offset(1.5.w, 1.5.h),
+                                  ),
+                                ],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 10.h),
+                            Text(
+                              'Yeşil Sahalarda Buluşmanın Adresi',
+                              style: TextStyle(
+                                fontSize: subtitleSize,
+                                color: Colors.white70,
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        );
+                      },
                     ),
+
                   ),
 
                   // 2) Carousel
                   Expanded(
-                    flex: 2,
+                    flex:2,
                     child: PageView.builder(
                       itemCount: features.length,
-                      controller: PageController(viewportFraction: 0.8),
+                      controller: PageController(viewportFraction: 0.78),
+                      physics: const BouncingScrollPhysics(),
                       onPageChanged: (i) =>
                           setState(() => currentFeatureIndex = i),
                       itemBuilder: (_, i) {
                         return Transform.scale(
-                          scale: i == currentFeatureIndex ? 0.95 : 0.85,
-                          child: Card(
-                            color: Colors.white,
-                            elevation: 6,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.r)),
-                            child: Container(
-                              padding: EdgeInsets.all(20.r),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20.r),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.white.withOpacity(0.1),
-                                    Colors.white.withOpacity(0.2),
+                          scale: i == currentFeatureIndex ? 1 : 0.9,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 8.h),
+                            child: AspectRatio(
+                              aspectRatio: 1.15, // biraz yatay kısaltıldı
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(22.r),
+                                  color: Colors.white.withOpacity(0.13),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5),
+                                    ),
                                   ],
                                 ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(features[i]['icon']!,
-                                      style: TextStyle(fontSize: 50.sp)),
-                                  SizedBox(height: 20.h),
-                                  Text(
-                                    features[i]['title']!,
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      fontSize: 22.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                    textAlign: TextAlign.center,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(22.r),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      // 🔹 Görsel
+                                      Align(
+                                        alignment: Alignment.topCenter,
+                                        child: Padding(
+                                          padding: EdgeInsets.only(top: 14.h),
+                                          child: FractionallySizedBox(
+                                            widthFactor: 0.65, // genişlik, görsel büyüdü
+                                            child: Image.asset(
+                                              features[i]['image']!,
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // 🔹 Alt gradient overlay (yazılar için kontrast)
+                                      Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Container(
+                                          height: 70.h,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.transparent,
+                                                Colors.black.withOpacity(0.20),
+                                                Colors.black.withOpacity(0.30),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
+                                      // 🔹 Metinler
+                                      Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: Padding(
+                                          padding:
+                                          EdgeInsets.only(bottom: 16.h, left: 14.w, right: 14.w),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                features[i]['title']!,
+                                                style: AppTextStyles.bodyMedium.copyWith(
+                                                  fontSize: 19.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                  shadows: [
+                                                    Shadow(
+                                                        blurRadius: 6,
+                                                        color: Colors.black.withOpacity(0.5))
+                                                  ],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              SizedBox(height: 6.h),
+                                              Text(
+                                                features[i]['description']!,
+                                                style: AppTextStyles.bodySmall.copyWith(
+                                                  fontSize: 13.sp,
+                                                  color: Colors.white.withOpacity(0.92),
+                                                  height: 1.3,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(height: 10.h),
-                                  Text(
-                                    features[i]['description']!,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                        fontSize: 14.sp,
-                                        color: AppColors.primary),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
                         );
+
                       },
                     ),
                   ),
@@ -179,125 +264,119 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     flex: 2,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 350.w,
-                            height: 56.h,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  PageRouteBuilder(
-                                    pageBuilder: (ctx, anim, sec) =>
-                                       LoginPage(),
-                                    transitionsBuilder:
-                                        (ctx, anim, sec, child) {
-                                      final slide = Tween<Offset>(
-                                              begin: const Offset(1, 0),
-                                              end: Offset.zero)
-                                          .chain(
-                                              CurveTween(curve: Curves.easeOut))
-                                          .animate(anim);
-                                      final fade = CurvedAnimation(
-                                          parent: anim, curve: Curves.easeIn);
-                                      return SlideTransition(
-                                        position: slide,
-                                        child: FadeTransition(
-                                            opacity: fade, child: child),
-                                      );
-                                    },
-                                    transitionDuration:
-                                        const Duration(milliseconds: 400),
-                                  ),
-                                );
-                              },
-                              icon: Icon(Icons.login_outlined,
-                                  color: AppColors.primaryDark, size: 24.sp),
-                              label: Text(
-                                'Giriş Yap',
-                                style: TextStyle(
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryDark,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                elevation: 8,
-                                shadowColor: Colors.black26,
-                                padding: EdgeInsets.symmetric(vertical: 14.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(32.r),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 16.h),
-                          SizedBox(
-                            width: 350.w,
-                            height: 56.h,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.of(context).push(
-                                  PageRouteBuilder(
-                                    pageBuilder: (ctx, anim, sec) =>
-                                        SignUpPage(),
-                                    transitionsBuilder:
-                                        (ctx, anim, sec, child) {
-                                      final slide = Tween<Offset>(
-                                              begin: const Offset(1, 0),
-                                              end: Offset.zero)
-                                          .chain(
-                                              CurveTween(curve: Curves.easeOut))
-                                          .animate(anim);
-                                      final fade = CurvedAnimation(
-                                          parent: anim, curve: Curves.easeIn);
-                                      return SlideTransition(
-                                        position: slide,
-                                        child: FadeTransition(
-                                            opacity: fade, child: child),
-                                      );
-                                    },
-                                    transitionDuration:
-                                        const Duration(milliseconds: 400),
-                                  ),
-                                );
-                              },
-                              icon: Icon(Icons.person_add_outlined,
-                                  color: Colors.white, size: 24.sp),
-                              label: Text(
-                                'Kayıt Ol',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                    color: Colors.white70, width: 2.w),
-                                backgroundColor: Colors.white.withOpacity(0.1),
-                                padding: EdgeInsets.symmetric(vertical: 14.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(32.r),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 18.h),
-                          Text('Ya da Hemen Şimdi', style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
-                          SizedBox(height: 8.h),
-                          ExploreNowButton(
-                            onTap: () {
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final w = constraints.maxWidth;
 
-                              Navigator.of(context).push(MaterialPageRoute(builder: (_) =>  ExplorePitchesPage()));
+                          // SABİT BOYUT (cihazlar arası tutarlı)
+                          const double BASE_WIDTH  = 340.0;
+                          const double BASE_HEIGHT = 54.0;
 
-                            },
-                          ),
-                        ],
+                          // Ekran darsa 340 yerine ekran genişliğini kullan
+                          final double btnWidth  = w < BASE_WIDTH ? w : BASE_WIDTH;
+                          final double btnHeight = BASE_HEIGHT;
+
+                          // Sabit tipografi/ikon (yüksekliğe göre hafif uyumlu)
+                          final double iconSize  = 20.0;
+                          final double labelSize = 16.0;
+                          final BorderRadius radius = BorderRadius.circular(28);
+
+                          Widget wrap(Widget child) => SizedBox(width: btnWidth, height: btnHeight, child: child);
+
+                          final loginStyle = ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            elevation: 6,
+                            shadowColor: Colors.black26,
+                            padding: const EdgeInsets.symmetric(horizontal: 16), // sabit
+                            shape: RoundedRectangleBorder(borderRadius: radius),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          );
+
+                          final signupStyle = OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.white70, width: 1.2),
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(borderRadius: radius),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          );
+
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // GİRİŞ
+                              wrap(
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      PageRouteBuilder(
+                                        pageBuilder: (ctx, anim, _) => LoginPage(),
+                                        transitionsBuilder: (ctx, anim, _, child) {
+                                          final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                                              .chain(CurveTween(curve: Curves.easeOut))
+                                              .animate(anim);
+                                          final fade = CurvedAnimation(parent: anim, curve: Curves.easeIn);
+                                          return SlideTransition(position: slide, child: FadeTransition(opacity: fade, child: child));
+                                        },
+                                        transitionDuration: const Duration(milliseconds: 400),
+                                      ),
+                                    );
+                                  },
+                                  icon: Icon(Icons.login_outlined, color: AppColors.primaryDark, size: iconSize),
+                                  label: Text('Giriş Yap',
+                                      style: TextStyle(fontSize: labelSize, fontWeight: FontWeight.w500, color: AppColors.primaryDark)),
+                                  style: loginStyle,
+                                ),
+                              ),
+
+                              SizedBox(height: 12),
+
+                              // KAYIT
+                              wrap(
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      PageRouteBuilder(
+                                        pageBuilder: (ctx, anim, _) => SignUpPage(),
+                                        transitionsBuilder: (ctx, anim, _, child) {
+                                          final slide = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                                              .chain(CurveTween(curve: Curves.easeOut))
+                                              .animate(anim);
+                                          final fade = CurvedAnimation(parent: anim, curve: Curves.easeIn);
+                                          return SlideTransition(position: slide, child: FadeTransition(opacity: fade, child: child));
+                                        },
+                                        transitionDuration: const Duration(milliseconds: 400),
+                                      ),
+                                    );
+                                  },
+                                  icon: Icon(Icons.person_add_outlined, color: Colors.white, size: iconSize),
+                                  label: Text('Kayıt Ol',
+                                      style: TextStyle(color: Colors.white, fontSize: labelSize, fontWeight: FontWeight.w500)),
+                                  style: signupStyle,
+                                ),
+                              ),
+
+                              SizedBox(height: 16),
+
+                              Text('Ya da Hemen Şimdi',
+                                  style: TextStyle(color: Colors.white70, fontSize: 12.sp, height: 1.2)),
+
+                              SizedBox(height: 8),
+
+                              // Keşfet butonunu da aynı sabit genişlikte yapalım
+                              wrap(
+                                ExploreNowButton(
+                                  onTap: () {
+                                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExplorePitchesPage()));
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
+
 
 
 
@@ -310,7 +389,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                         Text(
                           'Toplansın ile futbol keyfi bir tık uzağınızda!',
                           style:
-                              TextStyle(color: Colors.white70, fontSize: 14.sp),
+                              TextStyle(color: Colors.white70, fontSize: 12.sp),
                         ),
                         SizedBox(height: 10.h),
                         AnimatedBuilder(
@@ -423,7 +502,7 @@ class ExploreNowButton extends StatelessWidget {
                   'Sahaları Keşfet',
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontSize: 17.sp,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: Colors.white,
                     letterSpacing: 0.2,
                   ),

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/core/providers/UserNotificationProvider.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/ui/user_views/about_help_page.dart';
 import 'package:toplansin/ui/user_views/favoriler_page.dart';
@@ -221,34 +222,48 @@ class ModernDrawer extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     showLoader(context);
     try {
-      // 1) Güncel user'ı *o anda* oku
+
+      UserNotificationProvider().dispose();
+
       final uid = FirebaseAuth.instance.currentUser?.uid;
 
-      // 2) Varsa fcmToken'ı silmeyi DENE (başaramazsa yut)
+      // 1) FCM token temizliği (isteğe bağlı, zaman aşımı + merge:true)
       if (uid != null) {
         try {
           await FirebaseFirestore.instance
               .collection('users')
               .doc(uid)
-              .update({'fcmToken': FieldValue.delete()});
-        } on FirebaseException catch (e) {
-          AppSnackBar.error(context, AppErrorHandler.getMessage(e));
+              .set({'fcmToken': FieldValue.delete()}, SetOptions(merge: true))
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          // Kullanıcıyı rahatsız etmeyelim; log yeterli
+          debugPrint('fcmToken delete failed: $e');
         }
       }
 
-      // 3) Oturum kapat
+      // 2) Oturumu kapat
       await FirebaseAuth.instance.signOut();
 
-      // 4) Stack’i temizleyerek Login’e git
+      // 3) Önce loader’ı kapat, sonra navigate et
+      if (context.mounted) hideLoader();
+
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) =>  WelcomeScreen()),
+          MaterialPageRoute(builder: (_) => WelcomeScreen()),
               (route) => false,
         );
       }
-    } finally {
-      hideLoader();
+    } catch (e) {
+      // Hata olursa loader’ı kapat ve kullanıcıya bildir
+      if (context.mounted) hideLoader();
+      if (context.mounted) {
+        AppSnackBar.error(
+          context,
+          AppErrorHandler.getMessage(e, context: 'signout'),
+        );
+      }
     }
   }
+
 
 }

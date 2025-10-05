@@ -21,33 +21,41 @@ class _UserReservationsPageState extends State<UserReservationsPage>
   String _searchTerm = '';
 
   // ─────────────────────── Streams ───────────────────────
-  Stream<List<Reservation>> _activeStream(String uid) => FirebaseFirestore
-      .instance
-      .collection('reservations')
-      .where('userId', isEqualTo: uid)
-      .snapshots()
-      .asyncMap((s) async {
-    final list = <Reservation>[];
-    for (final doc in s.docs) {
-      final res = Reservation.fromDocument(doc);
-      list.add(res);
-    }
-    final active = list
-        .where((r) => r.status == 'Onaylandı' || r.status == 'Beklemede')
-        .toList()
-      ..sort((a, b) =>
-          _parse(b.reservationDateTime).compareTo(_parse(a.reservationDateTime)));
-    return active;
-  });
+  /// 🔒 AUTH-GUARD’lı AKTİF REZERVASYONLAR
+  /// - user == null → boş liste
+  /// - user != null → sadece 'Onaylandı' ve 'Beklemede'
+  Stream<List<Reservation>> activeReservationsStream(String uid) {
+    return FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+      if (user == null) {
+        return Stream.value(const <Reservation>[]);
+      }
+      return FirebaseFirestore.instance
+          .collection('reservations')
+          .where('userId', isEqualTo: uid)
+          .where('status', whereIn: const ['Onaylandı', 'Beklemede'])
+      // reservationDateTime formatın "YYYY-MM-DD HH:mm-..." ise string order çalışır
+          .orderBy('reservationDateTime', descending: true)
+          .snapshots(includeMetadataChanges: false)
+          .map((s) => s.docs.map(Reservation.fromDocument).toList());
+    });
+  }
 
-  Stream<List<Reservation>> _pastStream(String uid) => FirebaseFirestore
-      .instance
-      .collection('reservation_logs')
-      .where('userId', isEqualTo: uid)
-      .where('newStatus', whereIn: ['Tamamlandı', 'İptal Edildi'])
-      .orderBy('reservationDateTime', descending: true)
-      .snapshots(includeMetadataChanges: false)
-      .map((s) => s.docs.map(Reservation.fromDocument).toList());
+
+  Future<List<Reservation>> fetchPastReservationsOnce(String uid) async {
+    // AUTH guard
+    if (FirebaseAuth.instance.currentUser == null) {
+      return const <Reservation>[];
+    }
+
+    final qs = await FirebaseFirestore.instance
+        .collection('reservation_logs')
+        .where('userId', isEqualTo: uid)
+        .where('newStatus', whereIn: const ['Tamamlandı', 'İptal Edildi'])
+        .orderBy('reservationDateTime', descending: true)
+        .get(const GetOptions(source: Source.serverAndCache)); // istersen Source.serverOnly
+
+    return qs.docs.map(Reservation.fromDocument).toList();
+  }
 
   // ───────────────────── Helpers ─────────────────────
   List<Reservation> _filter(List<Reservation> list) {
@@ -191,7 +199,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
                   children: [
                     // Aktif
                     StreamBuilder<List<Reservation>>(
-                      stream: _activeStream(_auth.currentUser!.uid),
+                      stream: activeReservationsStream(_auth.currentUser!.uid),
                       builder: (_, snap) {
                         if (snap.hasError) {
                           return Center(child: Text('Hata: ${snap.error}',
@@ -208,22 +216,26 @@ class _UserReservationsPageState extends State<UserReservationsPage>
                     ),
 
                     // Geçmiş
-                    StreamBuilder<List<Reservation>>(
-                      stream: _pastStream(_auth.currentUser!.uid),
+                    FutureBuilder<List<Reservation>>(
+                      future: fetchPastReservationsOnce(_auth.currentUser!.uid),
                       builder: (_, snap) {
                         if (snap.hasError) {
-                          return Center(child: Text('Hata: ${snap.error}',
-                              style: const TextStyle(color: Colors.red)));
+                          return Center(
+                            child: Text('Hata: ${snap.error}', style: const TextStyle(color: Colors.red)),
+                          );
                         }
-                        if (!snap.hasData) {
+                        if (snap.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
-                        final list = _filter(snap.data!);
-                        return _buildItems(list,
-                            columns: columns,
-                            emptyMsg: 'Geçmiş rezervasyonunuz yok.');
+                        final list = _filter(snap.data ?? const []);
+                        return _buildItems(
+                          list,
+                          columns: columns,
+                          emptyMsg: 'Geçmiş rezervasyonunuz yok.',
+                        );
                       },
-                    ),
+                    )
+
                   ],
                 ),
               ),

@@ -9,7 +9,8 @@ import 'package:toplansin/data/entitiy/reservation.dart';
 
 class UserNotificationProvider with ChangeNotifier {
   final List<NotificationModel> _notifications = [];
-  StreamSubscription? _subscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  StreamSubscription<User?>? _authSub;
 
   List<NotificationModel> get notifications => _notifications;
 
@@ -19,24 +20,42 @@ class UserNotificationProvider with ChangeNotifier {
           .length;
 
   void startListening() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-
-    if (uid == null) return;
+    // varsa eski abonelikleri kapat
     _subscription?.cancel();
+    _authSub?.cancel();
 
-    _subscription = FirebaseFirestore.instance
-        .collection('notifications')
-        .where("userId", isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snap) {
-      _notifications.clear();
-      for (final doc in snap.docs) {
-        _notifications.add(NotificationModel.fromDoc(doc));
+    // 1) logout'ta state temizliği (UI güncelle)
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) {
+        _notifications.clear();
         notifyListeners();
       }
     });
+
+    // 2) auth'a bağlı stream: login olunca aç, logout olunca otomatik kapanır
+    _subscription = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      if (user == null) {
+        // unauth → Firestore'a bağlanma
+        return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+      }
+      return FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    })
+        .listen((snap) {
+      _notifications
+        ..clear()
+        ..addAll(snap.docs.map(NotificationModel.fromDoc));
+      notifyListeners(); // tek sefer
+    }, onError: (e, st) {
+      debugPrint('notifications stream error: $e');
+    });
   }
+
 
   Future<void> markAsRead(String notificationId) async {
     await FirebaseFirestore.instance
@@ -72,6 +91,9 @@ class UserNotificationProvider with ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _subscription = null;
+    _authSub?.cancel();
+    _authSub = null;
     super.dispose();
   }
 
