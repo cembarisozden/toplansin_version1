@@ -1,4 +1,5 @@
 /// -------- ModernDrawer.dart (header sabitlenmiş) --------
+import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -219,51 +220,50 @@ class ModernDrawer extends StatelessWidget {
     ),
   );
 
+
   Future<void> _signOut(BuildContext context) async {
+
     showLoader(context);
     try {
-
-      UserNotificationProvider().dispose();
-
       final uid = FirebaseAuth.instance.currentUser?.uid;
 
-      // 1) FCM token temizliği (isteğe bağlı, zaman aşımı + merge:true)
+      // 1) FCM token temizliği (fire-and-forget, takılmasın)
       if (uid != null) {
-        try {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .set({'fcmToken': FieldValue.delete()}, SetOptions(merge: true))
-              .timeout(const Duration(seconds: 3));
-        } catch (e) {
-          // Kullanıcıyı rahatsız etmeyelim; log yeterli
-          debugPrint('fcmToken delete failed: $e');
-        }
+        // ignore: unawaited_futures
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .set({'fcmToken': FieldValue.delete()}, SetOptions(merge: true))
+            .catchError((e) => debugPrint('fcmToken delete failed: $e'));
       }
 
-      // 2) Oturumu kapat
-      await FirebaseAuth.instance.signOut();
+      // 2) Oturumu kapat (timeout ile)
+      await FirebaseAuth.instance
+          .signOut()
+          .timeout(const Duration(seconds: 5));
 
-      // 3) Önce loader’ı kapat, sonra navigate et
-      if (context.mounted) hideLoader();
+      // 3) Navigasyon (AuthGate varsa buna gerek yok; yine de güvenli)
+      hideLoader();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) =>  WelcomeScreen()),
+            (route) => false,
+      );
+    } on TimeoutException {
 
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => WelcomeScreen()),
-              (route) => false,
-        );
-      }
-    } catch (e) {
-      // Hata olursa loader’ı kapat ve kullanıcıya bildir
-      if (context.mounted) hideLoader();
+        AppSnackBar.error(context, 'Çıkış beklenenden uzun sürdü. Lütfen tekrar deneyin.');
+    } catch (e, st) {
+      debugPrint('signOut error: $e\n$st');
       if (context.mounted) {
         AppSnackBar.error(
           context,
           AppErrorHandler.getMessage(e, context: 'signout'),
         );
       }
+    } finally {
+      hideLoader();
     }
   }
+
 
 
 }
