@@ -517,10 +517,14 @@ class _AbonelikCardState extends State<AbonelikCard> {
                       Builder(
                         builder: (context) {
                           final now = TimeService.now();
-                          final nextDate =
-                              DateTime.tryParse(widget.sub.visibleSession ?? "");
+                          final nextDate =_parseVisibleStart(widget.sub.visibleSession);
+
                           final bool canCancelThisWeek = nextDate != null &&
-                              nextDate.difference(now).inDays < 7;
+                              nextDate.isAfter(now) &&
+                              nextDate.isBefore(now.add(const Duration(days: 7)));
+
+                          debugPrint("Next date: $nextDate");
+                          debugPrint("Now: $now");
 
                           return Row(
                             children: [
@@ -601,6 +605,22 @@ class _AbonelikCardState extends State<AbonelikCard> {
         ],
       ),
     );
+  }
+
+  DateTime? _parseVisibleStart(String? s) {
+    if (s == null || s.isEmpty) return null;
+    // Yıl-Ay-Gün Saat:Dakika (bitiş kısmı varsa görmezden gel)
+    final re = RegExp(r'^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})');
+    final m = re.firstMatch(s);
+    if (m == null) return null;
+
+    final year  = int.parse(m.group(1)!);
+    final month = int.parse(m.group(2)!);
+    final day   = int.parse(m.group(3)!);
+    final hour  = int.parse(m.group(4)!);
+    final min   = int.parse(m.group(5)!);
+
+    return DateTime(year, month, day, hour, min).toLocal();
   }
 
 
