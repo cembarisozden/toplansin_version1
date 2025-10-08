@@ -19,7 +19,8 @@ class FavoritesProvider extends ChangeNotifier {
   List<String> _favIds = [];          // sadece ID listesi
   List<HaliSaha> _favPitches = [];    // HaliSaha nesneleri
 
-  StreamSubscription<DocumentSnapshot>? _userSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userSub;
+  StreamSubscription<User?>? _authSub;
 
   // Public erişim
   List<HaliSaha> get favorites => _favPitches;
@@ -35,14 +36,39 @@ class FavoritesProvider extends ChangeNotifier {
 
   // ─── Internal ────────────────────────────────────────────────────────────
   void _listenUserDoc() {
-    _userSub = _db
-        .collection('users')
-        .doc(_userId)
-        .snapshots()
+    // Eski abonelikleri kapat (idempotent)
+    _userSub?.cancel();
+    _authSub?.cancel();
+
+    // 1) Auth değişimini dinle: çıkışta state'i temizle
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user == null) {
+        // Oturum kapandı → user-scoped state'i temizle
+        _favIds = const <String>[];
+        await _refreshObjects();
+        notifyListeners();
+      }
+    });
+
+    // 2) User-scoped stream: auth’a göre Firestore dinlemesini aç/kapa
+    _userSub = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      if (user == null) {
+        // Una uth → Firestore'a bağlanma
+        return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
+      }
+      return _db
+          .collection('users')
+          .doc(user.uid) // _userId yerine daima canlı auth uid
+          .snapshots();
+    })
         .listen((doc) async {
-      _favIds = List<String>.from(doc.data()?['favorites'] ?? []);
+      _favIds = List<String>.from(doc.data()?['favorites'] ?? const <String>[]);
       await _refreshObjects();
       notifyListeners();
+    }, onError: (e, st) {
+      debugPrint('user doc stream error: $e');
     });
   }
 

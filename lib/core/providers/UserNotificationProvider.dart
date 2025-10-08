@@ -3,14 +3,15 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/notification_model.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
 
 class UserNotificationProvider with ChangeNotifier {
   final List<NotificationModel> _notifications = [];
-  StreamSubscription? _subscription;
-
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+  StreamSubscription? _sub;
   List<NotificationModel> get notifications => _notifications;
 
   int get unreadCount =>
@@ -18,25 +19,39 @@ class UserNotificationProvider with ChangeNotifier {
           .where((n) => n.read == false)
           .length;
 
+
+
+
   void startListening() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    _sub?.cancel();
 
-    if (uid == null) return;
-    _subscription?.cancel();
-
-    _subscription = FirebaseFirestore.instance
-        .collection('notifications')
-        .where("userId", isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snap) {
-      _notifications.clear();
-      for (final doc in snap.docs) {
-        _notifications.add(NotificationModel.fromDoc(doc));
-        notifyListeners();
+    _sub = FirebaseAuth.instance
+        .authStateChanges()
+        .map((u) => u?.uid)
+        .distinct()
+        .switchMap((uid) {
+      if (uid == null) {
+        // auth yok → boş stream (her şeyi kapatır)
+        return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
       }
+      return FirebaseFirestore.instance
+          .collection('notifications')
+          .where('userId', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    })
+        .listen((snap) {
+      _notifications
+        ..clear()
+        ..addAll(snap.docs.map(NotificationModel.fromDoc));
+      notifyListeners();
+    }, onError: (e, st) {
+      // signOut yarıda yakalanırsa gelen permission-denied’ı sessiz yut
+      debugPrint('notifications stream error: $e');
     });
   }
+
+
 
   Future<void> markAsRead(String notificationId) async {
     await FirebaseFirestore.instance
@@ -72,8 +87,17 @@ class UserNotificationProvider with ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _subscription = null;
+    _sub?.cancel();
+    _sub = null;
     super.dispose();
   }
+
+  void stopListening() {
+    _sub?.cancel();
+    _sub = null;
+  }
+
 
   Future<Reservation> userReservation({required String userId ,required String reservationId}) async {
     var doc = await FirebaseFirestore.instance

@@ -590,7 +590,7 @@ class _ReservationPageState extends State<ReservationPage> {
         .where('createdAt', isGreaterThanOrEqualTo: start)
         .where('createdAt', isLessThanOrEqualTo: end)
         .get();
-    return snap.size >= 5;
+    return snap.size >= 3;
   }
 
   Future<bool> _hasReachedInstantReservationLimit() async {
@@ -615,7 +615,7 @@ class _ReservationPageState extends State<ReservationPage> {
         if (dt.isAfter(now)) futureCount++;
       } catch (_) {/* format hatası varsa yoksay */}
     }
-    return futureCount >= 3;
+    return futureCount >= 2;
   }
 
   Future<void> _makeReservation(String slot) async {
@@ -630,7 +630,7 @@ class _ReservationPageState extends State<ReservationPage> {
     }
     if (await _hasReachedInstantReservationLimit()) {
       AppSnackBar.warning(context,
-          'Aynı anda en fazla 3 bekleyen rezervasyonunuz olabilir.');
+          'Aynı anda en fazla 2 bekleyen rezervasyonunuz olabilir.');
       return;
     }
 

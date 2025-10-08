@@ -49,9 +49,11 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   String? selectedTime;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<QuerySnapshot>? _allReservationsSubscription;
-  StreamSubscription<QuerySnapshot>? _TodaysApprovedReservationsSubscription;
+  StreamSubscription<QuerySnapshot>? _todaysApprovedReservationsSubscription;
   StreamSubscription<QuerySnapshot>? _pendingReservationsSubscription;
   StreamSubscription<DocumentSnapshot>? haliSahaSubscription;
+  StreamSubscription<User?>? _authSub;
+
 
   List<Reservation> haliSahaReservations = [];
   List<Reservation> haliSahaReservationsApproved = [];
@@ -68,161 +70,155 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   String selectedDay = "Pzt";
 
+
+
   void listenToReservations(String haliSahaId) {
-    try {
-      // 1. Tüm Rezervasyonları Dinleme ve Geçmiş Rezervasyonların Durumunu Güncelleme
-      var allReservationsStream = FirebaseFirestore.instance
+    // Eski abonelikleri güvenle kapat
+    _allReservationsSubscription?.cancel();
+    _todaysApprovedReservationsSubscription?.cancel();
+    _pendingReservationsSubscription?.cancel();
+    _authSub?.cancel();
+
+    // 0) Auth değişimini dinle: logout'ta state temizle
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) {
+        if (!mounted) return;
+        setState(() {
+          // Tüm user-scoped state'leri sıfırla
+          haliSahaReservations = const <Reservation>[];
+          haliSahaReservationsApproved = const <Reservation>[];
+          todaysRevenue = 0;
+          todaysReservation = 0;
+          occupancyRate = 0;
+          requestDays = const <DateTime>[];
+          requestCountMap = <DateTime, int>{};
+        });
+      }
+    });
+
+    // 1) Tüm rezervasyonlar (auth'a bağlı switch)
+    _allReservationsSubscription = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      if (user == null) {
+        // unauth → Firestore'a bağlanma
+        return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+      }
+      return FirebaseFirestore.instance
           .collection("reservations")
           .where("haliSahaId", isEqualTo: haliSahaId)
           .snapshots();
+    })
+        .listen((snapshot) {
+      final reservations = snapshot.docs
+          .map((d) => Reservation.fromDocument(d))
+          .toList(growable: false);
 
-      _allReservationsSubscription =
-          allReservationsStream.listen((snapshot) async {
-        List<Reservation> reservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-
-          // Tarih ve saat kontrolü
-          DateTime? reservationDateTime;
-          try {
-            var rawDateTime =
-                reservation.reservationDateTime; // Ör: "2024-12-18 17:00-18:00"
-            var datePart = rawDateTime.split(' ')[0]; // Ör: "2024-12-18"
-            var timePart =
-                rawDateTime.split(' ')[1].split('-')[0]; // Ör: "17:00"
-            var formattedDateTime =
-                '$datePart $timePart'; // Ör: "2024-12-18 17:00"
-            reservationDateTime = DateTime.parse(formattedDateTime);
-          } catch (e) {
-            debugPrint(
-                "Tarih formatı hatası: ${reservation.reservationDateTime}");
-          }
-
-          reservations.add(reservation);
-        }
-
-        // Güncellenmiş rezervasyonları state'e atama
-        setState(() {
-          haliSahaReservations = reservations;
-        });
-
-        debugPrint(
-            "Rezervasyonlar başarıyla güncellendi: ${reservations.length} adet.");
+      if (!mounted) return;
+      setState(() {
+        haliSahaReservations = reservations;
       });
 
-      // 2. Onaylanan ve Tamamlanan Rezervasyonları Dinleme (Bugün ve Saat Aralığı)
-      // Bugünün tarihini al
-      DateTime now = TimeService.now();
-      String todayDate =
-          "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      debugPrint("Rezervasyonlar güncellendi: ${reservations.length} adet.");
+    }, onError: (e, st) {
+      debugPrint('allReservations stream error: $e');
+    });
 
-      DateTime tomorrow = now.add(Duration(days: 1));
-      String tomorrowDate =
-          "${tomorrow.year.toString().padLeft(4, '0')}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}";
+    // 2) Bugüne ait Onaylandı/Tamamlandı rezervasyonlar (auth'a bağlı)
+    final now = TimeService.now();
+    final todayDate = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final tomorrow = now.add(const Duration(days: 1));
+    final tomorrowDate = "${tomorrow.year.toString().padLeft(4, '0')}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}";
 
-      // "todayDate 00:00-00:00" ile "tomorrowDate 00:00-00:00" arasındaki rezervasyonları çekiyoruz.
-      String startDateTime =
-          "$todayDate 00:00-00:00"; // "2024-12-19 00:00-00:00"
-      String endDateTime =
-          "$tomorrowDate 00:00-00:00"; // "2024-12-20 00:00-00:00"
+    final startDateTime = "$todayDate 00:00-00:00";
+    final endDateTime = "$tomorrowDate 00:00-00:00";
 
-      var TodaysApprovedReservationsStream = FirebaseFirestore.instance
+    _todaysApprovedReservationsSubscription = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      if (user == null) {
+        return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+      }
+      return FirebaseFirestore.instance
           .collection("reservations")
           .where("haliSahaId", isEqualTo: haliSahaId)
-          .where("status", whereIn: [
-            'Onaylandı',
-            'Tamamlandı'
-          ]) // Doğru status değerlerini kullanın
+          .where("status", whereIn: ['Onaylandı', 'Tamamlandı'])
           .where("reservationDateTime", isGreaterThanOrEqualTo: startDateTime)
           .where("reservationDateTime", isLessThan: endDateTime)
           .snapshots();
+    })
+        .listen((snapshot) {
+      final todaysApproved = snapshot.docs
+          .map((d) => Reservation.fromDocument(d))
+          .toList(growable: false);
 
-      _TodaysApprovedReservationsSubscription =
-          TodaysApprovedReservationsStream.listen((snapshot) {
-        List<Reservation> TodaysApprovedReservations = [];
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          TodaysApprovedReservations.add(reservation);
-        }
+      // Geliri ve doluluğu hesapla
+      final revenue = calculateTodaysRevenue(todaysApproved);
+      final totalHours = calculateOpenHours(widget.haliSaha.startHour, widget.haliSaha.endHour);
+      final count = todaysApproved.length;
+      final occRate = totalHours > 0 ? (count * 100) ~/ totalHours : 0;
 
-        // Debug: Onaylanan rezervasyonları kontrol et
-        debugPrint(
-            "Onaylanan ve Tamamlanan rezervasyon sayısı: ${TodaysApprovedReservations.length}");
-        for (var reservation in TodaysApprovedReservations) {
-          debugPrint(
-              "Rezervasyon ID: ${reservation.id}, Fiyat: ${reservation.haliSahaPrice}, Tarih: ${reservation.reservationDateTime}");
-        }
-
-        // Geliri hesapla
-        num revenue = calculateTodaysRevenue(TodaysApprovedReservations);
-
-        totalOpenHours = calculateOpenHours(
-            widget.haliSaha.startHour, widget.haliSaha.endHour);
-        int testTodaysReservation = TodaysApprovedReservations.length;
-        int testOccupancyRate = (testTodaysReservation * 100) ~/ totalOpenHours;
-        print(testTodaysReservation);
-
-        setState(() {
-          haliSahaReservationsApproved = TodaysApprovedReservations;
-          todaysRevenue = revenue; // Geliri güncelle
-          todaysReservation = testTodaysReservation;
-          occupancyRate = testOccupancyRate;
-        });
-
-        debugPrint(
-            "Onaylanan rezervasyonlar güncellendi: ${TodaysApprovedReservations.length} adet. Toplam Gelir: \$${revenue.toStringAsFixed(2)}");
+      if (!mounted) return;
+      setState(() {
+        haliSahaReservationsApproved = todaysApproved;
+        todaysRevenue = revenue;
+        todaysReservation = count;
+        occupancyRate = occRate;
       });
-      // 3. Beklemede Rezervasyonları Dinleme
-      var pendingReservationsStream = FirebaseFirestore.instance
+
+      debugPrint("Onaylanan/Tamamlanan (bugün): $count adet, Gelir: $revenue");
+    }, onError: (e, st) {
+      debugPrint('todaysApproved stream error: $e');
+    });
+
+    // 3) Beklemede rezervasyonlar (auth'a bağlı)
+    _pendingReservationsSubscription = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      if (user == null) {
+        return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+      }
+      return FirebaseFirestore.instance
           .collection("reservations")
           .where("haliSahaId", isEqualTo: haliSahaId)
-          .where("status",
-              isEqualTo: 'Beklemede') // Sadece 'Beklemede' olanları dinle
+          .where("status", isEqualTo: 'Beklemede')
           .snapshots();
+    })
+        .listen((snapshot) {
+      final reservations = <Reservation>[];
+      final tempRequestDays = <DateTime>[];
+      final tempRequestCount = <DateTime, int>{};
 
-      _pendingReservationsSubscription =
-          pendingReservationsStream.listen((snapshot) {
-        List<Reservation> reservations = [];
-        List<DateTime> tempRequestDays = [];
-        Map<DateTime, int> tempRequestCount = {}; // Geçici sayım tablosu
+      for (final doc in snapshot.docs) {
+        final reservation = Reservation.fromDocument(doc);
+        reservations.add(reservation);
 
-        for (var document in snapshot.docs) {
-          var reservation = Reservation.fromDocument(document);
-          reservations.add(reservation);
-
-          String reservationDateTime = document['reservationDateTime'];
-          // Tarih kısmını al
-          DateTime dayOnly = DateTime.parse(reservationDateTime.split(' ')[0]);
-
-          // Günü normalize ediyoruz (Saat, dakika, saniyeyi 0'lıyoruz)
-          DateTime normalizedDay =
-              DateTime(dayOnly.year, dayOnly.month, dayOnly.day);
-
-          // Bu güne ait istek sayısını 1 arttır
-          if (tempRequestCount.containsKey(normalizedDay)) {
-            tempRequestCount[normalizedDay] =
-                tempRequestCount[normalizedDay]! + 1;
-          } else {
-            tempRequestCount[normalizedDay] = 1;
-          }
-
+        // reservationDateTime formatı: "YYYY-MM-DD HH:mm-HH:mm"
+        final raw = doc['reservationDateTime'] as String? ?? '';
+        final dateStr = (raw.split(' ').isNotEmpty) ? raw.split(' ')[0] : '';
+        try {
+          final dayOnly = DateTime.parse(dateStr);
+          final normalized = DateTime(dayOnly.year, dayOnly.month, dayOnly.day);
           tempRequestDays.add(dayOnly);
+          tempRequestCount.update(normalized, (v) => v + 1, ifAbsent: () => 1);
+        } catch (_) {
+          // parse edilemeyen kayıtları atla
         }
+      }
 
-        setState(() {
-          haliSahaReservationsRequests = reservations;
-          requestDays = tempRequestDays;
-          requestCountMap =
-              tempRequestCount; // Gün bazlı istek sayıları state'e atandı
-        });
-
-        debugPrint(
-            "Beklemede rezervasyonlar güncellendi: ${reservations.length} adet.");
+      if (!mounted) return;
+      setState(() {
+        haliSahaReservationsRequests = reservations;
+        requestDays = tempRequestDays;
+        requestCountMap = tempRequestCount;
       });
-    } catch (e) {
-      debugPrint("Rezervasyonları dinlerken hata oluştu: $e");
-    }
+
+      debugPrint("Beklemede rezervasyonlar: ${reservations.length} adet.");
+    }, onError: (e, st) {
+      debugPrint('pendingReservations stream error: $e');
+    });
   }
+
 
   num calculateTodaysRevenue(List<Reservation> reservations) {
     num total = 0;
@@ -258,58 +254,79 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 
   void listenHaliSaha(String haliSahaId) {
-    haliSahaSubscription = FirebaseFirestore.instance
-        .collection('hali_sahalar')
-        .doc(widget.haliSaha.id)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        setState(() {
-          currentHaliSaha =
-              HaliSaha.fromJson(snapshot.data()!, widget.haliSaha.id);
-          var h = currentHaliSaha;
-          String rawPhone = h.phone; // önce tümünü ata
-          if (rawPhone.startsWith('+90 ')) {
-            // '+90 ' (4 karakter) çıkar
-            rawPhone = rawPhone.substring(4);
-          } else if (rawPhone.startsWith('+90')) {
-            // sadece '+90' (3 karakter) çıkar
-            rawPhone = rawPhone.substring(3);
-          }
+    // önce eski dinlemeyi kapat
+    haliSahaSubscription?.cancel();
 
-          nameController.text = h.name;
-          locationController.text = h.location;
-          priceController.text = h.price.toString();
-          phoneController.text = rawPhone;
-          sizeController.text = h.size;
-          surfaceController.text = h.surface;
-          maxPlayersController.text = h.maxPlayers.toString();
-          startHourController.text = h.startHour;
-          endHourController.text = h.endHour;
-          descriptionController.text = h.description;
-          latController.text = h.latitude.toString();
-          lngController.text = h.longitude.toString();
+    // Eğer bu doküman public okunabiliyorsa, auth guard zorunlu değil.
+    // Ama kurallar auth istiyorsa, aşağıdaki asyncExpand guard'ı iş görür.
+    haliSahaSubscription = FirebaseAuth.instance
+        .authStateChanges()
+        .asyncExpand((user) {
+      // Kurallar auth istemiyorsa, user == null olsa da bağlanmak isteyebilirsin:
+      // return FirebaseFirestore.instance.collection('hali_sahalar').doc(haliSahaId).snapshots();
 
-          // Özellik durumlarını güncelle
-          hasParking = h.hasParking;
-          hasShowers = h.hasShowers;
-          hasShoeRental = h.hasShoeRental;
-          hasCafeteria = h.hasCafeteria;
-          hasNightLighting = h.hasNightLighting;
-          hasCameras = h.hasCameras;
-          hasFoodService = h.hasFoodService;
-          hasFoosball = h.hasFoosball;
-          hasMaleToilet = h.hasMaleToilet;
-          hasFemaleToilet = h.hasFemaleToilet;
-          acceptsCreditCard = h.acceptsCreditCard;
-          hasGoalkeeper = h.hasGoalkeeper;
-          hasPlayground = h.hasPlayground;
-          hasPrayerRoom = h.hasPrayerRoom;
-          hasInternet = h.hasInternet;
-        });
+      // Kurallar auth istiyorsa (PERMISSION_DENIED görüyorsan) unauth iken bağlanma:
+      if (user == null) {
+        return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
       }
+      return FirebaseFirestore.instance
+          .collection('hali_sahalar')
+          .doc(haliSahaId) // ⬅️ parametreyi kullan
+          .snapshots();
+    })
+        .listen((snapshot) {
+      if (!snapshot.exists) return;
+      final data = snapshot.data();
+      if (data == null) return;
+
+      final h = HaliSaha.fromJson(data, haliSahaId);
+
+      // +90 temizleme (küçük helper)
+      String _normalizePhone(String raw) {
+        if (raw.startsWith('+90 ')) return raw.substring(4);
+        if (raw.startsWith('+90')) return raw.substring(3);
+        return raw;
+      }
+
+      // Controller’lara yazmak için setState gerekmez
+      nameController.text        = h.name;
+      locationController.text    = h.location;
+      priceController.text       = h.price.toString();
+      phoneController.text       = _normalizePhone(h.phone);
+      sizeController.text        = h.size;
+      surfaceController.text     = h.surface;
+      maxPlayersController.text  = h.maxPlayers.toString();
+      startHourController.text   = h.startHour;
+      endHourController.text     = h.endHour;
+      descriptionController.text = h.description;
+      latController.text         = h.latitude.toString();
+      lngController.text         = h.longitude.toString();
+
+      if (!mounted) return;
+      setState(() {
+        currentHaliSaha    = h;
+
+        hasParking         = h.hasParking;
+        hasShowers         = h.hasShowers;
+        hasShoeRental      = h.hasShoeRental;
+        hasCafeteria       = h.hasCafeteria;
+        hasNightLighting   = h.hasNightLighting;
+        hasCameras         = h.hasCameras;
+        hasFoodService     = h.hasFoodService;
+        hasFoosball        = h.hasFoosball;
+        hasMaleToilet      = h.hasMaleToilet;
+        hasFemaleToilet    = h.hasFemaleToilet;
+        acceptsCreditCard  = h.acceptsCreditCard;
+        hasGoalkeeper      = h.hasGoalkeeper;
+        hasPlayground      = h.hasPlayground;
+        hasPrayerRoom      = h.hasPrayerRoom;
+        hasInternet        = h.hasInternet;
+      });
+    }, onError: (e, st) {
+      debugPrint('listenHaliSaha error: $e');
     });
   }
+
 
   // Bildirim ayarları gibi diğer değişkenler
   String selectedCurrency = "TRY";
@@ -362,9 +379,10 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   @override
   void dispose() {
     _allReservationsSubscription?.cancel();
-    _TodaysApprovedReservationsSubscription?.cancel();
+    _todaysApprovedReservationsSubscription?.cancel();
     _pendingReservationsSubscription?.cancel();
     haliSahaSubscription?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 
@@ -662,251 +680,281 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     ),
 
                     //Günler
-                    StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('subscriptions')
-                          .where('haliSahaId', isEqualTo: widget.haliSaha.id)
-                          .where('status', isEqualTo: 'Beklemede')
-                          .snapshots(),
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: (() {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) {
+                          // Oturum yoksa Firestore'a bağlanma
+                          return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+                        }
+                        return FirebaseFirestore.instance
+                            .collection('subscriptions')
+                            .where('haliSahaId', isEqualTo: widget.haliSaha.id)
+                            .where('status', isEqualTo: 'Beklemede')
+                            .snapshots();
+                      })(),
                       builder: (context, snapshot) {
-                        if (!snapshot.hasData)
-                          return CircularProgressIndicator();
+                        // Hata UI'yı düşürmesin
+                        if (snapshot.hasError) {
+                          // Tercih: boş badge’ler göster
+                          return buildDayButtonsWithBadges(const <int, int>{});
+                        }
+
+                        if (!snapshot.hasData) {
+                          // Tercih: loader yerine boş badge’ler veya küçük bir placeholder
+                          return buildDayButtonsWithBadges(const <int, int>{});
+                          // İstersen:
+                          // return const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2));
+                        }
 
                         final docs = snapshot.data!.docs;
 
-                        // Günlere göre gruplama
-                        Map<int, int> pendingCountsByDay = {};
-                        for (var doc in docs) {
-                          int day = doc['dayOfWeek'];
-                          pendingCountsByDay[day] =
-                              (pendingCountsByDay[day] ?? 0) + 1;
+                        // Güvenli grup sayımı
+                        final Map<int, int> pendingCountsByDay = <int, int>{};
+                        for (final d in docs) {
+                          final data = d.data();
+                          final day = data['dayOfWeek'];
+                          if (day is int) {
+                            pendingCountsByDay[day] = (pendingCountsByDay[day] ?? 0) + 1;
+                          }
                         }
 
-                        // 🔽 Gün kutuları (yukarıdaki Container bloğu burada çağırılır)
                         return buildDayButtonsWithBadges(pendingCountsByDay);
                       },
                     ),
 
+
                     const SizedBox(height: 12),
 
                     // Durum Özeti
-                    StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      // AUTH GUARD: oturum yoksa sorgu başlatma
+                      stream: (() {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) {
+                          return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+                        }
+                        return FirebaseFirestore.instance
                             .collection('subscriptions')
                             .where('haliSahaId', isEqualTo: widget.haliSaha.id)
-                            .where('dayOfWeek',
-                                isEqualTo: getDayOfWeekNumber(selectedDay))
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return Center(child: CircularProgressIndicator());
-                          }
-
-                          final docs = snapshot.data!.docs;
-                          print("Toplam belge sayısı: ${docs.length}");
-
-                          final aktifCount =
-                              docs.where((d) => d['status'] == 'Aktif').length;
-                          final istekCount = docs
-                              .where((d) => d['status'] == 'Beklemede')
-                              .length;
-                          final musaitCount = timeSlots.length -
-                              (aktifCount +
-                                  istekCount); // timeSlots önceden initState'te hesaplandı
-
+                            .where('dayOfWeek', isEqualTo: getDayOfWeekNumber(selectedDay))
+                            .snapshots();
+                      })(),
+                      builder: (context, snapshot) {
+                        // HATA ELE ALMA: UI düşmesin
+                        if (snapshot.hasError) {
+                          debugPrint('subscriptions stream error: ${snapshot.error}');
+                          // Boş görünüm (badge’ler 0, tablo boş/müsait gibi)
+                          final int aktifCount = 0, istekCount = 0;
+                          final int musaitCount = timeSlots.length;
                           return Column(
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  statusBadge("$aktifCount Abone",
-                                      Icons.check_circle, Colors.blue),
-                                  statusBadge("$istekCount İstek",
-                                      Icons.error_outline, Colors.orange),
-                                  statusBadge("$musaitCount Müsait",
-                                      Icons.circle_outlined, Colors.grey),
+                                  statusBadge("$aktifCount Abone", Icons.check_circle, Colors.blue),
+                                  statusBadge("$istekCount İstek", Icons.error_outline, Colors.orange),
+                                  statusBadge("$musaitCount Müsait", Icons.circle_outlined, Colors.grey),
                                 ],
                               ),
                               const SizedBox(height: 12),
-
-                              // Saatlik tablo
-                              Container(
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8)),
-                                child: Column(
-                                  children: [
-                                    ListTile(
-                                      leading: const Icon(Icons.calendar_today,
-                                          color: Colors.blue),
-                                      title: Text(getDayName(selectedDay),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600)),
-                                      subtitle: const Text("Günlük Abonelikler",
-                                          style: TextStyle(fontSize: 13)),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
-                                      color: Colors.blue.shade50,
-                                      child: Row(
-                                        children: const [
-                                          Expanded(
-                                              child: Text("Saat",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w500))),
-                                          Expanded(
-                                              child: Text("Durum",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w500))),
-                                          Expanded(
-                                              child: Text("İşlem",
-                                                  style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w500))),
-                                        ],
-                                      ),
-                                    ),
-                                    ...timeSlots.map((slot) {
-                                      final matchingDoc = docs.firstWhereOrNull(
-                                        (doc) =>
-                                            doc['time'] == slot &&
-                                            doc['status'] != 'İptal Edildi' &&
-                                            doc['status'] != 'Sona Erdi',
-                                      );
-                                      String status = 'musait';
-                                      String statusText = 'Müsait';
-                                      IconData icon = Icons.circle_outlined;
-                                      Color iconColor = Colors.grey;
-
-                                      if (matchingDoc != null) {
-                                        final firestoreStatus =
-                                            matchingDoc['status'];
-                                        if (firestoreStatus == 'Aktif') {
-                                          status = 'abone';
-                                          statusText = 'Abone';
-                                          icon = Icons.check_circle;
-                                          iconColor = Colors.blue;
-                                        } else if (firestoreStatus ==
-                                            'Beklemede') {
-                                          status = 'istek';
-                                          statusText = 'İstek Var';
-                                          icon = Icons.error_outline;
-                                          iconColor = Colors.orange;
-                                        }
-                                      }
-
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 12),
-                                        decoration: const BoxDecoration(
-                                          border: Border(
-                                              top: BorderSide(
-                                                  color: Colors.grey,
-                                                  width: 0.2),
-                                              bottom: BorderSide(
-                                                  color: Colors.grey,
-                                                  width: 0.2)),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: Text(slot)),
-                                            Expanded(
-                                              child: Row(
-                                                children: [
-                                                  Icon(icon,
-                                                      color: iconColor,
-                                                      size: 16),
-                                                  const SizedBox(width: 6),
-                                                  Text(statusText,
-                                                      style: TextStyle(
-                                                          color: iconColor)),
-                                                ],
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: ElevatedButton(
-                                                onPressed: () async {
-                                                  if (matchingDoc == null) {
-                                                    final data =
-                                                        await showInputDialog(
-                                                            context,
-                                                            title:
-                                                                "Abone Bilgisi");
-                                                    if (data == null) return;
-                                                    await addOwnerSubscription(
-                                                      context: context,
-                                                      haliSahaId:
-                                                          widget.haliSaha.id,
-                                                      haliSahaName:
-                                                          widget.haliSaha.name,
-                                                      location: widget
-                                                          .haliSaha.location,
-                                                      dayOfWeek:
-                                                          getDayOfWeekNumber(
-                                                              selectedDay),
-                                                      time: slot,
-                                                      // çünkü timeSlots'tan geliyor
-                                                      price:
-                                                          widget.haliSaha.price,
-                                                      ownerUserId: widget
-                                                          .currentOwner.id,
-                                                      ownerName: data.name,
-                                                      ownerPhone: data.phone,
-                                                      ownerEmail: widget
-                                                          .currentOwner.email,
-                                                    );
-                                                  } else {
-                                                    _showSubscriptionDialog(
-                                                        context, matchingDoc);
-                                                  }
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8)),
-                                                  backgroundColor:
-                                                      status == "abone"
-                                                          ? Colors.green
-                                                          : status == "istek"
-                                                              ? Colors.orange
-                                                              : Colors.blue,
-                                                  minimumSize:
-                                                      const Size.fromHeight(36),
-                                                ),
-                                                child: Text(
-                                                  status == "abone"
-                                                      ? "Detaylar"
-                                                      : status == "istek"
-                                                          ? "Görüntüle"
-                                                          : "Abone Gir",
-                                                  style: const TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.white),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ],
-                                ),
+                              _buildTableSkeleton(
+                                dayTitle: getDayName(selectedDay),
+                                timeSlots: timeSlots,
+                                byTime: const {},
                               ),
                             ],
                           );
-                        })
+                        }
+
+                        // İlk yükleme (isteğe göre loader yerine boş görünüm de dönebilirsin)
+                        if (!snapshot.hasData) {
+                          return const SizedBox(
+                            width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          );
+                        }
+
+                        // ─────────── PERFORMANS: tek geçişte sayımlar + hızlı erişim index'i ───────────
+                        final docs = snapshot.data!.docs;
+                        int aktifCount = 0;
+                        int istekCount = 0;
+
+                        // slot → doc haritası (İptal/Sona Erdi hariç)
+                        final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byTime = {};
+
+                        for (final d in docs) {
+                          final data   = d.data();
+                          final status = data['status'] as String? ?? '';
+                          final time   = data['time']   as String?;
+
+                          if (status == 'Aktif') {
+                            aktifCount++;
+                          } else if (status == 'Beklemede') {
+                            istekCount++;
+                          }
+
+                          if (time != null && status != 'İptal Edildi' && status != 'Sona Erdi') {
+                            // aynı saate birden çok kayıt varsa son geleni yazılır (ihtiyaca göre değiştirebilirsin)
+                            byTime[time] = d;
+                          }
+                        }
+
+                        final musaitCountRaw = timeSlots.length - (aktifCount + istekCount);
+                        final musaitCount    = musaitCountRaw < 0 ? 0 : musaitCountRaw;
+
+                        // ─────────── UI ───────────
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                statusBadge("$aktifCount Abone", Icons.check_circle, Colors.blue),
+                                statusBadge("$istekCount İstek", Icons.error_outline, Colors.orange),
+                                statusBadge("$musaitCount Müsait", Icons.circle_outlined, Colors.grey),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            _buildTableSkeleton(
+                              dayTitle: getDayName(selectedDay),
+                              timeSlots: timeSlots,
+                              byTime: byTime,
+                            ),
+                          ],
+                        );
+                      },
+                    )
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Küçük yardımcı: tablo iskeleti (tekrar eden UI’yi toplar)
+  Widget _buildTableSkeleton({
+    required String dayTitle,
+    required List<String> timeSlots,
+    required Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byTime,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.calendar_today, color: Colors.blue),
+            title: Text(dayTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text("Günlük Abonelikler", style: TextStyle(fontSize: 13)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: Colors.blue.shade50,
+            child: const Row(
+              children: [
+                Expanded(child: Text("Saat",  style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(child: Text("Durum", style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(child: Text("İşlem", style: TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
+          ),
+
+          ...timeSlots.map((slot) {
+            final matching = byTime[slot];
+            String status = 'musait';
+            String statusText = 'Müsait';
+            IconData icon = Icons.circle_outlined;
+            Color iconColor = Colors.grey;
+
+            if (matching != null) {
+              final s = matching.data()['status'] as String? ?? '';
+              if (s == 'Aktif') {
+                status = 'abone';
+                statusText = 'Abone';
+                icon = Icons.check_circle;
+                iconColor = Colors.blue;
+              } else if (s == 'Beklemede') {
+                status = 'istek';
+                statusText = 'İstek Var';
+                icon = Icons.error_outline;
+                iconColor = Colors.orange;
+              }
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.grey, width: 0.2),
+                  bottom: BorderSide(color: Colors.grey, width: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: Text(slot)),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(icon, color: iconColor, size: 16),
+                        const SizedBox(width: 6),
+                        Text(statusText, style: TextStyle(color: iconColor)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (matching == null) {
+                          final data = await showInputDialog(context, title: "Abone Bilgisi");
+                          if (data == null) return;
+                          await addOwnerSubscription(
+                            context: context,
+                            haliSahaId: widget.haliSaha.id,
+                            haliSahaName: widget.haliSaha.name,
+                            location: widget.haliSaha.location,
+                            dayOfWeek: getDayOfWeekNumber(selectedDay),
+                            time: slot,
+                            price: widget.haliSaha.price,
+                            ownerUserId: widget.currentOwner.id,
+                            ownerName: data.name,
+                            ownerPhone: data.phone,
+                            ownerEmail: widget.currentOwner.email,
+                          );
+                        } else {
+                          _showSubscriptionDialog(context, matching);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        backgroundColor: status == "abone"
+                            ? Colors.green
+                            : status == "istek"
+                            ? Colors.orange
+                            : Colors.blue,
+                        minimumSize: const Size.fromHeight(36),
+                      ),
+                      child: Text(
+                        status == "abone"
+                            ? "Detaylar"
+                            : status == "istek"
+                            ? "Görüntüle"
+                            : "Abone Gir",
+                        style: const TextStyle(fontSize: 13, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }

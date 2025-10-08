@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -534,33 +535,66 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
 // ————————————————————————————————————————————————
-// Bu fonksiyon artık gerçekten kullanılıyor!
+
   Future<void> _deleteAccountWithPassword(String email, String password) async {
     showLoader(context);
     final user = FirebaseAuth.instance.currentUser;
     final cred = EmailAuthProvider.credential(email: email, password: password);
 
     try {
+      // 1) Re-auth
       await user!.reauthenticateWithCredential(cred);
+
+      // 2) (Opsiyonel) fallback için user doc’u alalım
+      final userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final data = userDoc.data();
+
+      // 3) Arşivleme callable’ı (hesabı silmeden ÖNCE!)
+      final functions =
+      FirebaseFunctions.instanceFor(region: 'europe-west1'); // bölge önemli
+      final callable = functions.httpsCallable('userDeletionServiceArchive');
+
+      await callable.call({
+        // Sunucu users/{uid}’yi okuyamazsa fallback olarak kullanır
+        'user': {
+          'id': user.uid,
+          'name': data?['name'] ?? '',
+          'email': data?['email'] ?? user.email ?? '',
+          'phone': data?['phone'],
+          'role': data?['role'] ?? 'user',
+          'fieldAccessCodes': data?['fieldAccessCodes'],
+        }
+      });
+
+      // 4) (İsteğe bağlı) Firestore users/{uid} dokümanını sil
       await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+
+      // 5) Auth hesabını sil
       await user.delete();
 
       AppSnackBar.show(context, "Hesabınız başarıyla silindi.");
 
+      // 6) Çıkış / yönlendirme
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => WelcomeScreen()),
             (route) => false,
       );
+    } on FirebaseFunctionsException catch (e) {
+      // Arşiv başarısızsa SİLMEYİ DURDURMAK daha güvenli (KVKK izini bırakmak istiyoruz)
+      final msg = AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, "Bir hata oluştu");
     } on FirebaseAuthException catch (e) {
       final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context,"Silme başarısız: $msg");
+      AppSnackBar.error(context, "Silme başarısız");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
       AppSnackBar.error(context, "Bir hata oluştu: $msg");
-    }finally{
+    } finally {
       hideLoader();
     }
   }
+
 
 
   void _showCustomDialog(

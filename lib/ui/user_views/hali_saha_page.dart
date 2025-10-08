@@ -18,9 +18,9 @@ import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 
 class HaliSahaPage extends StatefulWidget {
-  final Person currentUser;
+  final Person? currentUser;
 
-  HaliSahaPage({required this.currentUser});
+  HaliSahaPage({this.currentUser});
 
   @override
   State<HaliSahaPage> createState() => _HaliSahaPageState();
@@ -29,7 +29,7 @@ class HaliSahaPage extends StatefulWidget {
 class _HaliSahaPageState extends State<HaliSahaPage> {
   /// Firestore koleksiyon referansı
   final collectionHaliSaha =
-  FirebaseFirestore.instance.collection('hali_sahalar');
+      FirebaseFirestore.instance.collection('hali_sahalar');
 
   /// Tüm halı sahaları (orijinal)
   List<HaliSaha> _allHaliSahalar = [];
@@ -62,19 +62,19 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   bool hasPrayerRoom = false;
   bool hasInternet = false;
   bool hasFemaleToilet = false;
+
 // State içinde
-  num   _minPrice           = 0, _maxPrice           = 5000;
-  num   _selectedMinPrice   = 0, _selectedMaxPrice   = 5000;
-  bool  _priceFilterActive  = false;
-  int   _selectedRating     = 0;
+  num _minPrice = 0, _maxPrice = 5000;
+  num _selectedMinPrice = 0, _selectedMaxPrice = 5000;
+  bool _priceFilterActive = false;
+  int _selectedRating = 0;
 
   // ── ekle
   late final FocusNode _searchFocus;
   final _searchHeaderKey = const ValueKey('search_header');
-  List<HaliSaha> _baseFiltered = [];          // diğer filtrelerin sonucu (isim hariç)
-  final ValueNotifier<String> _searchText = ValueNotifier<String>(''); // sadece arama metni
-
-
+  List<HaliSaha> _baseFiltered = []; // diğer filtrelerin sonucu (isim hariç)
+  final ValueNotifier<String> _searchText =
+      ValueNotifier<String>(''); // sadece arama metni
 
   final List<String> cities = [
     'İzmir',
@@ -84,26 +84,22 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     'Antalya'
   ];
 
-
   @override
   void initState() {
     super.initState();
     _startHour = null;
-    _endHour   = null;
+    _endHour = null;
 
     _searchFocus = FocusNode();
 
     _setupRealtimeHaliSahaListener();
   }
 
-
-
   // ────────────────────────────────────────────────────────────
   void _setupRealtimeHaliSahaListener() {
     _haliSahaSubscription = collectionHaliSaha.snapshots().listen((snapshot) {
-      final all = snapshot.docs
-          .map((d) => HaliSaha.fromJson(d.data(), d.id))
-          .toList();
+      final all =
+          snapshot.docs.map((d) => HaliSaha.fromJson(d.data(), d.id)).toList();
 
       if (!listEquals(_allHaliSahalar, all)) {
         setState(() => _allHaliSahalar = all);
@@ -112,69 +108,79 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     });
   }
 
-
-
-
   /// Gece geçişlerini de hesaba katarak bir saatin saha açık olup olmadığını döner.
   bool isOpenAt(int hour, int openingHour, int closingHourNormalized) {
     // hour: 0-23, openingHour 0-23, closingHourNormalized ∈ [1..47]
     int normalizedHour = hour;
     if (hour < openingHour) normalizedHour += 24;
-    return normalizedHour >= openingHour && normalizedHour < closingHourNormalized;
+    return normalizedHour >= openingHour &&
+        normalizedHour < closingHourNormalized;
   }
+
   bool _matchesFacilities(HaliSaha saha) {
-    if (hasParking       && !saha.hasParking)       return false;
-    if (hasShowers       && !saha.hasShowers)       return false;
-    if (hasShoeRental    && !saha.hasShoeRental)    return false;
-    if (hasCafeteria     && !saha.hasCafeteria)     return false;
+    if (hasParking && !saha.hasParking) return false;
+    if (hasShowers && !saha.hasShowers) return false;
+    if (hasShoeRental && !saha.hasShoeRental) return false;
+    if (hasCafeteria && !saha.hasCafeteria) return false;
     if (hasNightLighting && !saha.hasNightLighting) return false;
-    if (hasMaleToilet    && !saha.hasMaleToilet)    return false;
-    if (hasFemaleToilet  && !saha.hasFemaleToilet)  return false;
-    if (hasFoodService   && !saha.hasFoodService)   return false;
-    if (acceptsCreditCard&& !saha.acceptsCreditCard)return false;
-    if (hasFoosball      && !saha.hasFoosball)      return false;
-    if (hasCameras       && !saha.hasCameras)       return false;
-    if (hasGoalkeeper    && !saha.hasGoalkeeper)    return false;
-    if (hasPlayground    && !saha.hasPlayground)    return false;
-    if (hasPrayerRoom    && !saha.hasPrayerRoom)    return false;
-    if (hasInternet      && !saha.hasInternet)      return false;
+    if (hasMaleToilet && !saha.hasMaleToilet) return false;
+    if (hasFemaleToilet && !saha.hasFemaleToilet) return false;
+    if (hasFoodService && !saha.hasFoodService) return false;
+    if (acceptsCreditCard && !saha.acceptsCreditCard) return false;
+    if (hasFoosball && !saha.hasFoosball) return false;
+    if (hasCameras && !saha.hasCameras) return false;
+    if (hasGoalkeeper && !saha.hasGoalkeeper) return false;
+    if (hasPlayground && !saha.hasPlayground) return false;
+    if (hasPrayerRoom && !saha.hasPrayerRoom) return false;
+    if (hasInternet && !saha.hasInternet) return false;
     return true;
   }
 
-
-
   // TÜM filtreler (isim/konum HARİÇ)
   void _recomputeBaseFiltered() {
-    final hasCity   = _selectedCity   != null;
-    final hasDate   = _selectedDate   != null;
-    final hasTime   = _startHour      != null && _endHour != null;
-    final hasPrice  = _priceFilterActive;
+    final hasCity = _selectedCity != null;
+    final hasDate = _selectedDate != null;
+    final hasTime = _startHour != null && _endHour != null;
+    final hasPrice = _priceFilterActive;
     final hasRating = _selectedRating > 0;
 
-    final df      = DateFormat('yyyy-MM-dd');
-    final today   = TimeService.now();
+    final df = DateFormat('yyyy-MM-dd');
+    final today = TimeService.now();
     final dateStr = hasDate ? df.format(_selectedDate!) : null;
 
     // Filtre yoksa → tüm liste
-    if (!hasCity && !hasDate && !hasTime &&
-        !hasParking && !hasShowers && !hasShoeRental &&
-        !hasCafeteria && !hasNightLighting && !hasMaleToilet &&
-        !hasFemaleToilet && !hasFoodService && !acceptsCreditCard &&
-        !hasFoosball && !hasCameras && !hasGoalkeeper &&
-        !hasPlayground && !hasPrayerRoom && !hasInternet &&
-        !hasPrice && !hasRating) {
+    if (!hasCity &&
+        !hasDate &&
+        !hasTime &&
+        !hasParking &&
+        !hasShowers &&
+        !hasShoeRental &&
+        !hasCafeteria &&
+        !hasNightLighting &&
+        !hasMaleToilet &&
+        !hasFemaleToilet &&
+        !hasFoodService &&
+        !acceptsCreditCard &&
+        !hasFoosball &&
+        !hasCameras &&
+        !hasGoalkeeper &&
+        !hasPlayground &&
+        !hasPrayerRoom &&
+        !hasInternet &&
+        !hasPrice &&
+        !hasRating) {
       if (!listEquals(_baseFiltered, _allHaliSahalar)) {
         setState(() {
           _baseFiltered = List.from(_allHaliSahalar);
-          halisahalar   = List.from(_allHaliSahalar); // kritik: ekranda görünen liste
+          halisahalar =
+              List.from(_allHaliSahalar); // kritik: ekranda görünen liste
         });
       }
       return;
     }
 
-
     int reqStart = hasTime ? _startHour! : 6;
-    int reqEnd   = hasTime ? _endHour!   : 24;
+    int reqEnd = hasTime ? _endHour! : 24;
     if (reqEnd <= reqStart) reqEnd += 24;
 
     final List<HaliSaha> result = [];
@@ -193,18 +199,19 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
       }
       if (hasRating && saha.rating < _selectedRating) continue;
 
-      final openH    = int.parse(saha.startHour.split(':')[0]);
+      final openH = int.parse(saha.startHour.split(':')[0]);
       final rawClose = int.parse(saha.endHour.split(':')[0]);
-      final closeH   = rawClose <= openH ? rawClose + 24 : rawClose;
+      final closeH = rawClose <= openH ? rawClose + 24 : rawClose;
 
       bool anyFree = false;
       final daysToCheck = hasDate ? 1 : 7;
       for (var d = 0; d < daysToCheck && !anyFree; d++) {
-        final baseDate = hasDate ? df.parse(dateStr!) : today.add(Duration(days: d));
+        final baseDate =
+            hasDate ? df.parse(dateStr!) : today.add(Duration(days: d));
         for (var h = reqStart; h < reqEnd; h++) {
-          final slotHour  = h % 24;
+          final slotHour = h % 24;
           final dayOffset = h ~/ 24;
-          final slotDate  = baseDate.add(Duration(days: dayOffset));
+          final slotDate = baseDate.add(Duration(days: dayOffset));
 
           int normHour = slotHour < openH ? slotHour + 24 : slotHour;
           if (normHour < openH || normHour >= closeH) continue;
@@ -214,9 +221,12 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
               '${(slotHour + 1).toString().padLeft(2, '0')}:00';
 
           final isBooked = saha.bookedSlots.any(
-                (bs) => bs.replaceAll('–','-').trim() == slot,
+            (bs) => bs.replaceAll('–', '-').trim() == slot,
           );
-          if (!isBooked) { anyFree = true; break; }
+          if (!isBooked) {
+            anyFree = true;
+            break;
+          }
         }
       }
       if (!anyFree) continue;
@@ -227,11 +237,10 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     if (!listEquals(_baseFiltered, result)) {
       setState(() {
         _baseFiltered = result;
-        halisahalar   = result; // kritik: ekranda görünen liste
+        halisahalar = result; // kritik: ekranda görünen liste
       });
     }
   }
-
 
 // SADECE isim/konum araması (state dokunmadan hesap döner)
   List<HaliSaha> _applyNameSearch(List<HaliSaha> source, String queryRaw) {
@@ -243,10 +252,6 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     }).toList();
   }
 
-
-
-
-
   @override
   void dispose() {
     _haliSahaSubscription?.cancel();
@@ -254,7 +259,6 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     _searchController.dispose();
     super.dispose();
   }
-
 
   // ────────────────────────────────────────────────────────────
   @override
@@ -273,7 +277,8 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
             // Arama kutusu
             Padding(
               padding: const EdgeInsets.all(16),
-              child: RepaintBoundary( // header stabilize
+              child: RepaintBoundary(
+                // header stabilize
                 key: _searchHeaderKey,
                 child: Row(
                   children: [
@@ -289,7 +294,8 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                             focusNode: _searchFocus,
                             textInputAction: TextInputAction.search,
                             // İSİM ARAMASI: sadece ValueNotifier'ı güncelle
-                            onSubmitted: (_) => _searchText.value = _searchController.text,
+                            onSubmitted: (_) =>
+                                _searchText.value = _searchController.text,
                             // onTapOutside: (_) => _searchFocus.unfocus(), // istersen kapalı kalsın
                             decoration: InputDecoration(
                               hintText: 'Halı saha ara...',
@@ -407,14 +413,17 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   },
                 ),
               ),
-              SizedBox(height: 6,),
+              SizedBox(
+                height: 6,
+              ),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon:  Icon(Icons.arrow_back_ios_new,
+                  icon: Icon(Icons.arrow_back_ios_new,
                       size: 20, color: AppColors.textPrimary),
-                  label:  Text("Geri",
-                      style: TextStyle(fontSize: 16, color: AppColors.textPrimary)),
+                  label: Text("Geri",
+                      style: TextStyle(
+                          fontSize: 16, color: AppColors.textPrimary)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -437,8 +446,6 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
 
   // ────────────────────────────────────────────────────────────
   Widget _buildHaliSahaList() {
-    final favProv = context.watch<FavoritesProvider>();
-
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _searchController,
       builder: (_, textValue, __) {
@@ -472,40 +479,42 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                     onPressed: () {
                       setState(() {
                         // _searchController.clear(); // arama metnini korumak istersen kapalı kalsın
-                        _selectedCity       = null;
-                        _selectedDate       = null;
-                        _startHour          = null;
-                        _endHour            = null;
-                        hasParking        = false;
-                        hasShowers        = false;
-                        hasShoeRental     = false;
-                        hasCafeteria      = false;
-                        hasNightLighting  = false;
-                        hasMaleToilet     = false;
-                        hasFemaleToilet   = false;
-                        hasFoodService    = false;
+                        _selectedCity = null;
+                        _selectedDate = null;
+                        _startHour = null;
+                        _endHour = null;
+                        hasParking = false;
+                        hasShowers = false;
+                        hasShoeRental = false;
+                        hasCafeteria = false;
+                        hasNightLighting = false;
+                        hasMaleToilet = false;
+                        hasFemaleToilet = false;
+                        hasFoodService = false;
                         acceptsCreditCard = false;
-                        hasFoosball       = false;
-                        hasCameras        = false;
-                        hasGoalkeeper     = false;
-                        hasPlayground     = false;
-                        hasPrayerRoom     = false;
-                        hasInternet       = false;
-                        _selectedMinPrice   = _minPrice;
-                        _selectedMaxPrice   = _maxPrice;
-                        _priceFilterActive  = false;
-                        _selectedRating     = 0;
+                        hasFoosball = false;
+                        hasCameras = false;
+                        hasGoalkeeper = false;
+                        hasPlayground = false;
+                        hasPrayerRoom = false;
+                        hasInternet = false;
+                        _selectedMinPrice = _minPrice;
+                        _selectedMaxPrice = _maxPrice;
+                        _priceFilterActive = false;
+                        _selectedRating = 0;
                       });
                       _recomputeBaseFiltered();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    icon: const Icon(Ionicons.refresh_outline, color: Colors.white),
+                    icon: const Icon(Ionicons.refresh_outline,
+                        color: Colors.white),
                     label: const Text(
                       "Filtreleri Temizle",
                       style: TextStyle(fontSize: 16, color: Colors.white),
@@ -524,130 +533,159 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
           separatorBuilder: (_, __) => const SizedBox(height: 11),
           itemBuilder: (context, index) {
             final saha = view[index];
-            final isFav = favProv.isFavorite(saha.id);
 
             return GestureDetector(
-              onTap: () => _openDetail(context, saha),
-              child: Material(
-                elevation: 6,
-                shadowColor: Colors.black26,
-                borderRadius: BorderRadius.circular(24),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Stack(
+                onTap: () => _openDetail(context, saha),
+                child: Material(
+                  elevation: 6,
+                  shadowColor: Colors.black26,
+                  borderRadius: BorderRadius.circular(24),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Hero(
-                          tag: 'saha_${saha.id}',
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: ProgressiveImage(
-                              imageUrl: saha.imagesUrl.isNotEmpty ? saha.imagesUrl.first : null,
-                              fit: BoxFit.cover,
-                              borderRadius: 0,
+                        Stack(
+                          children: [
+                            Hero(
+                              tag: 'saha_${saha.id}',
+                              child: AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: ProgressiveImage(
+                                  imageUrl: saha.imagesUrl.isNotEmpty
+                                      ? saha.imagesUrl.first
+                                      : null,
+                                  fit: BoxFit.cover,
+                                  borderRadius: 0,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0, right: 0, bottom: 0,
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                              child: Container(
-                                padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-                                color: Colors.black.withOpacity(.35),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      saha.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.titleMedium.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 19,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                    bottom: Radius.circular(24)),
+                                child: BackdropFilter(
+                                  filter:
+                                      ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        20, 10, 20, 14),
+                                    color: Colors.black.withOpacity(.35),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.location_on, size: 18, color: Colors.white70),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            saha.location,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
+                                        Text(
+                                          saha.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTextStyles.titleMedium
+                                              .copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 19,
                                           ),
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(
-                                            '${saha.rating.toStringAsFixed(1)} ★',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.location_on,
+                                                size: 18,
+                                                color: Colors.white70),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                saha.location,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AppTextStyles.bodySmall
+                                                    .copyWith(
+                                                        color: Colors.white),
+                                              ),
                                             ),
-                                          ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '${saha.rating.toStringAsFixed(1)} ★',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        Positioned(top: 14, left: 14, child: _priceBadge(saha.price)),
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () => context.read<FavoritesProvider>().toggleFavorite(saha.id),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(.82),
-                                shape: BoxShape.circle,
-                              ),
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 120),
-                                child: Icon(
-                                  isFav ? Icons.favorite : Icons.favorite_border,
-                                  key: ValueKey(isFav),
-                                  size: 22,
-                                  color: isFav ? Colors.redAccent : Colors.grey.shade600,
+                            Positioned(
+                                top: 14,
+                                left: 14,
+                                child: _priceBadge(saha.price)),
+                            // ✅ Favori sadece oturum varken
+                            if (widget.currentUser != null)
+                              if (widget.currentUser != null)
+                                Positioned(
+                                  top: 12,
+                                  right: 12,
+                                  child: Consumer<FavoritesProvider>(
+                                    builder: (_, favProv, __) {
+                                      final isFav = favProv.isFavorite(saha.id);
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(24),
+                                        onTap: () =>
+                                            favProv.toggleFavorite(saha.id),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(.82),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(
+                                                milliseconds: 120),
+                                            child: Icon(
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              key: ValueKey(isFav),
+                                              size: 22,
+                                              color: isFav
+                                                  ? Colors.redAccent
+                                                  : Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
+                      ]),
+                ));
           },
         );
       },
     );
   }
 
-
-
   // ────────────────────────────────────────────────────────────
-  Widget _priceBadge(num fiyat) =>
-      ClipRRect(
+  Widget _priceBadge(num fiyat) => ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -686,18 +724,16 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     Navigator.of(ctx).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) =>
-            HaliSahaDetailPage(
-              haliSaha: saha,
-              currentUser: widget.currentUser,
-            ),
-        transitionsBuilder: (_, anim, __, child) =>
-            ScaleTransition(
-              scale: Tween(begin: .94, end: 1.0)
-                  .chain(CurveTween(curve: Curves.easeOutCubic))
-                  .animate(anim),
-              child: FadeTransition(opacity: anim, child: child),
-            ),
+        pageBuilder: (_, __, ___) => HaliSahaDetailPage(
+          haliSaha: saha,
+          currentUser: widget.currentUser,
+        ),
+        transitionsBuilder: (_, anim, __, child) => ScaleTransition(
+          scale: Tween(begin: .94, end: 1.0)
+              .chain(CurveTween(curve: Curves.easeOutCubic))
+              .animate(anim),
+          child: FadeTransition(opacity: anim, child: child),
+        ),
       ),
     );
   }
@@ -729,10 +765,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                         20,
                         24,
                         20,
-                        MediaQuery
-                            .of(ctx)
-                            .viewInsets
-                            .bottom + 100,
+                        MediaQuery.of(ctx).viewInsets.bottom + 100,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,29 +836,29 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                           onPressed: () {
                             Navigator.pop(ctx);
                             setState(() {
-                              _selectedCity       = null;
-                              _selectedDate       = null;
-                              _startHour          = null;
-                              _endHour            = null;
-                              hasParking        = false;
-                              hasShowers        = false;
-                              hasShoeRental     = false;
-                              hasCafeteria      = false;
-                              hasNightLighting  = false;
-                              hasMaleToilet     = false;
-                              hasFemaleToilet   = false;
-                              hasFoodService    = false;
+                              _selectedCity = null;
+                              _selectedDate = null;
+                              _startHour = null;
+                              _endHour = null;
+                              hasParking = false;
+                              hasShowers = false;
+                              hasShoeRental = false;
+                              hasCafeteria = false;
+                              hasNightLighting = false;
+                              hasMaleToilet = false;
+                              hasFemaleToilet = false;
+                              hasFoodService = false;
                               acceptsCreditCard = false;
-                              hasFoosball       = false;
-                              hasCameras        = false;
-                              hasGoalkeeper     = false;
-                              hasPlayground     = false;
-                              hasPrayerRoom     = false;
-                              hasInternet       = false;
-                              _selectedMinPrice   = _minPrice;
-                              _selectedMaxPrice   = _maxPrice;
-                              _priceFilterActive  = false;
-                              _selectedRating     = 0;
+                              hasFoosball = false;
+                              hasCameras = false;
+                              hasGoalkeeper = false;
+                              hasPlayground = false;
+                              hasPrayerRoom = false;
+                              hasInternet = false;
+                              _selectedMinPrice = _minPrice;
+                              _selectedMaxPrice = _maxPrice;
+                              _priceFilterActive = false;
+                              _selectedRating = 0;
                             });
                             _recomputeBaseFiltered();
                           },
@@ -881,10 +914,10 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                     backgroundColor: Colors.grey.shade100,
                     labelStyle: sel
                         ? AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w600)
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w600)
                         : AppTextStyles.bodyMedium
-                        .copyWith(color: Colors.black87),
+                            .copyWith(color: Colors.black87),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   );
@@ -928,7 +961,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                       : DateFormat('EEE, dd MMM', 'tr').format(_selectedDate!),
                   style: AppTextStyles.bodyLarge.copyWith(
                       color:
-                      _selectedDate == null ? Colors.grey : Colors.black87),
+                          _selectedDate == null ? Colors.grey : Colors.black87),
                 ),
               ],
             ),
@@ -943,14 +976,16 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
 
 // Eğer null ise minHour, null ise maxHour
     final double start = _startHour?.toDouble() ?? minHour;
-    final double end   = _endHour  ?.toDouble() ?? maxHour;
+    final double end = _endHour?.toDouble() ?? maxHour;
 
     String fmt(double v) => '${v.toInt().toString().padLeft(2, '0')}:00';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Saat Aralığı', style: AppTextStyles.labelLarge.copyWith(color: AppColors.primaryDark)),
+        Text('Saat Aralığı',
+            style: AppTextStyles.labelLarge
+                .copyWith(color: AppColors.primaryDark)),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -975,7 +1010,7 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
             if (values.end - values.start >= 1) {
               setInner(() {
                 _startHour = values.start.toInt();
-                _endHour   = values.end.toInt();
+                _endHour = values.end.toInt();
               });
               // anında filtre uygula
               _recomputeBaseFiltered();
@@ -1008,27 +1043,89 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   /// Filtre panelindeki “Tesis İmkânları” bölümünü oluşturur.
   Widget _buildFacilitiesSelector(void Function(void Function()) setInner) {
     final facilities = [
-      {'label': 'Otopark',           'value': hasParking,        'setter': (bool v) => hasParking = v},
-      {'label': 'Duş',               'value': hasShowers,        'setter': (bool v) => hasShowers = v},
-      {'label': 'Kiralık Krampon',   'value': hasShoeRental,     'setter': (bool v) => hasShoeRental = v},
-      {'label': 'Kafeterya',         'value': hasCafeteria,      'setter': (bool v) => hasCafeteria = v},
-      {'label': 'Gece Aydınlatma',   'value': hasNightLighting,  'setter': (bool v) => hasNightLighting = v},
-      {'label': 'Erkek Tuvaleti',    'value': hasMaleToilet,     'setter': (bool v) => hasMaleToilet = v},
-      {'label': 'Kadın Tuvaleti',    'value': hasFemaleToilet,   'setter': (bool v) => hasFemaleToilet = v},
-      {'label': 'Yemek Servisi',     'value': hasFoodService,    'setter': (bool v) => hasFoodService = v},
-      {'label': 'Kredi Kartı',       'value': acceptsCreditCard, 'setter': (bool v) => acceptsCreditCard = v},
-      {'label': 'Langırt',           'value': hasFoosball,       'setter': (bool v) => hasFoosball = v},
-      {'label': 'Kamera',            'value': hasCameras,        'setter': (bool v) => hasCameras = v},
-      {'label': 'Kaleci Kiralama',   'value': hasGoalkeeper,     'setter': (bool v) => hasGoalkeeper = v},
-      {'label': 'Oyun Alanı',        'value': hasPlayground,     'setter': (bool v) => hasPlayground = v},
-      {'label': 'İbadet Alanı',      'value': hasPrayerRoom,     'setter': (bool v) => hasPrayerRoom = v},
-      {'label': 'İnternet',          'value': hasInternet,       'setter': (bool v) => hasInternet = v},
+      {
+        'label': 'Otopark',
+        'value': hasParking,
+        'setter': (bool v) => hasParking = v
+      },
+      {
+        'label': 'Duş',
+        'value': hasShowers,
+        'setter': (bool v) => hasShowers = v
+      },
+      {
+        'label': 'Kiralık Krampon',
+        'value': hasShoeRental,
+        'setter': (bool v) => hasShoeRental = v
+      },
+      {
+        'label': 'Kafeterya',
+        'value': hasCafeteria,
+        'setter': (bool v) => hasCafeteria = v
+      },
+      {
+        'label': 'Gece Aydınlatma',
+        'value': hasNightLighting,
+        'setter': (bool v) => hasNightLighting = v
+      },
+      {
+        'label': 'Erkek Tuvaleti',
+        'value': hasMaleToilet,
+        'setter': (bool v) => hasMaleToilet = v
+      },
+      {
+        'label': 'Kadın Tuvaleti',
+        'value': hasFemaleToilet,
+        'setter': (bool v) => hasFemaleToilet = v
+      },
+      {
+        'label': 'Yemek Servisi',
+        'value': hasFoodService,
+        'setter': (bool v) => hasFoodService = v
+      },
+      {
+        'label': 'Kredi Kartı',
+        'value': acceptsCreditCard,
+        'setter': (bool v) => acceptsCreditCard = v
+      },
+      {
+        'label': 'Langırt',
+        'value': hasFoosball,
+        'setter': (bool v) => hasFoosball = v
+      },
+      {
+        'label': 'Kamera',
+        'value': hasCameras,
+        'setter': (bool v) => hasCameras = v
+      },
+      {
+        'label': 'Kaleci Kiralama',
+        'value': hasGoalkeeper,
+        'setter': (bool v) => hasGoalkeeper = v
+      },
+      {
+        'label': 'Oyun Alanı',
+        'value': hasPlayground,
+        'setter': (bool v) => hasPlayground = v
+      },
+      {
+        'label': 'İbadet Alanı',
+        'value': hasPrayerRoom,
+        'setter': (bool v) => hasPrayerRoom = v
+      },
+      {
+        'label': 'İnternet',
+        'value': hasInternet,
+        'setter': (bool v) => hasInternet = v
+      },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Tesis İmkânları', style: AppTextStyles.labelLarge.copyWith(color: AppColors.primaryDark)),
+        Text('Tesis İmkânları',
+            style: AppTextStyles.labelLarge
+                .copyWith(color: AppColors.primaryDark)),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -1049,8 +1146,10 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                     backgroundColor: Colors.grey.shade100,
                     labelStyle: sel
                         ? AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primaryDark, fontWeight: FontWeight.w600)
-                        : AppTextStyles.bodyMedium.copyWith(color: Colors.black87),
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w600)
+                        : AppTextStyles.bodyMedium
+                            .copyWith(color: Colors.black87),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -1070,7 +1169,9 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Fiyat Aralığı', style: AppTextStyles.labelMedium.copyWith(color: AppColors.primaryDark)),
+        Text('Fiyat Aralığı',
+            style: AppTextStyles.labelMedium
+                .copyWith(color: AppColors.primaryDark)),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1080,19 +1181,21 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
           ],
         ),
         RangeSlider(
-          values: RangeValues(_selectedMinPrice.toDouble(), _selectedMaxPrice.toDouble()),
+          values: RangeValues(
+              _selectedMinPrice.toDouble(), _selectedMaxPrice.toDouble()),
           min: _minPrice.toDouble(),
           max: _maxPrice.toDouble(),
           divisions: (_maxPrice - _minPrice).toInt(),
-          labels: RangeLabels(fmtPrice(_selectedMinPrice), fmtPrice(_selectedMaxPrice)),
+          labels: RangeLabels(
+              fmtPrice(_selectedMinPrice), fmtPrice(_selectedMaxPrice)),
           activeColor: AppColors.primary,
           inactiveColor: Colors.grey.shade300,
           onChanged: (values) {
             if (values.end - values.start >= 50) {
               setInner(() {
-                _selectedMinPrice  = values.start;
-                _selectedMaxPrice  = values.end;
-                _priceFilterActive = true;    // <-- kullanıcı oynadı
+                _selectedMinPrice = values.start;
+                _selectedMaxPrice = values.end;
+                _priceFilterActive = true; // <-- kullanıcı oynadı
               });
               _recomputeBaseFiltered();
             }
@@ -1107,7 +1210,9 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Minimum Puan', style: AppTextStyles.labelMedium.copyWith(color: AppColors.primaryDark)),
+        Text('Minimum Puan',
+            style: AppTextStyles.labelMedium
+                .copyWith(color: AppColors.primaryDark)),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -1118,23 +1223,35 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                 children: List.generate(6, (i) {
                   final label = i == 0
                       ? 'Tümü'
-                      : List.generate(i, (_) => Icon(Icons.star, size: 16)).fold<Widget>(SizedBox(), (row, star){
-                    if (row is SizedBox) return Row(children: [star]);
-                    return Row(children: [...(row as Row).children, star]);
-                  });
+                      : List.generate(i, (_) => Icon(Icons.star, size: 16))
+                          .fold<Widget>(SizedBox(), (row, star) {
+                          if (row is SizedBox) return Row(children: [star]);
+                          return Row(
+                              children: [...(row as Row).children, star]);
+                        });
                   final sel = _selectedRating == i;
                   return ChoiceChip(
                     label: i == 0
                         ? Text(label.toString())
-                        : Row(mainAxisSize: MainAxisSize.min, children: List.generate(i, (_) => Icon(Icons.star, size: 16, color: sel ? Colors.amber: Colors.grey))),
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: List.generate(
+                                i,
+                                (_) => Icon(Icons.star,
+                                    size: 16,
+                                    color: sel ? Colors.amber : Colors.grey))),
                     selected: sel,
                     selectedColor: AppColors.primary.withOpacity(0.2),
                     onSelected: (_) => setInner(() => _selectedRating = i),
                     backgroundColor: Colors.grey.shade100,
                     labelStyle: sel
-                        ? AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w600)
-                        : AppTextStyles.bodyMedium.copyWith(color: Colors.black87),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ? AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w600)
+                        : AppTextStyles.bodyMedium
+                            .copyWith(color: Colors.black87),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   );
                 }),
               ),

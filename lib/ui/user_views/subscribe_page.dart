@@ -141,8 +141,7 @@ class _SubscribePageState extends State<SubscribePage> {
     showLoader(context);
     final selectedDayText = daysOfWeek[selectedDay]['full'];
     final selectedTimeText = selectedTime!;
-    final startDate =
-        calculateFirstSession(selectedDay + 1, selectedTimeText);
+    final startDate = calculateFirstSession(selectedDay + 1, selectedTimeText);
     final sub = Subscription(
       docId: '',
       haliSahaId: widget.halisaha.id,
@@ -165,12 +164,14 @@ class _SubscribePageState extends State<SubscribePage> {
 
     try {
       if (await _hasReachedInstantSubscriptionLimit()) {
-        AppSnackBar.warning(context, 'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
+        AppSnackBar.warning(context,
+            'Yeni bir abonelik isteği gönderebilmeniz için önce mevcut isteklerinizin sonuçlanmasını beklemeniz gerekiyor.');
         return;
       }
 
       if (await _hasReachedDailyCancelLimit()) {
-          AppSnackBar.warning(context, 'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
+        AppSnackBar.warning(context,
+            'Günlük abonelik iptal sınırı aşıldı. Bugün yeni abonelik isteği gönderemezsiniz.');
         return;
       }
 
@@ -181,12 +182,17 @@ class _SubscribePageState extends State<SubscribePage> {
 
       hideLoader();
       await _showSuccessDialog(context, selectedDayText!, selectedTimeText);
+      // Başarılı abonelik sonrası formu resetle
+      if (mounted) {
+        setState(() {
+          selectedTime = null;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.error(context, 'Abonelik gönderilirken bir hata oluştu.');
       print("Abone olma hatası: $e");
-    }
-    finally{
+    } finally {
       hideLoader();
     }
   }
@@ -268,8 +274,7 @@ class _SubscribePageState extends State<SubscribePage> {
 
     print("START: ${widget.halisaha.startHour}");
     print("END: ${widget.halisaha.endHour}");
-    final result =
-        calculateFirstSession(1, "20:00-21:00"); // Pazartesi için
+    final result = calculateFirstSession(1, "20:00-21:00"); // Pazartesi için
     print(result); // Beklenen: 2025-05-20 20:00-21:00
 
     // TODO: implement initState
@@ -425,109 +430,123 @@ class _SubscribePageState extends State<SubscribePage> {
                           ),
                           const SizedBox(height: 15),
                           StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
+                            stream: FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+                              if (user == null) {
+                                // Oturum yoksa Firestore’a bağlanma → boş stream
+                                return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+                              }
+                              return FirebaseFirestore.instance
                                   .collection('subscriptions')
-                                  .where('haliSahaId',
-                                      isEqualTo: widget.halisaha.id)
-                                  .where('dayOfWeek',
-                                      isEqualTo: selectedDay + 1)
-                                  .where('status', whereIn: [
-                                'Beklemede',
-                                'Aktif'
-                              ]).snapshots(), // 🔄 Bu bir stream!,
-                              builder: (context, snapshot) {
-                                print("📢 StreamBuilder tetiklendi:");
-                                print(" - hasData: ${snapshot.hasData}");
-                                print(" - hasError: ${snapshot.hasError}");
-                                print(
-                                    " - connectionState: ${snapshot.connectionState}");
-                                if (!snapshot.hasData) {
-                                  return Center(
-                                      child: CircularProgressIndicator());
+                                  .where('haliSahaId', isEqualTo: widget.halisaha.id)
+                                  .where('dayOfWeek', isEqualTo: selectedDay + 1)
+                                  .where('status', whereIn: ['Beklemede', 'Aktif'])
+                                  .snapshots()
+                              // Unhandled Exception olmasın:
+                                  .handleError((e, _) {
+                                if (e is FirebaseException && e.code == 'permission-denied') {
+                                  debugPrint('subscriptions stream: permission-denied (ignored)');
+                                } else {
+                                  debugPrint('subscriptions stream error: $e');
                                 }
+                              });
+                            }),
+                            builder: (context, snapshot) {
+                              // Oturum yoksa bu alanı göstermeyelim (istersen burada login CTA koy)
+                              if (FirebaseAuth.instance.currentUser == null) {
+                                return const SizedBox.shrink();
+                              }
 
-                                final blockedTimes = snapshot.data!.docs
-                                    .map((doc) => doc['time'])
-                                    .toList();
-                                print("⏰ Engellenmiş saatler: $blockedTimes");
-                                final timeSlots = generateTimeSlots(
-                                    widget.halisaha.startHour,
-                                    widget.halisaha.endHour);
-                                final availableSlots = timeSlots
-                                    .where(
-                                        (slot) => !blockedTimes.contains(slot))
-                                    .toList();
+                              // Hata durumunda permission-denied’i sessizce yut, diğerlerini göster
+                              if (snapshot.hasError) {
+                                final err = snapshot.error;
+                                if (err is FirebaseException && err.code == 'permission-denied') {
+                                  return const SizedBox.shrink();
+                                }
+                                return const Center(child: Text('Bir hata oluştu'));
+                              }
 
-                                return SizedBox(
-                                  height: screenHeight * 0.4,
-                                  child: GridView.count(
-                                    crossAxisCount: 2,
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 12,
-                                    childAspectRatio: 3.8,
-                                    physics: const BouncingScrollPhysics(),
-                                    children: availableSlots.map((time) {
-                                      final isSelected = selectedTime == time;
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          gradient: isSelected
-                                              ? LinearGradient(
-                                                  colors: gradientColors,
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                )
-                                              : null,
-                                          color: isSelected
-                                              ? null
-                                              : Colors.grey.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? Colors.transparent
-                                                : Colors.grey.shade300,
-                                          ),
-                                          boxShadow: isSelected
-                                              ? [
-                                                  BoxShadow(
-                                                    color: Colors.blue.shade200,
-                                                    blurRadius: 5,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ]
-                                              : [],
+                              print("📢 StreamBuilder tetiklendi:");
+                              print(" - hasData: ${snapshot.hasData}");
+                              print(" - hasError: ${snapshot.hasError}");
+                              print(" - connectionState: ${snapshot.connectionState}");
+
+                              if (!snapshot.hasData) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+
+                              final blockedTimes = snapshot.data!.docs.map((doc) => doc['time']).toList();
+                              print("⏰ Engellenmiş saatler: $blockedTimes");
+
+                              final timeSlots = generateTimeSlots(
+                                widget.halisaha.startHour,
+                                widget.halisaha.endHour,
+                              );
+                              final availableSlots =
+                              timeSlots.where((slot) => !blockedTimes.contains(slot)).toList();
+
+                              return SizedBox(
+                                height: screenHeight * 0.4,
+                                child: GridView.count(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 3.8,
+                                  physics: const BouncingScrollPhysics(),
+                                  children: availableSlots.map((time) {
+                                    final isSelected = selectedTime == time;
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        gradient: isSelected
+                                            ? LinearGradient(
+                                          colors: gradientColors,
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                            : null,
+                                        color: isSelected ? null : Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: isSelected ? Colors.transparent : Colors.grey.shade300,
                                         ),
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => setState(
-                                              () => selectedTime = time),
-                                          icon: Icon(
-                                            Icons.access_time,
-                                            size: 16,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : Colors.blue.shade700,
+                                        boxShadow: isSelected
+                                            ? [
+                                          BoxShadow(
+                                            color: Colors.blue.shade200,
+                                            blurRadius: 5,
+                                            offset: const Offset(0, 2),
                                           ),
-                                          label: Text(time,
-                                              style: AppTextStyles.bodySmall
-                                                  .copyWith(
-                                                color: isSelected
-                                                    ? Colors.white
-                                                    : Colors.blue.shade700,
-                                              )),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                            elevation: 0,
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10)),
+                                        ]
+                                            : [],
+                                      ),
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => setState(() => selectedTime = time),
+                                        icon: Icon(
+                                          Icons.access_time,
+                                          size: 16,
+                                          color: isSelected ? Colors.white : Colors.blue.shade700,
+                                        ),
+                                        label: Text(
+                                          time,
+                                          style: AppTextStyles.bodySmall.copyWith(
+                                            color: isSelected ? Colors.white : Colors.blue.shade700,
                                           ),
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                );
-                              }),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              );
+                            },
+                          )
+
                         ],
                       ),
                     ),

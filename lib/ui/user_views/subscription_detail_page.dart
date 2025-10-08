@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:flutter/services.dart';
@@ -51,7 +52,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
         backgroundColor: primaryBlue,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -70,15 +71,15 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
               indicatorColor: primaryBlue,
               labelColor: primaryBlue,
               unselectedLabelColor: Colors.grey.shade500,
-              labelStyle: TextStyle(
+              labelStyle: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
-              unselectedLabelStyle: TextStyle(
+              unselectedLabelStyle: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
               ),
-              tabs: [
+              tabs: const [
                 Tab(text: 'Aktif Abonelikler'),
                 Tab(text: 'Geçmiş Abonelikler'),
               ],
@@ -87,13 +88,26 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
 
           // İçerik
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('subscriptions')
-                  .where('userId', isEqualTo: widget.currentUser.id)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+            // 🔒 AUTH GUARD: Oturum yoksa aktifler için boş liste döner
+            child: StreamBuilder<List<Subscription>>(
+              stream: FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+                if (user == null) {
+                  return Stream.value(const <Subscription>[]);
+                }
+                return FirebaseFirestore.instance
+                    .collection('subscriptions')
+                    .where('userId', isEqualTo: widget.currentUser.id)
+                    .where('status', whereIn: const ['Aktif', 'Beklemede'])
+                    .snapshots()
+                    .map((snap) => snap.docs
+                    .map((d) => Subscription.fromMap(
+                  d.data(),
+                  d.id,
+                ))
+                    .toList());
+              }),
+              builder: (context, activeSnap) {
+                if (!activeSnap.hasData) {
                   return Center(
                     child: CircularProgressIndicator(
                       color: primaryBlue,
@@ -102,61 +116,60 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                   );
                 }
 
-                final allDocs = snapshot.data!.docs;
-
-                final activeSubs = allDocs.where((doc) {
-                  final status = doc['status'];
-                  return status == 'Aktif' || status == 'Beklemede';
-                }).toList();
-                ;
+                final activeSubs = activeSnap.data!; // oturum yoksa []
                 return TabBarView(
                   controller: _tabController,
                   children: [
+                    // 🔹 AKTİF/BEKLEMEDE
                     activeSubs.isEmpty
-                        ? _buildEmptyState(
-                            'Aktif aboneliğiniz bulunmamaktadır.')
+                        ? _buildEmptyState('Aktif aboneliğiniz bulunmamaktadır.')
                         : ListView.builder(
-                            physics: BouncingScrollPhysics(),
-                            padding: EdgeInsets.all(16),
-                            itemCount: activeSubs.length,
-                            itemBuilder: (context, index) {
-                              final data = activeSubs[index].data()
-                                  as Map<String, dynamic>;
-                              final sub = Subscription.fromMap(
-                                  data, activeSubs[index].id);
-                              return AbonelikCard(sub: sub);
-                            },
-                          ),
-                    // 🔹 "GEÇMİŞ: FutureBuilder ile log'ları bir defa oku
-                    FutureBuilder<QuerySnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('subscription_logs')
-                          .where('userId', isEqualTo: widget.currentUser.id)
-                          .where('newStatus',
-                              whereIn: ['Sona Erdi', 'İptal Edildi'])
-                          .orderBy('createdAt', descending: true)
-                          .get(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return Center(
-                              child: CircularProgressIndicator(
-                                  color: primaryBlue));
-                        }
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: activeSubs.length,
+                      itemBuilder: (context, index) {
+                        final sub = activeSubs[index];
+                        return AbonelikCard(sub: sub);
+                      },
+                    ),
 
-                        final pastLogs = snapshot.data!.docs;
-                        if (pastLogs.isEmpty) {
+                    // 🔹 GEÇMİŞ: AUTH GUARD’lı tek seferlik sorgu
+                    FutureBuilder<List<Subscription>>(
+                      future: () async {
+                        if (FirebaseAuth.instance.currentUser == null) {
+                          return <Subscription>[];
+                        }
+                        final qs = await FirebaseFirestore.instance
+                            .collection('subscription_logs')
+                            .where('userId', isEqualTo: widget.currentUser.id)
+                            .where('newStatus',
+                            whereIn: const ['Sona Erdi', 'İptal Edildi'])
+                            .orderBy('createdAt', descending: true)
+                            .get();
+
+                        return qs.docs
+                            .map((d) => Subscription.fromMap(
+                          d.data() as Map<String, dynamic>,
+                          d.id,
+                        ))
+                            .toList();
+                      }(),
+                      builder: (context, pastSnap) {
+                        if (!pastSnap.hasData) {
+                          return Center(
+                            child: CircularProgressIndicator(color: primaryBlue),
+                          );
+                        }
+                        final past = pastSnap.data!;
+                        if (past.isEmpty) {
                           return _buildEmptyState(
                               'Geçmiş aboneliğiniz bulunmamaktadır.');
                         }
-
                         return ListView.builder(
-                          padding: EdgeInsets.all(16),
-                          itemCount: pastLogs.length,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: past.length,
                           itemBuilder: (context, index) {
-                            final data =
-                                pastLogs[index].data() as Map<String, dynamic>;
-                            final sub =
-                                Subscription.fromMap(data, pastLogs[index].id);
+                            final sub = past[index];
                             return AbonelikCard(sub: sub);
                           },
                         );
@@ -170,6 +183,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
         ],
       ),
     );
+
   }
 
   Widget _buildEmptyState(String message) {
@@ -196,6 +210,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
     );
   }
 }
+
 
 class AbonelikCard extends StatefulWidget {
   final Subscription sub;
@@ -502,10 +517,14 @@ class _AbonelikCardState extends State<AbonelikCard> {
                       Builder(
                         builder: (context) {
                           final now = TimeService.now();
-                          final nextDate =
-                              DateTime.tryParse(widget.sub.visibleSession ?? "");
+                          final nextDate =_parseVisibleStart(widget.sub.visibleSession);
+
                           final bool canCancelThisWeek = nextDate != null &&
-                              nextDate.difference(now).inDays < 7;
+                              nextDate.isAfter(now) &&
+                              nextDate.isBefore(now.add(const Duration(days: 7)));
+
+                          debugPrint("Next date: $nextDate");
+                          debugPrint("Now: $now");
 
                           return Row(
                             children: [
@@ -586,6 +605,22 @@ class _AbonelikCardState extends State<AbonelikCard> {
         ],
       ),
     );
+  }
+
+  DateTime? _parseVisibleStart(String? s) {
+    if (s == null || s.isEmpty) return null;
+    // Yıl-Ay-Gün Saat:Dakika (bitiş kısmı varsa görmezden gel)
+    final re = RegExp(r'^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})');
+    final m = re.firstMatch(s);
+    if (m == null) return null;
+
+    final year  = int.parse(m.group(1)!);
+    final month = int.parse(m.group(2)!);
+    final day   = int.parse(m.group(3)!);
+    final hour  = int.parse(m.group(4)!);
+    final min   = int.parse(m.group(5)!);
+
+    return DateTime(year, month, day, hour, min).toLocal();
   }
 
 

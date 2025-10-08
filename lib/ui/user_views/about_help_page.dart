@@ -108,11 +108,11 @@ class AboutHelpPage extends StatelessWidget {
                   onTap: () =>
                       _openMarkdown(context, 'assets/about_help_texts/tos.md', 'Kullanım Şartları'),
                 ),
-                _LinkCard(
+               /* _LinkCard(
                   icon: Icons.code,
                   text: 'Açık Kaynak Lisansları',
                   onTap: () => showLicensePage(context: context),
-                ),
+                ),*/
                 _LinkCard(
                   icon: Icons.email_outlined,
                   text: 'info@toplansin.com',
