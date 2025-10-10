@@ -1550,6 +1550,10 @@ PODS:
   - PromisesObjC (2.4.0)
   - PromisesSwift (2.4.0):
     - PromisesObjC (= 2.4.0)
+  - RecaptchaEnterprise (18.8.0):
+    - RecaptchaEnterpriseSDK (= 18.8.0)
+    - RecaptchaInterop (~> 101.0.0)
+  - RecaptchaEnterpriseSDK (18.8.0)
   - RecaptchaInterop (101.0.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
@@ -1579,6 +1583,7 @@ DEPENDENCIES:
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - RecaptchaEnterprise
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -1621,6 +1626,8 @@ SPEC REPOS:
     - nanopb
     - PromisesObjC
     - PromisesSwift
+    - RecaptchaEnterprise
+    - RecaptchaEnterpriseSDK
     - RecaptchaInterop
 
 EXTERNAL SOURCES:
@@ -1722,11 +1729,13 @@ SPEC CHECKSUMS:
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   PromisesSwift: 9d77319bbe72ebf6d872900551f7eeba9bce2851
+  RecaptchaEnterprise: a1d985905ade703df814b01f222797cf63ff7ec1
+  RecaptchaEnterpriseSDK: c1a1c5650b68a5eb9037f01878d228bb204d47c6
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
 
-PODFILE CHECKSUM: c7ea3d120da829d9332828eabd892bf92d708035
+PODFILE CHECKSUM: c9e3eb00137368a79fe056b2da0c8bb0f2b484fe
 
 COCOAPODS: 1.16.2
