@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -42,6 +43,8 @@ class _SignUpPageState extends State<SignUpPage> {
   // Firebase erişimi
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
+
 
   // Şifre gücü göstergesi için
   String _passwordStrengthLabel = '';
@@ -135,7 +138,8 @@ class _SignUpPageState extends State<SignUpPage> {
           password: password,
         );
 
-        await userCredential.user?.sendEmailVerification();
+        await sendVerificationEmail(email);
+
 
         Person newUser = Person(
           id: userCredential.user!.uid,
@@ -158,6 +162,18 @@ class _SignUpPageState extends State<SignUpPage> {
       } finally {
         hideLoader();
       }
+    }
+  }
+
+  Future<void> sendVerificationEmail(String email) async {
+    try {
+      final callable = functions.httpsCallable('sendVerificationEmail');
+      await callable.call({'email': email});
+      // başarı
+    } on FirebaseFunctionsException catch (e) {
+      final msg=AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, "Hata: $msg");
+      rethrow;
     }
   }
 

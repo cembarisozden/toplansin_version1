@@ -692,7 +692,7 @@ class _ReservationPageState extends State<ReservationPage> {
         createdAt:           TimeService.nowUtc(),
         userName:            widget.currentUser.name,
         userEmail:           widget.currentUser.email,
-        userPhone:           widget.currentUser.phone ?? '',
+        userPhone:           _auth.currentUser!.phoneNumber ?? '',
         lastUpdatedBy:       widget.currentUser.role,
       );
 

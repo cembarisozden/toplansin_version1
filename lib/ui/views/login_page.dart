@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,6 +26,8 @@ class _LoginPageState extends State<LoginPage> {
   String password = '';
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
+
 
   bool showEmailVerifyBanner = false;
   bool canResendEmail = false;
@@ -47,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
       await cred.user!.reload();
       final refreshedUser = FirebaseAuth.instance.currentUser!;
       if (!refreshedUser.emailVerified) {
-        await refreshedUser.sendEmailVerification(); // e-posta gönder
+        await sendVerificationEmail(email); // e-posta gönder
         setState(() {
           showEmailVerifyBanner = true;
         });
@@ -486,12 +489,37 @@ class _LoginPageState extends State<LoginPage> {
     final email = rawEmail.trim().toLowerCase();
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await sendPasswordResetEmail(email);
+
     } catch (_) {
       // user-not-found dahil tüm hataları yutarız → enumeration koruması
     }
 
     AppSnackBar.show(context,"Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi.");
+  }
+
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    // Bölgeyi mutlaka seninkiyle aynı ver: "europe-west1"
+    final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
+    final callable = functions.httpsCallable('sendPasswordResetEmail');
+
+    try {
+      final res = await callable.call<Map<String, dynamic>>({'email': email});
+      // res.data => {"ok": true} bekleniyor
+      // burada kullanıcıya başarı mesajı gösterebilirsin.
+      // AppSnackBar.show(context, "Şifre sıfırlama maili gönderildi.");
+    } on FirebaseFunctionsException catch (e) {
+      final msg = switch (e.code) {
+        'invalid-argument' => 'E-posta adresi geçersiz.',
+        'failed-precondition' => 'Sunucu yapılandırması eksik (RESEND_API_KEY vb.).',
+        _ => e.message ?? 'Beklenmeyen bir hata oluştu.'
+      };
+      rethrow; // ya da kullanıcıya göster
+    } catch (e) {
+      AppSnackBar.error(context, "Bağlantı hatası. Lütfen tekrar deneyin.");
+      rethrow;
+    }
   }
 
 
@@ -516,12 +544,25 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> resendVerificationEmail() async {
     try {
-      await _auth.currentUser?.sendEmailVerification();
+      await sendVerificationEmail(email);
       startCountdown();
       AppSnackBar.show(context,"Doğrulama e-postası tekrar gönderildi.");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
       AppSnackBar.error(context, msg);
+    }
+  }
+
+
+  Future<void> sendVerificationEmail(String email) async {
+    try {
+      final callable = functions.httpsCallable('sendVerificationEmail');
+      await callable.call({'email': email});
+      // başarı
+    } on FirebaseFunctionsException catch (e) {
+      final msg=AppErrorHandler.getMessage(e);
+      AppSnackBar.error(context, "Hata: $msg");
+      rethrow;
     }
   }
 
