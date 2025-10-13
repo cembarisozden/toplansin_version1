@@ -1,9 +1,9 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
@@ -276,7 +276,6 @@ Future<void> addOwnerSubscription({
 Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) async {
   showLoader(context);
   try {
-    final functions = FirebaseFunctions.instance;
     final callable = functions.httpsCallable('cancelThisWeekSlot');
 
     final response = await callable.call({

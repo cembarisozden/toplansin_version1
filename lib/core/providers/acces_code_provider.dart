@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/acces_code.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/user_acces_code_page.dart';
@@ -200,7 +200,7 @@ class AccessCodeProvider extends ChangeNotifier {
 // 1) Kodla saha bulma
   Future<HaliSaha?> findPitchByCode(BuildContext context, String code) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await functions
           .httpsCallable('findPitchByCode')
           .call({'code': code});
 
@@ -223,7 +223,7 @@ class AccessCodeProvider extends ChangeNotifier {
 // 2) Kullanıcıya kod ekleme
   Future<void> addUserAccessCode(BuildContext context, String codeId) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await functions
           .httpsCallable('addUserAccessCode')
           .call({'code': codeId});
 
@@ -241,7 +241,7 @@ class AccessCodeProvider extends ChangeNotifier {
 // 3) Kullanıcıdan kod silme
   Future<void> removeUserAccessCode(BuildContext context, String codeId) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await functions
           .httpsCallable('removeUserAccessCode')
           .call({'code': codeId});
 
@@ -259,7 +259,7 @@ class AccessCodeProvider extends ChangeNotifier {
 // 4) Kullanıcının kodlarını yükleme
   Future<List<UserCodeEntry>> loadUserCodes(BuildContext context) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await functions
           .httpsCallable('loadUserCodes')
           .call();
 
@@ -287,7 +287,7 @@ class AccessCodeProvider extends ChangeNotifier {
 // 5) Kullanıcının saha için kodu var mı kontrol etme
   Future<bool> hasMatchingAccessCode(String haliSahaId, BuildContext context) async {
     try {
-      final result = await FirebaseFunctions.instance
+      final result = await functions
           .httpsCallable('hasMatchingAccessCode')
           .call({'haliSahaId': haliSahaId});
 

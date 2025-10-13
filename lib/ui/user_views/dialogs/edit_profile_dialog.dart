@@ -34,7 +34,6 @@ Future<Person?> openEditProfileDialog(BuildContext context, Person user) {
 /*───────────────────────────── 2. DIALOG ─────────────────────────────*/
 class _EditProfileDialog extends StatefulWidget {
   const _EditProfileDialog({
-    super.key,
     required this.currentUser,
     required this.rootContext,
   });

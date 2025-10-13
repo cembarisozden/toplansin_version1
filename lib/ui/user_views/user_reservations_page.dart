@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:ionicons/ionicons.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
-import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/user_reservation_detail_page.dart';

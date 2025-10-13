@@ -69,8 +69,20 @@
   <key>NSUserNotificationUsageDescription</key>
   <string>Bildirimler ile sizinle iletişim kurmak istiyoruz.</string>
 
-  <!-- Manuel AppDelegate kullanıyorsan -->
+  <!-- Firebase AppDelegate proxy (manuel yönetim için kapalı) -->
   <key>FirebaseAppDelegateProxyEnabled</key>
   <false/>
+
+  <!-- Firebase Phone Auth için URL Schemes (reCAPTCHA) -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>com.toplansin.toplansin</string>
+        <string>app-1-450679317964-ios-df5f200c530fdbff48e969</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

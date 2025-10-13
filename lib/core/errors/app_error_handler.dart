@@ -52,16 +52,16 @@ class AppErrorHandler {
     // 6️⃣ Dio desteği (paket eklenmişse tip adı üzerinden algıla ‑ import gerekmez)
     if (error.runtimeType.toString() == 'DioException' ||
         error.runtimeType.toString() == 'DioError') {
-      final statusCode = error.response?.statusCode;
-      if (statusCode == 401 || statusCode == 403) {
-        return 'Bu işlemi yapmaya yetkiniz yok.';
-      }
+      final dynamic dio = error; // dynamic cast
+      final int? statusCode = dio.response?.statusCode as int?;
+      if (statusCode == 401 || statusCode == 403) return 'Bu işlemi yapmaya yetkiniz yok.';
       if (statusCode == 404) return _notFound(context);
-      if (statusCode == 500) {
-        return 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
-      }
+      if (statusCode == 408) return 'İstek zaman aşımına uğradı.';
+      if (statusCode == 429) return 'Çok fazla istek. Bir süre sonra tekrar deneyin.';
+      if (statusCode == 500) return 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
       return 'Bağlantı hatası. Lütfen tekrar deneyin.';
     }
+
 
     // 7️⃣ String eşleştirmeleri (geliştirici eksik yakaladıysa)
     final str = error.toString();
@@ -111,6 +111,24 @@ class AppErrorHandler {
         return 'Bu e‑posta farklı bir giriş yöntemiyle kayıtlı.';
       case 'network-request-failed':
         return 'İnternet bağlantısı yok.';
+      case 'operation-not-allowed':
+        return 'Bu giriş yöntemi şu anda devre dışı.';
+      case 'invalid-action-code':
+      case 'expired-action-code':
+        return 'Bağlantı geçersiz veya süresi dolmuş.';
+      case 'invalid-verification-code':
+        return 'Doğrulama kodu hatalı.';
+      case 'session-expired':
+        return 'Oturum süresi doldu. Lütfen yeniden deneyin.';
+      case 'user-mismatch':
+        return 'Kimlik bilgisi farklı bir kullanıcıya ait.';
+      case 'provider-already-linked':
+        return 'Bu sağlayıcı zaten hesabınıza bağlı.';
+      case 'multi-factor-auth-required':
+        return 'Ek doğrulama gerekli. Lütfen yönergeleri izleyin.';
+      case 'popup-closed-by-user':
+        return 'İşlem iptal edildi.';
+
       default:
         return 'Giriş sırasında bir hata oluştu.';
     }
@@ -140,6 +158,21 @@ class AppErrorHandler {
       case 'aborted':
       case 'internal':
         return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';
+      case 'invalid-argument':
+        return 'Geçersiz istek. Lütfen alanları kontrol edin.';
+      case 'failed-precondition':
+        return 'Ön koşullar sağlanmadı. Lütfen işlemi tekrar deneyin.';
+      case 'out-of-range':
+        return 'İstenen veri aralık dışında.';
+      case 'cancelled':
+        return 'İşlem iptal edildi.';
+      case 'unknown':
+        return 'Bilinmeyen bir hata oluştu.';
+      case 'data-loss':
+        return 'Veri kaybı oluştu. Lütfen tekrar deneyin.';
+      case 'unimplemented':
+        return 'Bu özellik henüz kullanılamıyor.';
+
       default:
         return _unknown;
     }

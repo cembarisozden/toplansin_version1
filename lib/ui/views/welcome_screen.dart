@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:toplansin/ui/user_views/explore_pitches_page.dart';
-import 'package:toplansin/ui/user_views/hali_saha_page.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/views/login_page.dart';

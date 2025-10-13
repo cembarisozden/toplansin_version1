@@ -21,8 +21,6 @@ import 'package:toplansin/ui/owner_views/owner_past_subscriptions.dart';
 import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
-import 'package:collection/collection.dart';
-import 'package:toplansin/ui/owner_views/owner_show_users_with_active_codes.dart';
 import 'package:toplansin/ui/owner_views/owner_user_statistics_panel.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
@@ -1488,7 +1486,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       title: Text(title, style: TextStyle(color: Colors.black87)),
       value: currentValue,
       onChanged: onChanged,
-      activeColor: Colors.green.shade600,
+      activeThumbColor: Colors.green.shade600,
     );
   }
 

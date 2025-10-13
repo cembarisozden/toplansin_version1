@@ -1,7 +1,7 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 
 class ReservationRemoteService {
-  final _functions = FirebaseFunctions.instance;
+
 
   /// bookedSlots'a yeni slot ekler (rezervasyon oluşturma)
   Future<bool> reserveSlot({
@@ -10,7 +10,7 @@ class ReservationRemoteService {
   }) async {
     try {
       final callable =
-      _functions.httpsCallable("reserveSlotAndUpdateBookedSlots");
+      functions.httpsCallable("reserveSlotAndUpdateBookedSlots");
 
       final result = await callable.call({
         "haliSahaId": haliSahaId,
@@ -31,7 +31,7 @@ class ReservationRemoteService {
   }) async {
     try {
       final callable =
-      _functions.httpsCallable("cancelSlotAndUpdateBookedSlots");
+      functions.httpsCallable("cancelSlotAndUpdateBookedSlots");
 
       final result = await callable.call({
         "haliSahaId": haliSahaId,

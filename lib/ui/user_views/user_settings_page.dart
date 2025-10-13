@@ -8,6 +8,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
+import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/ui/user_views/dialogs/edit_profile_dialog.dart';
 import 'package:toplansin/ui/user_views/dialogs/phone_verify_dialog.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
@@ -87,7 +89,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         if (!snap.hasData) return const SizedBox.shrink();
 
         final info = snap.data!;
-        final version = "${info.version} (${info.buildNumber})";
+        final version = "${info.version})";
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
@@ -538,25 +540,27 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
 
   Future<void> _deleteAccountWithPassword(String email, String password) async {
     showLoader(context);
-    final user = FirebaseAuth.instance.currentUser;
+    final auth = FirebaseAuth.instance;
+    final db = FirebaseFirestore.instance;
+    final user = auth.currentUser;
     final cred = EmailAuthProvider.credential(email: email, password: password);
 
     try {
       // 1) Re-auth
       await user!.reauthenticateWithCredential(cred);
 
-      // 2) (Opsiyonel) fallback için user doc’u alalım
-      final userDoc =
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      // 2) Açık REZERVASYONLARI iptal et (PENDING/APPROVED → CANCELLED)
+      await _cancelAllUserReservations(db, user.uid);
+
+      // 3) Açık ABONELİKLERİ iptal et (Beklemede/Aktif → İptal Edildi)
+      await _cancelAllUserSubscriptions(db, user.uid);
+
+      // 4) (Opsiyonel) arşiv callable – silmeden ÖNCE
+      final callable = functions.httpsCallable('userDeletionServiceArchive');
+      final userDoc = await db.collection('users').doc(user.uid).get();
       final data = userDoc.data();
 
-      // 3) Arşivleme callable’ı (hesabı silmeden ÖNCE!)
-      final functions =
-      FirebaseFunctions.instanceFor(region: 'europe-west1'); // bölge önemli
-      final callable = functions.httpsCallable('userDeletionServiceArchive');
-
       await callable.call({
-        // Sunucu users/{uid}’yi okuyamazsa fallback olarak kullanır
         'user': {
           'id': user.uid,
           'name': data?['name'] ?? '',
@@ -567,33 +571,104 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         }
       });
 
-      // 4) (İsteğe bağlı) Firestore users/{uid} dokümanını sil
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+      // 5) users/{uid} sil
+      await db.collection('users').doc(user.uid).delete();
 
-      // 5) Auth hesabını sil
+      // 6) Auth hesabını sil
       await user.delete();
 
       AppSnackBar.show(context, "Hesabınız başarıyla silindi.");
 
-      // 6) Çıkış / yönlendirme
+      // 7) Yönlendirme
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => WelcomeScreen()),
             (route) => false,
       );
-    } on FirebaseFunctionsException catch (e) {
-      // Arşiv başarısızsa SİLMEYİ DURDURMAK daha güvenli (KVKK izini bırakmak istiyoruz)
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, "Bir hata oluştu");
-    } on FirebaseAuthException catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, "Silme başarısız");
+    } on FirebaseFunctionsException {
+      AppSnackBar.error(context, "Arşivleme başarısız olduğu için silme durduruldu.");
+    } on FirebaseAuthException catch (_) {
+      AppSnackBar.error(context, "Silme başarısız.");
     } catch (e) {
-      final msg = AppErrorHandler.getMessage(e);
-      AppSnackBar.error(context, "Bir hata oluştu: $msg");
+      AppSnackBar.error(context, "Bir hata oluştu: $e");
     } finally {
       hideLoader();
     }
   }
+
+  /// Beklemede/Onaylandı durumundaki tüm rezervasyonları,
+  /// slot'u da boşaltarak "İptal Edildi" yapar.
+  Future<void> _cancelAllUserReservations(
+      FirebaseFirestore db,
+      String uid,
+      ) async {
+    const pendingStatuses = ['Beklemede', 'Onaylandı'];
+
+    final resSnap = await db
+        .collection('reservations')
+        .where('userId', isEqualTo: uid)
+        .where('status', whereIn: pendingStatuses)
+        .get();
+
+    if (resSnap.docs.isEmpty) return;
+
+    final batch = db.batch();
+
+    for (final d in resSnap.docs) {
+      final data = d.data();
+
+      // Şema alanları: projene göre isimler doğruysa aynen bırak
+      final String? haliSahaId = data['haliSahaId'] as String?;
+      final String? reservationDateTime = data['reservationDateTime'] as String?;
+
+      if (haliSahaId == null || reservationDateTime == null) {
+        debugPrint('⚠️ Eksik alanlar: ${d.id} (haliSahaId/reservationDateTime)');
+        continue;
+      }
+
+      // 1) Slot'u bookedSlots'tan sil (callable)
+      final ok = await ReservationRemoteService().cancelSlot(
+        haliSahaId: haliSahaId,
+        bookingString: reservationDateTime, // ← alan adı güncellendi
+      );
+
+      // 2) Slot başarıyla boşaltıldıysa statüyü iptal et
+      if (ok) {
+        batch.update(d.reference, {
+          'status': 'İptal Edildi',
+          'lastUpdateBy': 'user',
+          'cancelReason': 'Hesap Silindi',
+        });
+      } else {
+        debugPrint('❌ Slot boşaltılamadı, status güncellenmedi: ${d.id}');
+      }
+    }
+
+    await batch.commit();
+  }
+
+
+  Future<void> _cancelAllUserSubscriptions(FirebaseFirestore db, String uid) async {
+    // Türkçe statülerini uygula
+    const openSubs = ['Beklemede', 'Aktif'];
+    final subSnap = await db
+        .collection('subscriptions')
+        .where('userId', isEqualTo: uid)
+        .where('status', whereIn: openSubs)
+        .get();
+
+    if (subSnap.docs.isEmpty) return;
+
+    final batch = db.batch();
+    for (final d in subSnap.docs) {
+      batch.update(d.reference, {
+        'status': 'İptal Edildi',
+        'lastUpdateBy' : 'user',
+      });
+    }
+    await batch.commit();
+  }
+
+
 
 
 
@@ -682,7 +757,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     // 1) Şifre sıfırlama linkini dene — Auth güvenlik gereği,
     //    user-not-found hatasını bile yakalarsak bile mesajımız aynı kalacak.
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await sendPasswordResetEmail(email);
     } catch (_) {
       // (user-not-found dahil) tüm hatalar sessizce yutulur
     }
@@ -700,6 +775,28 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       );
     });
   }
+  Future<void> sendPasswordResetEmail(String email) async {
+    // Bölgeyi mutlaka seninkiyle aynı ver: "europe-west1"
+    final callable = functions.httpsCallable('sendPasswordResetEmail');
+
+    try {
+      final res = await callable.call<Map<String, dynamic>>({'email': email});
+      // res.data => {"ok": true} bekleniyor
+      // burada kullanıcıya başarı mesajı gösterebilirsin.
+      // AppSnackBar.show(context, "Şifre sıfırlama maili gönderildi.");
+    } on FirebaseFunctionsException catch (e) {
+      final msg = switch (e.code) {
+        'invalid-argument' => 'E-posta adresi geçersiz.',
+        'failed-precondition' => 'Sunucu yapılandırması eksik (RESEND_API_KEY vb.).',
+        _ => e.message ?? 'Beklenmeyen bir hata oluştu.'
+      };
+      rethrow; // ya da kullanıcıya göster
+    } catch (e) {
+      AppSnackBar.error(context, "Bağlantı hatası. Lütfen tekrar deneyin.");
+      rethrow;
+    }
+  }
+
 
 
   Future<void> _updateEmail(String newEmail, String password) async {

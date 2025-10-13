@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 
 class StatsProvider extends ChangeNotifier {
   // Tek kullanıcı için sayılar
@@ -17,7 +18,7 @@ class StatsProvider extends ChangeNotifier {
   /// Tek kullanıcı istatistikleri
   Future<void> loadStats(Reservation reservation) async {
     try {
-      final function = FirebaseFunctions.instance.httpsCallable('getUserStats');
+      final function = functions.httpsCallable('getUserStats');
       final result = await function.call({
         'userId': reservation.userId,
         'haliSahaId': reservation.haliSahaId,
@@ -40,7 +41,7 @@ class StatsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final fn = FirebaseFunctions.instance.httpsCallable('getAllUserStatsForField');
+      final fn = functions.httpsCallable('getAllUserStatsForField');
       final res = await fn.call({'haliSahaId': haliSahaId});
 
       debugPrint("📢 getAllUserStatsForField raw result: ${res.data}");

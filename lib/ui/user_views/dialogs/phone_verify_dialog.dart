@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 
 class PhoneVerifyDialog extends StatefulWidget {
@@ -19,7 +19,7 @@ class PhoneVerifyDialog extends StatefulWidget {
 class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
   final formKey = GlobalKey<FormState>();
   final phoneCtrl = TextEditingController();
-  final smsCtrl = TextEditingController();
+  late TextEditingController smsCtrl;
 
   String? verifyId;
   bool smsSent = false;
@@ -36,6 +36,12 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
 
   // Çift link/snackbar koruması
   bool _linkingOrDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    smsCtrl = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -66,6 +72,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
     final phone = '+90$raw';
 
     if (!RegExp(r'^\+905\d{9}$').hasMatch(phone)) {
+      if (!mounted) return;
       setState(() => errorMessage = 'Geçerli bir telefon numarası girin.');
       return;
     }
@@ -75,13 +82,18 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
       errorMessage = null;
       _canResend = false;
       _autoVerified = false;
+      verifyId = null; // temiz başlangıç
       // yeni sms akışında eski kodu sıfırlayalım
-      smsCtrl.clear();
+      // PinCodeTextField ağaçtan çıkınca eski controller dispose ediliyor olabilir.
+      // Güvenli: önce dispose et, sonra yeni bir tane oluştur.
+      try { smsCtrl.dispose(); } catch (_) {}
+      smsCtrl = TextEditingController();
       smsSent = false;
     });
 
     try {
       final exists = await _checkPhoneExists(phone);
+      if (!mounted) return;
       if (exists) {
         setState(() {
           busy = false;
@@ -97,20 +109,26 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
 
         // Otomatik doğrulama (bazı cihazlarda tetiklenir)
         verificationCompleted: (PhoneAuthCredential cred) async {
-          if (!mounted) return;
+          if (!mounted || _linkingOrDone) return;
 
           final autoCode = cred.smsCode; // bazı cihazlarda null olabilir
-          setState(() {
-            _autoVerified = true;
-            busy = false;
-            if (autoCode != null && autoCode.length == 6) {
+          if (autoCode != null && autoCode.length == 6) {
+            // Controller'a güvenli atama
+            smsCtrl.value = TextEditingValue(text: autoCode);
+            if (!mounted) return;
+            setState(() {
+              _autoVerified = true;
+              busy = false;
               smsSent = true;
-              smsCtrl.text = autoCode; // PIN alanını doldur
-            } else {
-              // Kod yoksa PIN alanını göstermeyebiliriz
+            });
+          } else {
+            if (!mounted) return;
+            setState(() {
+              _autoVerified = true;
+              busy = false;
               smsSent = false;
-            }
-          });
+            });
+          }
 
           // Tek seferlik link; snackbar ve kapanış _link içinde
           await _link(cred, phone, closeAfter: true, showSuccessSnack: true);
@@ -144,6 +162,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
         },
       );
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         busy = false;
         errorMessage = 'SMS gönderilemedi. Lütfen tekrar deneyin.';
@@ -158,17 +177,22 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
       _canResend = false;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_secondsLeft == 0) {
         timer.cancel();
-        if (mounted) setState(() => _canResend = true);
+        setState(() => _canResend = true);
       } else {
-        if (mounted) setState(() => _secondsLeft--);
+        setState(() => _secondsLeft--);
       }
     });
   }
 
   Future<bool> _checkPhoneExists(String phone) async {
-    final callable = FirebaseFunctions.instance.httpsCallable('checkPhoneExists');
+    final callable =
+    functions.httpsCallable('checkPhoneExists');
     try {
       final result = await callable.call({'phone': phone});
       final data = result.data;
@@ -184,7 +208,8 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
       _showError('Önce doğrulama kodu isteyin.');
       return;
     }
-    if (smsCtrl.text.length != 6) {
+    final code = smsCtrl.text; // controller değerini kopyala
+    if (code.length != 6) {
       _showError('6 haneli kod girin');
       return;
     }
@@ -192,7 +217,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
 
     final cred = PhoneAuthProvider.credential(
       verificationId: verifyId!,
-      smsCode: smsCtrl.text,
+      smsCode: code,
     );
     final phone = '+90${phoneCtrl.text}';
     await _link(cred, phone, closeAfter: true, showSuccessSnack: true);
@@ -380,6 +405,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
                 // 2) PIN alanı (kod gönderildiyse veya otomatik doldurulduysa)
                 if (smsSent) ...[
                   PinCodeTextField(
+                    autoDisposeControllers: false,
                     appContext: context,
                     controller: smsCtrl,
                     length: 6,
@@ -391,7 +417,8 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
                       fieldWidth: 44,
                       inactiveColor: Colors.grey.shade400,
                       selectedColor: theme.colorScheme.primary,
-                      activeColor: theme.colorScheme.primary.withOpacity(.6),
+                      activeColor:
+                      theme.colorScheme.primary.withOpacity(.6),
                     ),
                     cursorColor: theme.colorScheme.primary,
                     keyboardType: TextInputType.number,
@@ -412,12 +439,7 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
                     )
                   else
                     TextButton(
-                      onPressed: busy
-                          ? null
-                          : () {
-                        _sendSms();
-                        _startCountdown();
-                      },
+                      onPressed: busy ? null : _sendSms, // çift sayaç yok
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
@@ -465,7 +487,8 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
                         busy ? null : (smsSent ? _verifyCode : _sendSms),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding:
+                          const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -474,11 +497,13 @@ class _PhoneVerifyDialogState extends State<PhoneVerifyDialog> {
                             ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child:
+                          CircularProgressIndicator(strokeWidth: 2),
                         )
                             : Text(
                           smsSent ? 'Doğrula' : 'Kod Gönder',
-                          style: const TextStyle(color: Colors.white),
+                          style:
+                          const TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
