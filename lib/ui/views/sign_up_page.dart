@@ -7,10 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
-import 'package:toplansin/ui/views/auth_check_screen.dart';
 import 'package:toplansin/ui/views/login_page.dart';
 import 'package:toplansin/ui/views/welcome_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,7 +43,6 @@ class _SignUpPageState extends State<SignUpPage> {
   // Firebase erişimi
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
 
 
   // Şifre gücü göstergesi için
@@ -727,7 +726,6 @@ class _SignUpPageState extends State<SignUpPage> {
           decoration: TextDecoration.underline,
         ),
         onTap: (url) {
-          if (url == null) return;
           launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
         },
       ),

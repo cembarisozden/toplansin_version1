@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 
 class OwnerActivateCodeWithUsersProvider extends ChangeNotifier {
@@ -18,7 +18,7 @@ class OwnerActivateCodeWithUsersProvider extends ChangeNotifier {
 
     try {
       final callable =
-          FirebaseFunctions.instance.httpsCallable('listUsersByActiveCode');
+      functions.httpsCallable('listUsersByActiveCode');
 
       final result = await callable.call({'sahaId': sahaId});
 
@@ -47,7 +47,7 @@ class OwnerActivateCodeWithUsersProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
 
-      final function = FirebaseFunctions.instance
+      final function = functions
           .httpsCallable('deleteUsersByActiveCode');
 
       final result = await function.call({

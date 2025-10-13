@@ -1444,7 +1444,7 @@ class _AddReviewSection extends StatelessWidget {
 
 // ───────────────────────── FULLSCREEN IMAGE VIEWER ─────────────────────────
 class _ImageViewer extends StatelessWidget {
-  const _ImageViewer({required this.images, required this.initial, super.key});
+  const _ImageViewer({required this.images, required this.initial});
 
   final List<String> images;
   final int initial;

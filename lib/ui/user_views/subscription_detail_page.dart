@@ -149,7 +149,7 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
 
                         return qs.docs
                             .map((d) => Subscription.fromMap(
-                          d.data() as Map<String, dynamic>,
+                          d.data(),
                           d.id,
                         ))
                             .toList();

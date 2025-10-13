@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/services/user_notification_service.dart';
 import 'package:toplansin/ui/owner_views/owner_main_page.dart';
 import 'package:toplansin/ui/user_views/main_page.dart';
@@ -26,7 +27,6 @@ class _LoginPageState extends State<LoginPage> {
   String password = '';
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
 
 
   bool showEmailVerifyBanner = false;
@@ -501,7 +501,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> sendPasswordResetEmail(String email) async {
     // Bölgeyi mutlaka seninkiyle aynı ver: "europe-west1"
-    final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
     final callable = functions.httpsCallable('sendPasswordResetEmail');
 
     try {

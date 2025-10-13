@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
+import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/ui/user_views/dialogs/edit_profile_dialog.dart';
 import 'package:toplansin/ui/user_views/dialogs/phone_verify_dialog.dart';
@@ -88,7 +89,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         if (!snap.hasData) return const SizedBox.shrink();
 
         final info = snap.data!;
-        final version = "${info.version} (${info.buildNumber})";
+        final version = "${info.version})";
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
@@ -555,7 +556,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
       await _cancelAllUserSubscriptions(db, user.uid);
 
       // 4) (Opsiyonel) arşiv callable – silmeden ÖNCE
-      final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
       final callable = functions.httpsCallable('userDeletionServiceArchive');
       final userDoc = await db.collection('users').doc(user.uid).get();
       final data = userDoc.data();
@@ -777,7 +777,6 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
   Future<void> sendPasswordResetEmail(String email) async {
     // Bölgeyi mutlaka seninkiyle aynı ver: "europe-west1"
-    final functions = FirebaseFunctions.instanceFor(region: 'europe-west1');
     final callable = functions.httpsCallable('sendPasswordResetEmail');
 
     try {

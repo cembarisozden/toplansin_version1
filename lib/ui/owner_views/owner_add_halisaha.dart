@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
@@ -249,91 +248,91 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
             SwitchListTile(
               title: Text('Otopark'),
               value: hasParking,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasParking = v),
             ),
             SwitchListTile(
               title: Text('Duş'),
               value: hasShowers,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasShowers = v),
             ),
             SwitchListTile(
               title: Text('Ayakkabı Kiralama'),
               value: hasShoeRental,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasShoeRental = v),
             ),
             SwitchListTile(
               title: Text('Kafeterya'),
               value: hasCafeteria,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasCafeteria = v),
             ),
             SwitchListTile(
               title: Text('Gece Aydınlatması'),
               value: hasNightLighting,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasNightLighting = v),
             ),
             SwitchListTile(
               title: Text('Kamera'),
               value: hasCameras,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasCameras = v),
             ),
             SwitchListTile(
               title: Text('Yemek'),
               value: hasFoodService,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasFoodService = v),
             ),
             SwitchListTile(
               title: Text('Langırt'),
               value: hasFoosball,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasFoosball = v),
             ),
             SwitchListTile(
               title: Text('Erkek Tuvaleti'),
               value: hasMaleToilet,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasMaleToilet = v),
             ),
             SwitchListTile(
               title: Text('Kadın Tuvaleti'),
               value: hasFemaleToilet,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasFemaleToilet = v),
             ),
             SwitchListTile(
               title: Text('Kredi Kartı Geçerli'),
               value: acceptsCreditCard,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => acceptsCreditCard = v),
             ),
             SwitchListTile(
               title: Text('Kiralık Kaleci'),
               value: hasGoalkeeper,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasGoalkeeper = v),
             ),
             SwitchListTile(
               title: Text('Çocuk Oyun Alanı'),
               value: hasPlayground,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasPlayground = v),
             ),
             SwitchListTile(
               title: Text('Mescit'),
               value: hasPrayerRoom,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasPrayerRoom = v),
             ),
             SwitchListTile(
               title: Text('İnternet'),
               value: hasInternet,
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
               onChanged: (v) => setState(() => hasInternet = v),
             ),
             SizedBox(height: 24),
