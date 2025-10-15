@@ -51,7 +51,7 @@ class AboutHelpPage extends StatelessWidget {
           future: PackageInfo.fromPlatform(),
           builder: (context, snap) {
             final version = snap.hasData
-                ? 'Sürüm ${snap.data!.version} (${snap.data!.buildNumber})'
+                ? 'Sürüm ${snap.data!.version}'
                 : '';
 
             return ListView(

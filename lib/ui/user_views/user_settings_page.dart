@@ -89,7 +89,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         if (!snap.hasData) return const SizedBox.shrink();
 
         final info = snap.data!;
-        final version = "${info.version})";
+        final version = "${info.version}";
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
