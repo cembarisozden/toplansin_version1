@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:toplansin/services/time_service.dart';
+
 class Person {
   String id;
   String name;
@@ -6,6 +9,7 @@ class Person {
   String role; // Rol alanı eklendi
   String? fcmToken;
   List<String>? fieldAccessCodes;
+  DateTime? createdAt;
 
   Person({
     required this.id,
@@ -14,6 +18,7 @@ class Person {
     this.phone,
     required this.role, // Yeni alan eklendi
     this.fieldAccessCodes,
+    this.createdAt,
   });
 
   // toMap fonksiyonu
@@ -25,7 +30,8 @@ class Person {
       'phone': phone,
       'role': role, // Rol alanı ekleniyor
       'fieldAccessCodes': fieldAccessCodes,
-
+      // Eğer createdAt boşsa serverTimestamp koy (ilk kayıtta)
+      'createdAt': createdAt != null ? createdAt : FieldValue.serverTimestamp(),
     };
   }
 
@@ -38,6 +44,7 @@ class Person {
       phone: map['phone'] ?? '',
       role: map['role'] as String? ?? 'unknown', // Varsayılan rol 'user' olabilir
       fieldAccessCodes: List<String>.from(map['fieldAccessCodes'] ?? []),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -48,6 +55,7 @@ class Person {
     String? phone,
     String? role,
     List<String>? fieldAccessCodes,
+    DateTime? createdAt,
   }) {
     return Person(
       id: id ?? this.id,
@@ -56,6 +64,7 @@ class Person {
       phone: phone ?? this.phone,
       role: role ?? this.role,
       fieldAccessCodes: fieldAccessCodes ?? this.fieldAccessCodes,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

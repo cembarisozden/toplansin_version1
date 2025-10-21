@@ -27,6 +27,7 @@ import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/images/progressive_images.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OwnerHalisahaPage extends StatefulWidget {
   HaliSaha haliSaha;
@@ -2630,7 +2631,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                               "Kullanıcı Adı",
                                               reservation.userName),
                                           const SizedBox(height: 8),
-                                          _detailItem(Icons.phone, "Telefon",
+                                          phoneDetailItem(Icons.phone, "Telefon",
                                               reservation.userPhone),
                                           const SizedBox(height: 8),
                                           _detailItem(Icons.email, "E-posta",
@@ -2647,7 +2648,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                                           // ─── Kullanıcı Hareketleri ────────────
                                           const Text(
-                                            'Kullanıcı Hareketleri (Son 6 Ay)',
+                                            'Kullanıcı Hareketleri (Son 3 Ay)',
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
@@ -2655,29 +2656,39 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                             ),
                                           ),
                                           const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: _buildStatCard(
-                                                  title: 'Bu Sahadaki',
-                                                  approved: statsProvider
-                                                      .ownApprovedCount,
-                                                  cancelled: statsProvider
-                                                      .ownCancelledCount,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: _buildStatCard(
-                                                  title: 'Tüm Sahalardaki',
-                                                  approved: statsProvider
-                                                      .allApprovedCount,
-                                                  cancelled: statsProvider
-                                                      .allCancelledCount,
-                                                ),
-                                              ),
-                                            ],
+                                          Consumer<StatsProvider>(
+                                            builder: (context, statsProvider, _) {
+                                              if (statsProvider.isLoading) {
+                                                return const Center(
+                                                  child: Padding(
+                                                    padding: EdgeInsets.symmetric(vertical: 24),
+                                                    child: CircularProgressIndicator(),
+                                                  ),
+                                                );
+                                              }
+
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _buildStatCard(
+                                                      title: 'Bu Sahadaki',
+                                                      approved: statsProvider.ownApprovedCount,
+                                                      cancelled: statsProvider.ownCancelledCount,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: _buildStatCard(
+                                                      title: 'Tüm Sahalardaki',
+                                                      approved: statsProvider.allApprovedCount,
+                                                      cancelled: statsProvider.allCancelledCount,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
                                           ),
+
                                           const SizedBox(height: 16),
                                         ],
                                       ),
@@ -2867,8 +2878,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         _detailItem(Icons.person, "Kullanıcı Adı",
                             reservation.userName),
                         SizedBox(height: 8),
-                        _detailItem(
-                            Icons.phone, "Telefon", reservation.userPhone),
+                        phoneDetailItem(Icons.phone, "Telefon",
+                            reservation.userPhone),
                         SizedBox(height: 8),
                         _detailItem(
                             Icons.email, "E-posta", reservation.userEmail),
@@ -3036,54 +3047,18 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Kullanıcı bilgileri
-                      Row(
-                        children: [
-                          Icon(Icons.person, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              userName,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _detailItem(
+                          Icons.person,
+                          "Kullanıcı Adı",
+                          userName),
                       SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.phone, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              userPhone,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      phoneDetailItem(Icons.phone, "Telefon",
+                          userPhone),
                       SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.email, color: Colors.grey.shade700),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              userEmail,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _detailItem(
+                          Icons.person,
+                          "E-Posta",
+                          userEmail),
                       SizedBox(height: 12),
                       Divider(),
                       SizedBox(height: 12),
@@ -3267,6 +3242,72 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     );
   }
 
+  Widget phoneDetailItem(IconData icon, String title, String? phone) {
+    final displayValue = (phone ?? 'Bilgi yok').trim();
+    final bool hasPhone = displayValue.isNotEmpty && displayValue != 'Bilgi yok';
+
+    return Row(
+      children: [
+        Icon(icon, color: Colors.grey.shade700),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+
+              hasPhone
+                  ? InkWell(
+                onTap: () => _callNumber(displayValue),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    displayValue,
+                    style: TextStyle(
+                      color: Colors.blue.shade700, // 🔹 tıklanabilir vurgusu
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline, // 🔹 altı çizili
+                      decorationThickness: 1.3,
+                      decorationColor: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+              )
+                  : Text(
+                displayValue,
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Future<void> _callNumber(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      debugPrint("❌ Arama başlatılamadı: $phone");
+    }
+  }
+
   void _showReservationDialog(String time) {
     // 1️⃣ Rezervasyonu bul
     final key = '${DateFormat('yyyy-MM-dd').format(selectedDate)} $time';
@@ -3361,7 +3402,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                   _detailItem(Icons.person, "Kullanıcı Adı",
                                       reservation.userName),
                                   const SizedBox(height: 8),
-                                  _detailItem(Icons.phone, "Telefon",
+                                  phoneDetailItem(Icons.phone, "Telefon",
                                       reservation.userPhone),
                                   const SizedBox(height: 8),
                                   _detailItem(Icons.email, "E-posta",
@@ -3378,7 +3419,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
                                   // Kullanıcı hareketleri başlığı
                                   const Text(
-                                    'Kullanıcı Hareketleri (Son 6 Ay)',
+                                    'Kullanıcı Hareketleri (Son 3 Ay)',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -3387,24 +3428,37 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                   ),
                                   const SizedBox(height: 12),
 
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildStatCard(
-                                          title: 'Bu Sahadaki',
-                                          approved: stats.ownApprovedCount,
-                                          cancelled: stats.ownCancelledCount,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _buildStatCard(
-                                          title: 'Tüm Sahalardaki',
-                                          approved: stats.allApprovedCount,
-                                          cancelled: stats.allCancelledCount,
-                                        ),
-                                      ),
-                                    ],
+                                  Consumer<StatsProvider>(
+                                    builder: (context, statsProvider, _) {
+                                      if (statsProvider.isLoading) {
+                                        return const Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 24),
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        );
+                                      }
+
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildStatCard(
+                                              title: 'Bu Sahadaki',
+                                              approved: statsProvider.ownApprovedCount,
+                                              cancelled: statsProvider.ownCancelledCount,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _buildStatCard(
+                                              title: 'Tüm Sahalardaki',
+                                              approved: statsProvider.allApprovedCount,
+                                              cancelled: statsProvider.allCancelledCount,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
 
                                   const SizedBox(height: 16),
@@ -3484,19 +3538,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
           ),
         );
       },
-    );
-  }
-
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey.shade700, size: 20),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(text,
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade800)),
-        ),
-      ],
     );
   }
 

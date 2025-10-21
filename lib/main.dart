@@ -37,6 +37,8 @@ import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/banner/pro_connectivity_banner.dart';
 import 'package:toplansin/ui/views/splash_screen.dart';
 import 'package:toplansin/core/providers/PhoneVerificationProvider.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -75,7 +77,7 @@ Future<void> _updateServerTime() async {
     await functions
         .httpsCallable(fn)
         .call()
-        .timeout(const Duration(seconds: 6));
+        .timeout(const Duration(seconds: 60));
     debugPrint('✅ $fn başarılı');
   } catch (e, st) {
     debugPrint('⚠️ $fn başarısız: $e');
@@ -91,6 +93,7 @@ Future<void> main() async {
   runZonedGuarded(() async {
     // 🔁 TAŞINDI: ensureInitialized ve tüm init’ler bu bloğa alındı
     WidgetsFlutterBinding.ensureInitialized();
+    tz.initializeTimeZones();
 
     // 1) Firebase + offline cache
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

@@ -9,6 +9,7 @@ import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/services/firebase_functions_service.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:toplansin/ui/views/login_page.dart';
@@ -181,28 +182,108 @@ class _SignUpPageState extends State<SignUpPage> {
   void _showVerificationDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
+      barrierDismissible: false,
+      builder: (context) {
+        final primaryGreen = AppColors.primary; // Toplansın yeşiline yakın düz ton
+        final darkText     = AppColors.textPrimary; // koyu nötr
+        final subText      = const Color(0xFF6B7280); // gri nötr
+
+        return Dialog(
           backgroundColor: Colors.white,
-          title: Text('Doğrulama E-postası Gönderildi'),
-          content:
-          Text('Lütfen e-postanızı kontrol ederek hesabınızı doğrulayın.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Dialogu kapat
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                );
-              },
-              child: Text('Tamam'),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ikon rozet
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: primaryGreen.withOpacity(0.12), // düz, hafif ton
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.mark_email_read_outlined, size: 32, color: primaryGreen),
+                ),
+                const SizedBox(height: 14),
+
+                // başlık
+                Text(
+                  'Doğrulama e-postası gönderildi!',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: darkText,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // açıklama
+                Text(
+                  'Lütfen e-posta kutunu kontrol ederek hesabını doğrula.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: darkText.withOpacity(0.9),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // alt bilgi (spam/junk)
+                Text(
+                  'E-posta gelmediyse spam klasörünü de kontrol etmeyi unutma.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: subText,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ince ayırıcı
+                Divider(height: 1, color: subText.withOpacity(0.2)),
+                const SizedBox(height: 12),
+
+                // buton
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginPage()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Tamam',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

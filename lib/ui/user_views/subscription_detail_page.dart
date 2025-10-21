@@ -262,7 +262,6 @@ class _AbonelikCardState extends State<AbonelikCard> {
     String time = widget.sub.time;
     num price = widget.sub.price;
     String location = widget.sub.location;
-    String nextSession = widget.sub.nextSession;
     String visibleSession = widget.sub.visibleSession;
 
     final Color statusColor = _statusColor(status);
@@ -384,7 +383,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      price.toString(),
+                      "${price.toString()} TL/Saat",
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade800,
@@ -392,6 +391,7 @@ class _AbonelikCardState extends State<AbonelikCard> {
                     ),
                   ],
                 ),
+
                 SizedBox(height: 12),
                 Divider(color: Colors.grey.shade300),
 
@@ -439,6 +439,76 @@ class _AbonelikCardState extends State<AbonelikCard> {
                           ),
                         ],
                       ),
+                      SizedBox(height: 8),
+                      if (status == "İptal Edildi") ...[
+                        Divider(),
+                        SizedBox(height: 8),
+                        FutureBuilder<DateTime?>(
+                          future: fetchPastSubscriptionsCreatedAt(widget.sub.docId),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Text(
+                                'İptal Edilme: yükleniyor...',
+                                style: TextStyle(color: Colors.grey),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return Text(
+                                'İptal Edilme: tarih bulunamadı',
+                                style: TextStyle(color: Colors.red.shade300),
+                              );
+                            }
+
+                            if (!snapshot.hasData || snapshot.data == null) {
+                              return const Text(
+                                'İptal Edilme: tarih bulunamadı',
+                                style: TextStyle(color: Colors.grey),
+                              );
+                            }
+
+                            final formatted = TimeService.formatTr(snapshot.data!);
+                            return Text(
+                              'İptal Edilme: $formatted',
+                              style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade600),
+                            );
+                          },
+                        ),
+                      ],
+
+                      if (status == "Sona Erdi") ...[
+                        Divider(),
+                        SizedBox(height: 8),
+                        FutureBuilder<DateTime?>(
+                          future: fetchPastSubscriptionsCreatedAt(widget.sub.docId),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Text(
+                                'Sona Erme: yükleniyor...',
+                                style: TextStyle(color: Colors.grey),
+                              );
+                            }
+
+                            if (!snapshot.hasData || snapshot.data == null) {
+                              return const Text(
+                                'Sona Erme: tarih bulunamadı',
+                                style: TextStyle(color: Colors.grey),
+                              );
+                            }
+
+                            final formatted = TimeService.formatTr(snapshot.data!);
+                            return Row(
+                              children: [
+                                Text(
+                                  'Sona Erme: $formatted',
+                                  style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade600),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+
                     ],
                   ),
                 ),
@@ -621,6 +691,38 @@ class _AbonelikCardState extends State<AbonelikCard> {
     final min   = int.parse(m.group(5)!);
 
     return DateTime(year, month, day, hour, min).toLocal();
+  }
+
+
+  Future<DateTime?> fetchPastSubscriptionsCreatedAt(String logId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('subscription_logs')
+          .doc(logId)
+          .get(const GetOptions(source: Source.serverAndCache));
+
+      if (!doc.exists) {
+        debugPrint('⚠️ Doküman bulunamadı!');
+        return null;
+      }
+
+      final data = doc.data()!;
+
+
+      final ts = data['createdAt'];
+
+      if (ts is Timestamp) {
+        final date = ts.toDate();
+        return date;
+      } else {
+        debugPrint('⚠️ Timestamp değilmiş, null dönüyor');
+        return null;
+      }
+    } catch (e, st) {
+      debugPrint('🚨 fetchPastSubscriptionsCreatedAt HATA: $e');
+      debugPrint('📍 Stack: $st');
+      return null;
+    }
   }
 
 

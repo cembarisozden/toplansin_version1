@@ -58,10 +58,17 @@ class _DashboardBodyState extends State<DashboardBody> {
             children: [
               StreamBuilder<User?>(
                 stream: FirebaseAuth.instance.userChanges(),
+                initialData: FirebaseAuth.instance.currentUser,
                 builder: (context, snapshot) {
-                  final user = snapshot.data;
-                  final noPhone = user?.phoneNumber == null;
-                  if (!noPhone) return SizedBox.shrink();
+                  // 1) Beklerken banner göstermeyelim (layout kaymasın)
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox.shrink();
+                  }
+                  // 2) Data yoksa son bilinen kullanıcıyı kullan (ekstra güvence)
+                  final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+                  // 3) Telefon var mı?
+                  final hasPhone = (user?.phoneNumber ?? '').trim().isNotEmpty;
+                  if (hasPhone) return const SizedBox.shrink();
                   return PhoneVerifyBanner(
                     onAction: () => Navigator.push(
                       context,

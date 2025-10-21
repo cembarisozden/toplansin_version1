@@ -17,6 +17,9 @@ class StatsProvider extends ChangeNotifier {
 
   /// Tek kullanıcı istatistikleri
   Future<void> loadStats(Reservation reservation) async {
+    isLoading = true;
+    notifyListeners(); // 👈 loader'ı hemen gösterebilmek için
+
     try {
       final function = functions.httpsCallable('getUserStats');
       final result = await function.call({
@@ -24,16 +27,21 @@ class StatsProvider extends ChangeNotifier {
         'haliSahaId': reservation.haliSahaId,
       });
 
-      final data = result.data;
-      ownApprovedCount  = data['ownApprovedCount'];
-      ownCancelledCount = data['ownCancelledCount'];
-      allApprovedCount  = data['allApprovedCount'];
-      allCancelledCount = data['allCancelledCount'];
-      notifyListeners();
+      final data = result.data as Map<String, dynamic>;
+
+      // Defansif atama
+      ownApprovedCount  = (data['ownApprovedCount']  ?? 0) as int;
+      ownCancelledCount = (data['ownCancelledCount'] ?? 0) as int;
+      allApprovedCount  = (data['allApprovedCount']  ?? 0) as int;
+      allCancelledCount = (data['allCancelledCount'] ?? 0) as int;
     } catch (e) {
       debugPrint("Hata oluştu: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners(); // 👈 loader kapanır, UI güncellenir
     }
   }
+
 
   /// Çoklu kullanıcı istatistikleri (saha bazlı)
   Future<void> loadAllUserStatsForField(String haliSahaId) async {

@@ -31,27 +31,29 @@ class _OwnerPastReservationsPageState extends State<OwnerPastReservationsPage>
 
   // ────────────────── LOG SORGUSU (status parametreli) ──────────────────
   Stream<List<Reservation>> _logStream(String status) {
-    return FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
-      if (user == null) {
-        // Oturum yoksa Firestore’a bağlanma → boş liste
-        return Stream.value(const <Reservation>[]);
-      }
+    // Eğer bu sayfa login sonrası açılıyorsa currentUser kontrolü opsiyonel.
+    // İstersen yine de güvenlik için boş liste döndürebilirsin:
+    if (FirebaseAuth.instance.currentUser == null) {
+      return Stream.value(const <Reservation>[]);
+    }
 
-      Query<Map<String, dynamic>> q = FirebaseFirestore.instance
-          .collection('reservation_logs')
-          .where('haliSahaId', isEqualTo: widget.haliSahaId)
-          .where('newStatus', isEqualTo: status)
-          .orderBy('reservationDateTime', descending: true)
-          .limit(_logLimit);
+    final q = FirebaseFirestore.instance
+        .collection('reservation_logs')
+        .where('haliSahaId', isEqualTo: widget.haliSahaId)
+        .where('newStatus', isEqualTo: status)
+        .orderBy('reservationDateTime', descending: true)
+        .limit(_logLimit);
 
-      return q.snapshots().map(
-            (s) => s.docs.map(Reservation.fromDocument).toList(growable: false),
-      );
-    }).handleError((e, st) {
-      // Stream zincirinde hata olursa UI'yı düşürme
+    return q.snapshots().map(
+          (s) => s.docs.map(Reservation.fromDocument).toList(growable: false),
+    ).handleError((e, st) {
       debugPrint('logStream($status) error: $e');
+      // Burada UI’yı düşürmemek için istersen boş liste publish edebilirsin.
+      // Ama handleError içinde add yapamazsın; bunun için Stream.multi gibi
+      // daha ileri bir desen gerekir. Çoğu durumda loglamak yeterli.
     });
   }
+
 
   // ────────────────── YARDIMCILAR ──────────────────
   DateTime? _parse(String raw) {

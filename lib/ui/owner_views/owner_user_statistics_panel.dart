@@ -110,7 +110,7 @@ class _OwnerUserStatisticPanelState extends State<OwnerUserStatisticPanel> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Son 6 ayda bu halı sahaya yapılan rezervasyonlar:',
+              'Son 3 ayda bu halı sahaya yapılan rezervasyonlar:',
               style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -140,7 +140,7 @@ class _OwnerUserStatisticPanelState extends State<OwnerUserStatisticPanel> {
             const Icon(Icons.inbox_outlined, size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 12),
             Text(
-              'Bu saha için son 6 ayda istatistik bulunamadı',
+              'Bu saha için son 3 ayda istatistik bulunamadı',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
             ),

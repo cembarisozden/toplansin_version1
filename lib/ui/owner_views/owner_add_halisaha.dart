@@ -73,8 +73,6 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
   }
 
   Future<void> _kaydet() async {
-    showLoader(context);
-    // Gerekli alan kontrolü: Boş olmayan tüm alanlar
     if ([
       nameController,
       locationController,
@@ -90,24 +88,33 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
       descriptionController
     ].any((c) => c.text.trim().isEmpty)) {
       AppSnackBar.error(context, 'Lütfen tüm alanları doldurun.');
-      return;
+      return; // erken dönüşte herhangi bir loader açık değil
     }
 
     setState(() => isLoading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw 'Kullanıcı doğrulanmamış.';
+      if (user == null) {
+        throw 'Kullanıcı doğrulanmamış.';
+      }
 
-      // Enlem / Boylam parse
+      // Enlem / Boylam
       final lat = double.tryParse(latController.text.replaceAll(',', '.'));
       final lng = double.tryParse(lngController.text.replaceAll(',', '.'));
-      if (lat == null || lng == null) {
-        throw 'Geçerli koordinat girin.';
-      }
+      if (lat == null || lng == null) throw 'Geçerli koordinat girin.';
+
+      // Telefon
       final rawInput = phoneController.text.trim();
       final newPhone = '+90${toNumericString(rawInput)}';
 
+      // Fiyat
+      final price = double.tryParse(priceController.text.trim());
+      if (price == null) throw 'Geçerli bir ücret girin.';
+
+      // Max oyuncu
+      final maxPlayers = int.tryParse(maxPlayersController.text.trim());
+      if (maxPlayers == null) throw 'Geçerli oyuncu sayısı girin.';
 
       final yeniSaha = HaliSaha(
         ownerId: user.uid,
@@ -116,12 +123,13 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         latitude: lat,
         longitude: lng,
         phone: newPhone,
-        price: double.parse(priceController.text.trim()),
+        price: price,
         rating: 0.0,
         imagesUrl: imagesController.text
             .trim()
             .split(',')
             .map((url) => url.trim())
+            .where((s) => s.isNotEmpty)
             .toList(),
         bookedSlots: const [],
         startHour: startHourController.text.trim(),
@@ -148,27 +156,29 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
         description: descriptionController.text.trim(),
         size: sizeController.text.trim(),
         surface: surfaceController.text.trim(),
-        maxPlayers: int.parse(maxPlayersController.text.trim()),
+        maxPlayers: maxPlayers,
       );
 
-
+      // Firestore write
       await FirebaseFirestore.instance
           .collection('hali_sahalar')
           .doc(yeniSaha.id)
           .set(yeniSaha.toJson());
 
       AppSnackBar.success(context, 'Halı saha başarıyla eklendi.');
-
       _formTemizle();
-      Navigator.pop(context, yeniSaha);
+
+      if (mounted) {
+        Navigator.pop(context, yeniSaha);
+      }
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e, context: 'field');
       AppSnackBar.error(context, 'Hata: $msg');
     } finally {
-      hideLoader();
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
+
 
   void _formTemizle() {
     [

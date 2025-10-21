@@ -4,7 +4,7 @@ import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:shimmer/shimmer.dart';
 
 ///  Küresel yedek görsel yolu
-const _kFallbackAsset = 'assets/images/no_image.webp';
+const _kFallbackAsset = 'assets/no_image.webp';
 
 class ProgressiveImage extends StatelessWidget {
   const ProgressiveImage({
