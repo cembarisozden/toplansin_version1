@@ -1,14 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:toplansin/services/time_service.dart';
+import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'dialogs/show_custom_hours_dialog.dart';
 
 class OwnerAddHaliSaha extends StatefulWidget {
   @override
@@ -247,9 +251,29 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
             _buildTextField('Fotoğraf URL (virgülle ayrılmış)', imagesController),
             Row(
               children: [
-                Expanded(child: _buildTextField('Açılış Saati (örn. 09:00)', startHourController, maxLength: 5)),
-                SizedBox(width: 16),
-                Expanded(child: _buildTextField('Kapanış Saati (örn. 23:00)', endHourController, maxLength: 5)),
+                Expanded(
+                  child: _buildTextField(
+                    'Açılış Saati (örn. 09:00)',
+                    startHourController,
+                    maxLength: 5,
+                    inputFormatters: [
+                      _hhmmMask,
+                      LengthLimitingTextInputFormatter(5),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildTextField(
+                    'Kapanış Saati (örn. 23:00)',
+                    endHourController,
+                    maxLength: 5,
+                    inputFormatters: [
+                      _hhmmMask,
+                      LengthLimitingTextInputFormatter(5),
+                    ],
+                  ),
+                ),
               ],
             ),
             _buildTextField('Açıklama', descriptionController, isMultiline: true, maxLength: 800),
@@ -363,6 +387,33 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
     );
   }
 
+  TextInputFormatter get _hhmmMask => TextInputFormatter.withFunction(
+        (oldValue, newValue) {
+      // 🔹 Sadece rakamlar ve ':' izinli
+      var t = newValue.text.replaceAll(RegExp(r'[^0-9:]'), '');
+
+      // 🔹 Fazla ':' varsa ilkini bırak diğerlerini sil
+      if (':'.allMatches(t).length > 1) {
+        final firstColon = t.indexOf(':');
+        t = t.substring(0, firstColon + 1) +
+            t.substring(firstColon + 1).replaceAll(':', '');
+      }
+
+      // 🔹 ':' yoksa ve 3–4 karakter girilmişse otomatik yerleştir
+      if (!t.contains(':') && t.length > 2) {
+        t = '${t.substring(0, 2)}:${t.substring(2)}';
+      }
+
+      // 🔹 Toplam uzunluk en fazla 5 karakter (HH:MM)
+      if (t.length > 5) t = t.substring(0, 5);
+
+      return TextEditingValue(
+        text: t,
+        selection: TextSelection.collapsed(offset: t.length),
+      );
+    },
+  );
+
   Widget buildPhoneNumberField(TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -407,28 +458,53 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
       TextEditingController controller, {
         bool isNumber = false,
         bool isMultiline = false,
-        int maxLength = 300,
+        int maxLength = 500,
+        String? Function(String?)? validator,
+        List<TextInputFormatter>? inputFormatters,
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField(
+        // ⬅️ DEĞİŞTİ
+        inputFormatters: inputFormatters,
         controller: controller,
         keyboardType: isNumber
             ? TextInputType.number
             : (isMultiline ? TextInputType.multiline : TextInputType.text),
         maxLines: isMultiline ? 4 : 1,
         maxLength: maxLength,
-        buildCounter: (context, {required currentLength, required isFocused, required maxLength}) {
-          if (maxLength == null) return null;
-          return Text('$currentLength / $maxLength', style: TextStyle(fontSize: 11, color: currentLength > maxLength ? Colors.red : Colors.grey.shade600));
+        validator: validator,
+        // ⬅️ Artık çalışır
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        buildCounter: (
+            BuildContext context, {
+              required int currentLength,
+              required bool isFocused,
+              required int? maxLength,
+            }) {
+          return maxLength != null
+              ? Text(
+            "$currentLength / $maxLength",
+            style: TextStyle(
+              fontSize: 11,
+              color: currentLength > maxLength
+                  ? Colors.red
+                  : Colors.grey.shade600,
+            ),
+          )
+              : null;
         },
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          labelStyle: TextStyle(color: Colors.grey.shade700),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           filled: true,
           fillColor: Colors.white,
         ),
       ),
     );
   }
-}
+
+  }

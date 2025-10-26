@@ -291,6 +291,33 @@ Future<void> cancelThisWeekSlot(String subscriptionId, BuildContext context) asy
   }
 }
 
+/// 0..6 gün indeksine (start,end) döner ve koleksiyon boş mu dolu mu bilgisini verir.
+Future<({
+bool useOverrides,
+Map<int, ({String start, String end})> map,
+})> loadStartEndOverrides(String haliSahaId) async {
+  final col = FirebaseFirestore.instance
+      .collection('hali_sahalar')
+      .doc(haliSahaId)
+      .collection('start_end_hours');
+
+  final snap = await col.get();
+  final map = <int, ({String start, String end})>{};
+
+  for (final doc in snap.docs) {
+    final data = doc.data();
+    final day = int.tryParse(doc.id) ?? (data['day'] as int? ?? -1);
+    if (day < 0 || day > 6) continue;
+
+    final s = (data['startHour'] as String? ?? '').trim();
+    final e = (data['endHour']   as String? ?? '').trim();
+    map[day] = (start: s, end: e);
+  }
+
+  return (useOverrides: snap.docs.isNotEmpty, map: map);
+}
+
+
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
@@ -318,33 +345,125 @@ String calculateFirstSession(int dayOfWeek, String time) {
   return '$ymd $time'; // "YYYY-MM-DD HH:mm-HH:mm"
 }
 
+int _toMinutes(String hhmm) {
+  final p = hhmm.split(':');
+  final h = int.parse(p[0]);
+  final m = int.parse(p[1]);
+  return h * 60 + m;
+}
 
-List<String> generateTimeSlots(String startHour, String endHour) {
-  final startParts = startHour.split(':');
-  final endParts = endHour.split(':');
+String _fmt(int totalMinutes) {
+  final m = totalMinutes % (24 * 60);
+  final h = (m ~/ 60) % 24;
+  final mm = m % 60;
+  return '${h.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}';
+}
 
-  int startHourInt = int.parse(startParts[0]);
-  int startMinute = int.parse(startParts[1]);
-  int endHourInt = int.parse(endParts[0]);
-  int endMinute = int.parse(endParts[1]);
+/// 24:00’ı aşan bitişleri düzgün göstermek için (örn. 24:30 -> 00:30)
+String _fmtWrap(int mins) {
+  const int DAY = 24 * 60;
+  final m = ((mins % DAY) + DAY) % DAY;
+  return _fmt(m);
+}
 
-  if (endHourInt < startHourInt ||
-      (endHourInt == startHourInt && endMinute < startMinute)) {
-    endHourInt += 24;
+({String start, String end}) _hoursForDay({
+  required int dayIdx, // 0=Pt..6=Pz
+  required bool useOverrides,
+  required Map<int, ({String start, String end})> overrides,
+  required String defaultStart,
+  required String defaultEnd,
+}) {
+  if (useOverrides) {
+    final h = overrides[dayIdx];
+    if (h == null || h.start.isEmpty || h.end.isEmpty) {
+      // veri tutarsızlığına karşı güvenlik
+      return (start: '', end: '');
+    }
+    return (start: h.start, end: h.end);
   }
+  return (start: defaultStart.trim(), end: defaultEnd.trim());
+}
+
+
+
+
+/// Seçilen tarih için slotları üretir.
+/// - Önceki günden taşan 00:00..prevEnd hizalı şekilde eklenir
+/// - Bugün cross-midnight ise sadece start..24:00 eklenir
+List<String> generateTimeSlotsForDate({
+  required DateTime date,
+  required bool useOverrides,
+  required Map<int, ({String start, String end})> overrides,
+  required String defaultStart,
+  required String defaultEnd,
+  int durationMinutes = 60,
+}) {
+  final dIdx    = date.weekday - 1;              // 0..6
+  final prevIdx = (dIdx - 1) < 0 ? 6 : dIdx - 1; // önceki gün
+  const int DAY = 24 * 60;
+
+  final prev = _hoursForDay(
+    dayIdx: prevIdx,
+    useOverrides: useOverrides,
+    overrides: overrides,
+    defaultStart: defaultStart,
+    defaultEnd: defaultEnd,
+  );
+  final today = _hoursForDay(
+    dayIdx: dIdx,
+    useOverrides: useOverrides,
+    overrides: overrides,
+    defaultStart: defaultStart,
+    defaultEnd: defaultEnd,
+  );
+
+  // Kapalı günse tamamen boş dön (dünden sarkan parçayı da göstermiyoruz)
+  if (today.start.isEmpty || today.end.isEmpty) return const [];
+
+  final prevStart  = _toMinutes(prev.start.isEmpty ? defaultStart : prev.start);
+  final prevEndRaw = _toMinutes(prev.end.isEmpty   ? defaultEnd   : prev.end);
+
+  final todayStart  = _toMinutes(today.start);
+  final todayEndRaw = _toMinutes(today.end);
 
   final slots = <String>[];
-  for (int hour = startHourInt; hour < endHourInt; hour++) {
-    final startActual = hour % 24;
-    final endActual = (hour + 1) % 24;
-    slots.add(
-        '${startActual.toString().padLeft(2, '0')}:00-${endActual.toString().padLeft(2, '0')}:00');
+
+  // ---- A) D-1 -> D'ye taşan kısım: 00:00..prevEnd (cross-midnight ise, hizalı)
+  if (prevEndRaw <= prevStart) {
+    final mod   = prevStart % durationMinutes;
+    final first = (mod == 0) ? 0 : (durationMinutes - mod);
+    for (int t = first; t + durationMinutes <= prevEndRaw; t += durationMinutes) {
+      final a = _fmt(t);                    // örn 00:30
+      final b = _fmt(t + durationMinutes);  // örn 01:30
+      slots.add('$a-$b');                   // bugüne ait
+    }
   }
 
-  slots.sort((a, b) =>
-      int.parse(a.split(':')[0]).compareTo(int.parse(b.split(':')[0])));
-  return slots;
+  // ---- B) Bugünün kendi kısmı
+  if (todayEndRaw <= todayStart) {
+    // BUGÜN cross-midnight: bugünde başlayan tüm slotlar (start..24:00)
+    // ÖNEMLİ: t < DAY; bitiş 24:00’ı aşabilir → _fmtWrap ile düzgün yazdır
+    for (int t = todayStart; t < DAY; t += durationMinutes) {
+      final start = _fmt(t);
+      final end   = _fmtWrap(t + durationMinutes); // 24:30 -> 00:30
+      slots.add('$start-$end');                    // 23:30-00:30 görünür
+    }
+    // 00:00..todayEnd yarına ait; yarın üretilecek
+  } else {
+    // Normal gün: start..end (bitiş gün içinde kaldığı için <= kontrolü doğru)
+    for (int t = todayStart; t + durationMinutes <= todayEndRaw; t += durationMinutes) {
+      final a = _fmt(t);
+      final b = _fmt(t + durationMinutes);
+      slots.add('$a-$b');
+    }
+  }
+
+  // Çiftleri temizle
+  final seen = <String>{};
+  return slots.where(seen.add).toList();
 }
+
+
 
 String getDayName(String id) {
   const dayMap = {

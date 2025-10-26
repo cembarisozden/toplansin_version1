@@ -32,6 +32,9 @@ class _ReservationPageState extends State<ReservationPage> {
   List<String> bookedSlots = [];
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _allBookedSlotsSubscription;
+  // 0..6 -> {'startHour': '09:00', 'endHour': '23:00'}
+  Map<int, ({String start, String end})> _overrides = {}; // 0..6
+  bool _useOverrides = false; // koleksiyon boş mu dolu mu
 
 
   @override
@@ -39,6 +42,8 @@ class _ReservationPageState extends State<ReservationPage> {
     super.initState();
     _initSelectedDate();
     _listenBookedSlots();
+    _loadDayHours();
+
   }
 
   @override
@@ -56,7 +61,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   bool hasFreeSlotOnDay(DateTime day) {
-    return timeSlots.any((slot) => !isSlotBooked(day, slot));
+    return timeSlotsFor(day).any((slot) => !isSlotBooked(day, slot));
   }
 
   DateTime? findNextAvailableDay(DateTime startDay) {
@@ -69,9 +74,13 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   DateTime slotToDateTime(DateTime day, String slot) {
-    final h = int.parse(slot.split('-')[0].split(':')[0]);
-    return DateTime(day.year, day.month, day.day, h);
+    final start = slot.split('-').first;   // "HH:mm"
+    final parts = start.split(':').map(int.parse).toList();
+    final h = parts[0];
+    final m = parts[1];
+    return DateTime(day.year, day.month, day.day, h, m);
   }
+
 
   void _listenBookedSlots() {
     _allBookedSlotsSubscription = FirebaseFirestore.instance
@@ -87,19 +96,128 @@ class _ReservationPageState extends State<ReservationPage> {
     });
   }
 
+  Future<void> _loadDayHours() async {
+    final col = FirebaseFirestore.instance
+        .collection('hali_sahalar')
+        .doc(widget.haliSaha.id)
+        .collection('start_end_hours');
 
-  List<String> get timeSlots {
-    final start = widget.haliSaha.startHour.split(':');
-    final end = widget.haliSaha.endHour.split(':');
-    int sH = int.parse(start[0]);
-    int sM = int.parse(start[1]);
-    int eH = int.parse(end[0]);
-    int eM = int.parse(end[1]);
-    if (eH < sH || (eH == sH && eM < sM)) eH += 24;
-    return [for (int h = sH; h < eH; h++)
-      '${(h % 24).toString().padLeft(2,'0')}:00-${((h+1)%24).toString().padLeft(2,'0')}:00'
-    ];
+    final snap = await col.get();
+
+    final map = <int, ({String start, String end})>{};
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final day = int.tryParse(doc.id) ?? (data['day'] as int? ?? -1);
+      if (day < 0 || day > 6) continue;
+
+      final s = (data['startHour'] as String? ?? '').trim();
+      final e = (data['endHour']   as String? ?? '').trim();
+      // burada boş bırakılmaması gerektiğini varsayıyoruz
+      map[day] = (start: s, end: e);
+    }
+
+    setState(() {
+      _overrides = map;
+      _useOverrides = snap.docs.isNotEmpty; // ✅ bir belge bile varsa tamamen overrides
+    });
+
+    // Savunmacı: override modu açıksa 0..6 tüm günlerin geldiğini varsayarız.
+    assert(!_useOverrides || _overrides.length == 7,
+    'Override modu açık ama günlerden biri eksik gibi görünüyor.');
   }
+
+
+
+  int _toMinutes(String hhmm) {
+    final p = hhmm.split(':');
+    final h = int.parse(p[0]);
+    final m = int.parse(p[1]);
+    return h * 60 + m;
+  }
+
+  String _fmt(int totalMinutes) {
+    final m = totalMinutes % (24 * 60);
+    final h = (m ~/ 60) % 24;
+    final mm = m % 60;
+    return '${h.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}';
+  }
+
+  ({String start, String end}) _hoursForDay(int dayIdx) {
+    final defStart = widget.haliSaha.startHour.trim();
+    final defEnd   = widget.haliSaha.endHour.trim();
+
+    if (_useOverrides) {
+      final h = _overrides[dayIdx];
+      if (h == null || h.start.isEmpty || h.end.isEmpty) {
+        return (start: defStart, end: defEnd);
+      }
+      return (start: h.start, end: h.end);
+    }
+    return (start: defStart, end: defEnd);
+  }
+
+
+  List<String> timeSlotsFor(DateTime date, {int durationMinutes = 60}) {
+    final dIdx    = date.weekday - 1;               // 0=Pt..6=Pz
+    final prevIdx = (dIdx - 1) < 0 ? 6 : dIdx - 1;  // önceki gün
+    const int DAY = 24 * 60;
+
+    final prev   = _hoursForDay(prevIdx);
+    final today  = _hoursForDay(dIdx);
+
+    final prevStart    = _toMinutes(prev.start);
+    final prevEndRaw   = _toMinutes(prev.end);
+
+    final todayStart   = _toMinutes(today.start);
+    final todayEndRaw  = _toMinutes(today.end);
+
+    String _fmtWrap(int mins) {
+      // 24:00’ı aşan bitişleri 00:xx gibi düzgün göstermek için
+      final m = ((mins % DAY) + DAY) % DAY;
+      return _fmt(m);
+    }
+
+    final slots = <String>[];
+
+    // ---- A) D-1 -> D'ye taşan kısım: 00:00..prevEnd (cross-midnight ise)
+    if (prevEndRaw <= prevStart) {
+      // Önceki günün slot hizasına göre bugünde başlayacak ilk slotu hizala
+      final int mod   = prevStart % durationMinutes;
+      final int first = (mod == 0) ? 0 : (durationMinutes - mod);
+
+      for (int t = first; t + durationMinutes <= prevEndRaw; t += durationMinutes) {
+        final a = _fmt(t);                           // örn 00:30
+        final b = _fmt(t + durationMinutes);         // örn 01:30
+        slots.add('$a-$b');                          // ✅ 00:30-01:30 (bugüne ait)
+      }
+    }
+
+    // ---- B) Bugünün kendi kısmı
+    if (todayEndRaw <= todayStart) {
+      // BUGÜN cross-midnight: başlangıçları bugünde olan tüm slotları ekle
+      // ÖNEMLİ: Koşul t < DAY; çünkü bitiş 24:00’ı geçebilir (örn 23:30->00:30)
+      for (int t = todayStart; t < DAY; t += durationMinutes) {
+        final start = _fmt(t);
+        final end   = _fmtWrap(t + durationMinutes); // 24:30 -> 00:30 olarak yaz
+        slots.add('$start-$end');                    // ✅ 23:30-00:30 artık görünür
+      }
+      // 00:00..todayEnd kısmı yarına ait; onu yarın oluşturacağız (başlangıcı yarın)
+    } else {
+      // Normal gün: start..end (bitiş gün içinde kaldığı için <= kontrolü doğru)
+      for (int t = todayStart; t + durationMinutes <= todayEndRaw; t += durationMinutes) {
+        final a = _fmt(t);
+        final b = _fmt(t + durationMinutes);
+        slots.add('$a-$b');
+      }
+    }
+
+    // Çiftlemeyi önle
+    final seen = <String>{};
+    return slots.where(seen.add).toList();
+  }
+
+
+
 
   bool isSlotBooked(DateTime day, String slot) {
     final slotString = '${DateFormat('yyyy-MM-dd').format(day)} $slot';
@@ -120,75 +238,83 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void handlePrevMonth() {
-    // Önceki aya git
-    setState(() {
-      selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
-
-      // Geçmiş tarihlerin seçilmesini önle
-      _updateToFirstValidDate();
-    });
+    final candidate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
+    final fixed = _updateToFirstValidDateSync(candidate);
+    setState(() => selectedDate = fixed);
   }
 
-  void handleNextMonth() {
+
+  Future<void> handleNextMonth() async {
     // 1 haftalık rezervasyon penceresi
-    DateTime today = TimeService.now();
-    DateTime bookingWindowEnd = today.add(Duration(days: 7));
+    final today = TimeService.now();
+    final bookingWindowEnd = today.add(const Duration(days: 7));
 
-    // Şu anki ayın son günü
-    DateTime currentMonthEnd =
-        DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    // Seçili ayın son günü
+    final currentMonthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
-    // Rezervasyon penceresi sonraki aya uzanıyor mu?
-    bool bookingWindowExtendToNextMonth =
-        bookingWindowEnd.isAfter(currentMonthEnd);
+    // Rezervasyon penceresi sonraki aya taşıyor mu?
+    final extendsToNextMonth = bookingWindowEnd.isAfter(currentMonthEnd);
 
-    if (bookingWindowExtendToNextMonth) {
-      // Rezervasyon penceresi sonraki aya uzanıyorsa, sonraki aya geçiş yap
+    if (extendsToNextMonth) {
+      // Sonraki ayın 1'ine geç
       setState(() {
         selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
-        _updateToFirstValidDate();
       });
+
+      // Seçilen tarihi geçerli ilk güne çek + slotları tazele
+      _updateToFirstValidDateSync(selectedDate);
     } else {
-      // Rezervasyon penceresi uzanmıyorsa, bilgi ver ve mevcut ayda kal
-      AppSnackBar.warning(context,
-          "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - ${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
-          d: Duration(seconds: 3));
-      // Ay değişikliği yapma - mevcut ayda kalır
+      // Pencere uzanmıyorsa mevcut ayda kal ve uyar
+      AppSnackBar.warning(
+        context,
+        "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - "
+            "${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
+        d: const Duration(seconds: 3),
+      );
     }
   }
+
 
 // Yardımcı fonksiyon: İlk geçerli tarihe güncelle
-  void _updateToFirstValidDate() {
-    DateTime now = TimeService.now();
-    DateTime today = DateTime(now.year, now.month, now.day);
+  DateTime _updateToFirstValidDateSync(DateTime selected) {
+    final now = TimeService.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var newSelected = selected;
 
-    // Seçili ay bugünün ayı ise ve seçili gün geçmişte kaldıysa, bugüne veya sonraki ilk uygun güne güncelle
-    if (selectedDate.year == now.year &&
-        selectedDate.month == now.month &&
-        selectedDate.day < now.day) {
-      // Bugün için müsait slot var mı kontrol et
+    if (selected.year == now.year && selected.month == now.month && selected.day < now.day) {
+      // bugün uygun mu?
       if (hasFreeSlotOnDay(today)) {
-        selectedDate = today;
+        newSelected = today;
       } else {
-        // Bugün için slot yoksa, sonraki ilk uygun günü bul
-        DateTime? nextAvailable = findNextAvailableDay(today);
-        if (nextAvailable != null) {
-          selectedDate = nextAvailable;
-        } else {
-          // Hiç uygun gün bulunamazsa bugüne ayarla (UI'da "müsait saat yok" gösterilecek)
-          selectedDate = today;
+        final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
+        DateTime? next;
+        for (int d = today.day + 1; d <= daysInMonth; d++) {
+          final day = DateTime(today.year, today.month, d);
+          if (hasFreeSlotOnDay(day)) { next = day; break; }
         }
+        newSelected = next ?? today;
       }
-    } else if (selectedDate.isBefore(today)) {
-      // Seçili tarih tamamen geçmişte kaldıysa (farklı ay/yıl), bugüne ayarla
-      selectedDate = today;
+    } else if (selected.isBefore(today)) {
+      newSelected = today;
     }
 
-    // Burada diğer ayların geçerlilik kontrolü de yapılabilir, ancak şimdilik geçmiş günler problemi çözüldü
+    return newSelected;
   }
+
 
   bool _isToday(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+
+  String? _openingHoursLabelFor(DateTime date) {
+    if (!_useOverrides) return null; // sadece özel saatler varsa göster
+    final idx = date.weekday - 1;    // 0..6
+    final h = _overrides[idx];
+    if (h == null) return null;
+    if (h.start.trim().isEmpty || h.end.trim().isEmpty) return null; // kapalı ise yazma
+    return '${h.start} - ${h.end}';
+  }
+
 
 
   @override
@@ -200,24 +326,33 @@ class _ReservationPageState extends State<ReservationPage> {
     final selectedMonthYear = DateFormat.yMMMM('tr_TR').format(selectedDate);
     DateTime now = TimeService.now();
 
-    final allSlots =
-    timeSlots.where((slot) => !isSlotBooked(selectedDate, slot)).toList();
+    final allSlots = timeSlotsFor(selectedDate)
+        .where((slot) => !isSlotBooked(selectedDate, slot))
+        .toList();
+
+    final hoursLabel = _openingHoursLabelFor(selectedDate);
+
 
     // Eğer seçili gün bugüne eşitse, geçmiş saatleri listeden çıkar
     if (_isToday(selectedDate, now)) {
+      final now = TimeService.now();
       allSlots.removeWhere((slot) {
-        final slotHour = int.parse(slot.split('-').first.split(':')[0]);
-        // slot 08:00 ise slotHour=8, şimdi TR saati 10:xx ise 8 < 10 ⇒ geçmiş
-        return slotHour <= now.hour;
+        final start = slot.split('-').first; // "HH:mm"
+        final parts = start.split(':').map(int.parse).toList();
+        final sh = parts[0], sm = parts[1];
+        final startDt = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, sh, sm);
+        return startDt.isBefore(DateTime(now.year, now.month, now.day, now.hour, now.minute));
       });
+
     }
 
     // Saatleri sıralıyoruz.
     allSlots.sort((a, b) {
-      final startA = int.parse(a.split('-')[0].split(':')[0]);
-      final startB = int.parse(b.split('-')[0].split(':')[0]);
-      return startA.compareTo(startB);
+      final ap = a.split('-').first.split(':').map(int.parse).toList();
+      final bp = b.split('-').first.split(':').map(int.parse).toList();
+      return (ap[0] * 60 + ap[1]).compareTo(bp[0] * 60 + bp[1]);
     });
+
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -404,15 +539,14 @@ class _ReservationPageState extends State<ReservationPage> {
                     Row(
                       children: [
                         Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE6F4EA),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.access_time,
-                              color: Colors.green.shade800, size: 20),
+                          child: Icon(Icons.access_time, color: Colors.green.shade800, size: 20),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           "Müsait Saatler",
                           style: TextStyle(
@@ -421,6 +555,27 @@ class _ReservationPageState extends State<ReservationPage> {
                             color: Colors.green.shade800,
                           ),
                         ),
+                        const Spacer(),
+                        if (hoursLabel != null) // sadece özel saat varsa göster
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  hoursLabel, // örn: 09:00 - 23:00
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
 

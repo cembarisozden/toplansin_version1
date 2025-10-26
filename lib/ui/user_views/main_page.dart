@@ -11,6 +11,7 @@ import 'package:toplansin/core/providers/bottomNavProvider.dart';
 import 'package:toplansin/data/entitiy/hali_saha.dart';
 import 'package:toplansin/data/entitiy/person.dart';
 import 'package:toplansin/data/entitiy/reservation.dart';
+import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/coming_soon_page.dart';
 import 'package:toplansin/ui/user_views/dashboard_body.dart';
 import 'package:toplansin/ui/user_views/hali_saha_page.dart';
@@ -38,9 +39,18 @@ class _MainPageState extends State<MainPage> {
   final sl = GetIt.instance;
 
 
+  Future<void> tokenResult()async{
+    final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
+    print('FirebaseToken oluşturuldu: ${TimeService.formatTr(idTokenResult.issuedAtTime)}');
+    print('FirebaseToken geçerli bitiş: ${TimeService.formatTr(idTokenResult.expirationTime)}');
+  }
+
+
+
   @override
   void initState() {
     super.initState();
+    tokenResult();
     sayfalar = [
       DashboardBody(user: widget.currentUser),
       HaliSahaPage(

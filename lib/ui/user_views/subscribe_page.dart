@@ -25,6 +25,10 @@ class _SubscribePageState extends State<SubscribePage> {
   int selectedDay = 0;
   String? selectedTime;
 
+  bool _useOverrides = false;
+  Map<int, ({String start, String end})> _overrides = {};
+  bool _loadingHours = true;
+
   final List<Map<String, String>> daysOfWeek = [
     {'short': 'Pzt', 'full': 'Pazartesi'},
     {'short': 'Sal', 'full': 'Salı'},
@@ -197,6 +201,15 @@ class _SubscribePageState extends State<SubscribePage> {
     }
   }
 
+  DateTime _refDateForSelectedDay() {
+    final now = TimeService.now();
+    // Bu haftanın Pazartesi’si:
+    final monday = now.subtract(Duration(days: (now.weekday - 1)));
+    return DateTime(monday.year, monday.month, monday.day)
+        .add(Duration(days: selectedDay));
+  }
+
+
   Future<void> _showSuccessDialog(
       BuildContext context, String day, String time) {
     return showDialog(
@@ -270,6 +283,14 @@ class _SubscribePageState extends State<SubscribePage> {
         // Örneğin readReview() çağrısı varsa burada yap
         // readReview(widget.halisaha.id);
       }
+      () async {
+        final info = await loadStartEndOverrides(widget.halisaha.id);
+        setState(() {
+          _useOverrides = info.useOverrides;
+          _overrides = info.map;
+          _loadingHours = false;
+        });
+      }();
     });
 
     print("START: ${widget.halisaha.startHour}");
@@ -477,12 +498,25 @@ class _SubscribePageState extends State<SubscribePage> {
                               final blockedTimes = snapshot.data!.docs.map((doc) => doc['time']).toList();
                               print("⏰ Engellenmiş saatler: $blockedTimes");
 
-                              final timeSlots = generateTimeSlots(
-                                widget.halisaha.startHour,
-                                widget.halisaha.endHour,
+                              if (_loadingHours) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+
+                              final refDate = _refDateForSelectedDay();
+                              final timeSlots = generateTimeSlotsForDate(
+                                date: refDate,
+                                useOverrides: _useOverrides,
+                                overrides: _overrides,
+                                defaultStart: widget.halisaha.startHour,
+                                defaultEnd: widget.halisaha.endHour,
+                                durationMinutes: 60, // 30/45/90 yapabilirsin
                               );
-                              final availableSlots =
-                              timeSlots.where((slot) => !blockedTimes.contains(slot)).toList();
+
+                              final availableSlots = timeSlots
+                                  .where((slot) => !blockedTimes.contains(slot))
+                                  .toList();
+
+
 
                               return SizedBox(
                                 height: screenHeight * 0.4,

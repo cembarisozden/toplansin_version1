@@ -1,6 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:toplansin/services/time_service.dart';
 
+Timestamp? _ts(dynamic v) {
+  if (v == null) return null;
+  if (v is Timestamp) return v;
+  if (v is DateTime) return Timestamp.fromDate(v);
+  if (v is String) {
+    // ISO gibi string geldiyse
+    try { return Timestamp.fromDate(DateTime.parse(v)); } catch (_) {}
+  }
+  if (v is Map) {
+    // Callable dönüşleri: seconds/nanoseconds veya _seconds/_nanoseconds
+    final s = v['seconds'] ?? v['_seconds'] ?? v['sec'];
+    final ns = v['nanoseconds'] ?? v['_nanoseconds'] ?? v['nanos'] ?? 0;
+    if (s is int) {
+      return Timestamp(s, (ns is int) ? ns : 0);
+    }
+    // Bazı SDK'lar ms taşır
+    final ms = v['millisecondsSinceEpoch'] ?? v['ms'];
+    if (ms is int) return Timestamp.fromMillisecondsSinceEpoch(ms);
+  }
+  return null;
+}
+
 class Person {
   String id;
   String name;
@@ -44,9 +66,11 @@ class Person {
       phone: map['phone'] ?? '',
       role: map['role'] as String? ?? 'unknown', // Varsayılan rol 'user' olabilir
       fieldAccessCodes: List<String>.from(map['fieldAccessCodes'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      createdAt: _ts(map['createdAt'])?.toDate(), // <-- tek değişiklik burada
     );
   }
+
+
 
   Person copyWith({
     String? id,

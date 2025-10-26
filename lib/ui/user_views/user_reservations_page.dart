@@ -22,6 +22,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
   String _searchTerm = '';
 
   Stream<List<Reservation>> activeReservationsStream(String uid) {
+
     return FirebaseFirestore.instance
         .collection('reservations')
         .where('userId', isEqualTo: uid)
@@ -36,6 +37,7 @@ class _UserReservationsPageState extends State<UserReservationsPage>
   }
 
   Future<List<Reservation>> fetchPastReservationsOnce(String uid) async {
+
     // AUTH guard
     if (FirebaseAuth.instance.currentUser == null) {
       return const <Reservation>[];

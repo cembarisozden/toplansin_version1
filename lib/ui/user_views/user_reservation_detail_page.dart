@@ -191,7 +191,7 @@ class _UserReservationDetailPageState extends State<UserReservationDetailPage> {
             PageRouteBuilder(
               pageBuilder: (_, animation, __) =>
                   OwnerHalisahaPage(
-                      haliSaha: haliSaha, currentOwner: currentUser),
+                      haliSaha: haliSaha, currentOwner: currentUser,context: context,),
               transitionsBuilder: (_, animation, __, child) {
                 return FadeTransition(
                   opacity: animation,
