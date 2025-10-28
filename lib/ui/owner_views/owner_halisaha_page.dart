@@ -23,6 +23,7 @@ import 'package:toplansin/ui/owner_views/owner_photo_management_page.dart';
 import 'package:toplansin/ui/owner_views/owner_reviews_page.dart';
 import 'package:toplansin/core/providers/owner_providers/OwnerNotificationProvider.dart';
 import 'package:toplansin/ui/owner_views/owner_user_statistics_panel.dart';
+import 'package:toplansin/ui/user_views/dialogs/show_styled_confirm_dialog.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_colors.dart';
 import 'package:toplansin/ui/user_views/shared/theme/app_text_styles.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
@@ -75,7 +76,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   Map<int, ({String start, String end})> _overrides = {};
   bool _loadingHours = true;
 
-
   Future<void> _fetchStartEndOverrides() async {
     try {
       setState(() => _loadingHours = true);
@@ -83,7 +83,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       if (!mounted) return;
       setState(() {
         _useOverrides = info.useOverrides; // koleksiyon boş değilse true
-        _overrides    = info.map;          // 0..6 -> (start,end)
+        _overrides = info.map; // 0..6 -> (start,end)
         _loadingHours = false;
       });
     } catch (e) {
@@ -94,7 +94,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       setState(() => _loadingHours = false);
     }
   }
-
 
   void listenToReservations(String haliSahaId) {
     // Eski abonelikleri güvenle kapat
@@ -391,7 +390,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
     listenToReservations(widget.haliSaha.id);
     super.initState();
     listenHaliSaha(widget.haliSaha.id);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchStartEndOverrides());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _fetchStartEndOverrides());
   }
 
   @override
@@ -652,7 +652,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             "Abonelik Yönetimi",
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const Spacer(),
@@ -661,21 +662,28 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => OwnerPastSubscriptionsPage(
+                                builder: (context) =>
+                                    OwnerPastSubscriptionsPage(
                                   haliSahaId: widget.haliSaha.id,
                                 ),
                               ),
                             );
                           },
-                          icon: const Icon(Icons.history, size: 20, color: Colors.white),
+                          icon: const Icon(Icons.history,
+                              size: 20, color: Colors.white),
                           label: const Text(
                             "Geçmiş Aboneler",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueGrey.shade500,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                             elevation: 2,
                           ),
                         ),
@@ -689,7 +697,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                       stream: (() {
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) {
-                          return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+                          return const Stream<
+                              QuerySnapshot<Map<String, dynamic>>>.empty();
                         }
                         return FirebaseFirestore.instance
                             .collection('subscriptions')
@@ -706,7 +715,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         for (final d in docs) {
                           final day = d.data()['dayOfWeek'];
                           if (day is int) {
-                            pendingCountsByDay[day] = (pendingCountsByDay[day] ?? 0) + 1;
+                            pendingCountsByDay[day] =
+                                (pendingCountsByDay[day] ?? 0) + 1;
                           }
                         }
                         return buildDayButtonsWithBadges(pendingCountsByDay);
@@ -720,12 +730,15 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                       stream: (() {
                         final user = FirebaseAuth.instance.currentUser;
                         if (user == null) {
-                          return const Stream<QuerySnapshot<Map<String, dynamic>>>.empty();
+                          return const Stream<
+                              QuerySnapshot<Map<String, dynamic>>>.empty();
                         }
                         return FirebaseFirestore.instance
                             .collection('subscriptions')
                             .where('haliSahaId', isEqualTo: widget.haliSaha.id)
-                            .where('dayOfWeek', isEqualTo: getDayOfWeekNumber(selectedDay)) // 1..7
+                            .where('dayOfWeek',
+                                isEqualTo:
+                                    getDayOfWeekNumber(selectedDay)) // 1..7
                             .snapshots();
                       })(),
                       builder: (context, snapshot) {
@@ -755,11 +768,15 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                           return Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  statusBadge("$aktifCount Abone", Icons.check_circle, Colors.blue),
-                                  statusBadge("$istekCount İstek", Icons.error_outline, Colors.orange),
-                                  statusBadge("$musaitCount Müsait", Icons.circle_outlined, Colors.grey),
+                                  statusBadge("$aktifCount Abone",
+                                      Icons.check_circle, Colors.blue),
+                                  statusBadge("$istekCount İstek",
+                                      Icons.error_outline, Colors.orange),
+                                  statusBadge("$musaitCount Müsait",
+                                      Icons.circle_outlined, Colors.grey),
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -785,7 +802,9 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         int aktifCount = 0;
                         int istekCount = 0;
 
-                        final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byTime = {};
+                        final Map<String,
+                                QueryDocumentSnapshot<Map<String, dynamic>>>
+                            byTime = {};
                         for (final d in docs) {
                           final data = d.data();
                           final status = data['status'] as String? ?? '';
@@ -797,23 +816,31 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                             istekCount++;
                           }
 
-                          if (time != null && status != 'İptal Edildi' && status != 'Sona Erdi') {
-                            byTime[time] = d; // aynı saate birden çok kayıt varsa son gelen kalır
+                          if (time != null &&
+                              status != 'İptal Edildi' &&
+                              status != 'Sona Erdi') {
+                            byTime[time] =
+                                d; // aynı saate birden çok kayıt varsa son gelen kalır
                           }
                         }
 
                         // Kaba özet
-                        final musaitCountRaw = generatedSlots.length - (aktifCount + istekCount);
-                        final musaitCount = musaitCountRaw < 0 ? 0 : musaitCountRaw;
+                        final musaitCountRaw =
+                            generatedSlots.length - (aktifCount + istekCount);
+                        final musaitCount =
+                            musaitCountRaw < 0 ? 0 : musaitCountRaw;
 
                         return Column(
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                statusBadge("$aktifCount Abone", Icons.check_circle, Colors.blue),
-                                statusBadge("$istekCount İstek", Icons.error_outline, Colors.orange),
-                                statusBadge("$musaitCount Müsait", Icons.circle_outlined, Colors.grey),
+                                statusBadge("$aktifCount Abone",
+                                    Icons.check_circle, Colors.blue),
+                                statusBadge("$istekCount İstek",
+                                    Icons.error_outline, Colors.orange),
+                                statusBadge("$musaitCount Müsait",
+                                    Icons.circle_outlined, Colors.grey),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -839,10 +866,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 // Seçili gün ('Pzt','Sal',...) için bu haftadan bir referans tarih üret
   DateTime _refDateForSelectedDay() {
     final now = TimeService.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1)); // 1=Mon..7=Sun
+    final monday =
+        now.subtract(Duration(days: now.weekday - 1)); // 1=Mon..7=Sun
     final dayNumber = getDayOfWeekNumber(selectedDay); // 1..7
     final offset = dayNumber - 1; // Pazartesi = 0
-    return DateTime(monday.year, monday.month, monday.day).add(Duration(days: offset));
+    return DateTime(monday.year, monday.month, monday.day)
+        .add(Duration(days: offset));
   }
 
   /// Küçük yardımcı: tablo iskeleti (tekrar eden UI’yi toplar)
@@ -879,21 +908,28 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
         children: [
           ListTile(
             leading: const Icon(Icons.calendar_today, color: Colors.blue),
-            title: Text(dayTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: const Text("Günlük Abonelikler", style: TextStyle(fontSize: 13)),
+            title: Text(dayTitle,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text("Günlük Abonelikler",
+                style: TextStyle(fontSize: 13)),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: Colors.blue.shade50,
             child: const Row(
               children: [
-                Expanded(child: Text("Saat",  style: TextStyle(fontWeight: FontWeight.w500))),
-                Expanded(child: Text("Durum", style: TextStyle(fontWeight: FontWeight.w500))),
-                Expanded(child: Text("İşlem",  style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text("Saat",
+                        style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text("Durum",
+                        style: TextStyle(fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text("İşlem",
+                        style: TextStyle(fontWeight: FontWeight.w500))),
               ],
             ),
           ),
-
           ...slots.map((slot) {
             final matching = byTime[slot]; // "HH:mm-HH:mm" → snapshot
             String status = 'musait';
@@ -944,10 +980,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                     child: ElevatedButton(
                       onPressed: () async {
                         if (matching == null) {
-                          final data = await showInputDialog(context, title: "Abone Bilgisi");
+                          final data = await showInputDialog(context,
+                              title: "Abone Bilgisi");
                           if (data == null) return;
 
-                          final int dayOfWeekForSelected = getDayOfWeekNumber(selectedDay);
+                          final int dayOfWeekForSelected =
+                              getDayOfWeekNumber(selectedDay);
 
                           await addOwnerSubscription(
                             context: context,
@@ -967,21 +1005,23 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                         backgroundColor: status == "abone"
                             ? Colors.green
                             : status == "istek"
-                            ? Colors.orange
-                            : Colors.blue,
+                                ? Colors.orange
+                                : Colors.blue,
                         minimumSize: const Size.fromHeight(36),
                       ),
                       child: Text(
                         status == "abone"
                             ? "Detaylar"
                             : status == "istek"
-                            ? "Görüntüle"
-                            : "Abone Gir",
-                        style: const TextStyle(fontSize: 13, color: Colors.white),
+                                ? "Görüntüle"
+                                : "Abone Gir",
+                        style:
+                            const TextStyle(fontSize: 13, color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -994,7 +1034,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
-
 
   Widget buildDayButtonsWithBadges(Map<int, int> pendingCountsByDay) {
     return Container(
@@ -1562,7 +1601,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   }
 
   String? _timeValidator(String? v) {
-    if (v == null || v.trim().isEmpty) return null; // boş bırakmaya izin (opsiyonel)
+    if (v == null || v.trim().isEmpty)
+      return null; // boş bırakmaya izin (opsiyonel)
     final reg = RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$'); // HH:MM
     if (!reg.hasMatch(v.trim())) return "Geçerli saat biçimi: 20:00";
     return null;
@@ -1571,31 +1611,30 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   // 12 -> 12:  123 -> 12:3  1234 -> 12:34  (sadece sayı ve :)
   TextInputFormatter get _hhmmMask => TextInputFormatter.withFunction(
         (oldValue, newValue) {
-      // 🔹 Sadece rakamlar ve ':' izinli
-      var t = newValue.text.replaceAll(RegExp(r'[^0-9:]'), '');
+          // 🔹 Sadece rakamlar ve ':' izinli
+          var t = newValue.text.replaceAll(RegExp(r'[^0-9:]'), '');
 
-      // 🔹 Fazla ':' varsa ilkini bırak diğerlerini sil
-      if (':'.allMatches(t).length > 1) {
-        final firstColon = t.indexOf(':');
-        t = t.substring(0, firstColon + 1) +
-            t.substring(firstColon + 1).replaceAll(':', '');
-      }
+          // 🔹 Fazla ':' varsa ilkini bırak diğerlerini sil
+          if (':'.allMatches(t).length > 1) {
+            final firstColon = t.indexOf(':');
+            t = t.substring(0, firstColon + 1) +
+                t.substring(firstColon + 1).replaceAll(':', '');
+          }
 
-      // 🔹 ':' yoksa ve 3–4 karakter girilmişse otomatik yerleştir
-      if (!t.contains(':') && t.length > 2) {
-        t = '${t.substring(0, 2)}:${t.substring(2)}';
-      }
+          // 🔹 ':' yoksa ve 3–4 karakter girilmişse otomatik yerleştir
+          if (!t.contains(':') && t.length > 2) {
+            t = '${t.substring(0, 2)}:${t.substring(2)}';
+          }
 
-      // 🔹 Toplam uzunluk en fazla 5 karakter (HH:MM)
-      if (t.length > 5) t = t.substring(0, 5);
+          // 🔹 Toplam uzunluk en fazla 5 karakter (HH:MM)
+          if (t.length > 5) t = t.substring(0, 5);
 
-      return TextEditingValue(
-        text: t,
-        selection: TextSelection.collapsed(offset: t.length),
+          return TextEditingValue(
+            text: t,
+            selection: TextSelection.collapsed(offset: t.length),
+          );
+        },
       );
-    },
-  );
-
 
   Widget _buildStyledExpansionTile(String title, List<Widget> children) {
     return Card(
@@ -2360,13 +2399,15 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   Widget _buildDailyReservationsTable() {
     final allSlots = generateTimeSlotsForDate(
-      date: selectedDate,                      // o gün
-      useOverrides: _useOverrides,             // sahaya özel saatler
+      date: selectedDate,
+      // o gün
+      useOverrides: _useOverrides,
+      // sahaya özel saatler
       overrides: _overrides,
       defaultStart: widget.haliSaha.startHour,
       defaultEnd: widget.haliSaha.endHour,
-      durationMinutes: 60,                     // değişkense modelden çek
-    )..sort();                                  // saatleri sıralı göster
+      durationMinutes: 60, // değişkense modelden çek
+    )..sort(); // saatleri sıralı göster
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -2419,40 +2460,41 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
               final time = slot;
 
               // Statü belirleme
-              final reserved              = isReserved(time);
-              final pending               = hasPendingRequest(time);
-              final completed             = isCompleted(time);                // içeride _formatSlotWithDate kullan
-              final subscriptionReserved  = isSubscriptionReserved(time);
-              final isPastTimeToday       = _isPastForSelectedDay(time);
+              final reserved = isReserved(time);
+              final pending = hasPendingRequest(time);
+              final completed =
+                  isCompleted(time); // içeride _formatSlotWithDate kullan
+              final subscriptionReserved = isSubscriptionReserved(time);
+              final isPastTimeToday = _isPastForSelectedDay(time);
 
               IconData statusIcon;
               Color statusColor;
               String statusText;
 
               if (completed) {
-                statusIcon  = Icons.check_circle_outline;
+                statusIcon = Icons.check_circle_outline;
                 statusColor = Colors.blue;
-                statusText  = "Tamamlandı";
+                statusText = "Tamamlandı";
               } else if (subscriptionReserved) {
-                statusIcon  = Icons.check_circle;
+                statusIcon = Icons.check_circle;
                 statusColor = AppColors.secondary;
-                statusText  = "Abone";
+                statusText = "Abone";
               } else if (reserved) {
-                statusIcon  = Icons.check_circle;
+                statusIcon = Icons.check_circle;
                 statusColor = AppColors.primary;
-                statusText  = "Rezerve";
+                statusText = "Rezerve";
               } else if (pending) {
-                statusIcon  = Icons.priority_high;
+                statusIcon = Icons.priority_high;
                 statusColor = Colors.orange;
-                statusText  = "İstek Var";
+                statusText = "İstek Var";
               } else if (isPastTimeToday) {
-                statusIcon  = Icons.history;
+                statusIcon = Icons.history;
                 statusColor = Colors.grey;
-                statusText  = "Geçti";
+                statusText = "Geçti";
               } else {
-                statusIcon  = Icons.circle;
+                statusIcon = Icons.circle;
                 statusColor = Colors.grey;
-                statusText  = "Müsait";
+                statusText = "Müsait";
               }
 
               return TableRow(
@@ -2470,7 +2512,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   TableCell(
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 12),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2494,7 +2537,8 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                   TableCell(
                     verticalAlignment: TableCellVerticalAlignment.middle,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
                       child: _buildActionButton(
                         reserved,
                         pending,
@@ -2512,7 +2556,6 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
       ),
     );
   }
-
 
   // --- Helpers: dakika hassasiyetli ve cross-midnight destekli ---
   DateTime _slotStartDT(String slot, DateTime day) {
@@ -2540,27 +2583,34 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
   bool _isPastForSelectedDay(String slot) {
     final now = TimeService.now();
-    final start = _slotStartDT(slot, selectedDate);
-    final end   = _slotEndDT(slot, selectedDate);
+    final start = _slotStartDT(slot, selectedDate); // "HH:mm" başlangıcı
 
+    // 1) Gün bazlı karşılaştırmayı "duvar saati"ne indir
     final today = DateTime(now.year, now.month, now.day);
     final sel   = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
 
+    // Debug
+    // print('now=$now | start=$start | sel=$sel');
+
     if (sel.isBefore(today)) return true;   // dünkü tüm slotlar geçti
-    if (sel.isAfter(today))  return false;  // yarınkiler geçmedi
-    // bugün: slotun BİTİŞ saatine göre karar ver (09:00-10:00 09:05'te "geçti" olmasın)
-    return now.isAfter(end);
+    if (sel.isAfter(today))  return false;  // yarın/ilerisi geçmedi
+
+    // 2) Bugünse: her iki tarafı da timezone’suz anahtar haline getir
+    final nowKey   = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final startKey = DateTime(sel.year, sel.month, sel.day, start.hour, start.minute);
+
+    // Başlangıç anında geçmiş saymak istersen >= kullan
+    return nowKey.isAfter(startKey);
   }
 
   String _formatSlotWithDate(String slot, DateTime day) {
     final start = _slotStartDT(slot, day);
-    final end   = _slotEndDT(slot, day);
+    final end = _slotEndDT(slot, day);
     final ymd = DateFormat('yyyy-MM-dd').format(day);
     final s = DateFormat('HH:mm').format(start);
     final e = DateFormat('HH:mm').format(end);
     return '$ymd $s-$e'; // DB/karşılaştırma formatı
   }
-
 
   bool isTodaySelected() {
     DateTime now = TimeService.now();
@@ -2572,11 +2622,12 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
   bool isCompleted(String slot) {
     try {
       final key = _formatSlotWithDate(slot, selectedDate);
-      return haliSahaReservations.any((r) =>
-      r.reservationDateTime == key && r.status == 'Tamamlandı');
-    } catch (_) { return false; }
+      return haliSahaReservations
+          .any((r) => r.reservationDateTime == key && r.status == 'Tamamlandı');
+    } catch (_) {
+      return false;
+    }
   }
-
 
 // Bu fonksiyon buton stillerini daha modern hale getirir.
 // Mantık aynı kalır, sadece stil değişir.
@@ -2879,7 +2930,43 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                       Expanded(
                                         child: reservation.type ==
                                                 "subscription"
-                                            ? SizedBox.shrink()
+                                            ? ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final confirm =
+                                            await ShowStyledConfirmDialog.show(
+                                              context,
+                                              title: "Bu Haftaki Seansı İptal Et",
+                                              message:
+                                              "Bu bir abonelik rezervasyonudur ve işlem geri alınamaz. Emin misiniz?",
+                                              confirmText: "Evet, İptal Et",
+                                            );
+                                            if (confirm == true) {
+
+                                              await cancelThisWeekSlot(
+                                                  reservation.subscriptionId!, context);
+                                              Navigator.pop(context);
+                                            }
+                                          },
+                                                label: Text(
+                                                    "Bu Haftaki Seansı İptal Et",
+                                                    style: AppTextStyles
+                                                        .labelMedium
+                                                        .copyWith(
+                                                            color:
+                                                                Colors.white)),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.redAccent,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8)),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 15),
+                                                  textStyle: const TextStyle(
+                                                      fontSize: 16),
+                                                ),
+                                              )
                                             : ElevatedButton.icon(
                                                 onPressed: () {
                                                   _showCancelConfirmation(
@@ -2906,7 +2993,7 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                                 ),
                                               ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: 18),
                                       // Kapat
                                       Expanded(
                                         child: TextButton(

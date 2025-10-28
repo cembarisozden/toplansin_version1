@@ -70,13 +70,28 @@ class ProgressiveImage extends StatelessWidget {
           memCacheHeight: memH,
           filterQuality: FilterQuality.low,
           cacheKey: Uri.parse(fullUrl).replace(queryParameters: {}).toString(),
-          progressIndicatorBuilder: (_, __, ___) => _placeholder(),
+          progressIndicatorBuilder: (_, __, progress) => Stack(
+            fit: StackFit.expand,
+            children: [
+              _placeholder(),
+               Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+            ],
+          ),
           errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.red),
         ),
       );
     }
 
-    // küçük yoksa doğrudan büyük + hafif placeholder
+    // küçük yoksa doğrudan büyük + hafif placeholder + spinner overlay
     return CachedNetworkImage(
       imageUrl: fullUrl,
       fit: fit,
@@ -85,9 +100,25 @@ class ProgressiveImage extends StatelessWidget {
       memCacheHeight: memH,
       filterQuality: FilterQuality.low,
       cacheKey: Uri.parse(fullUrl).replace(queryParameters: {}).toString(),
-      placeholder: (_, __) => _placeholder(),
+      placeholder: (_, __) => Stack(
+        fit: StackFit.expand,
+        children: [
+          _placeholder(),
+           Center(
+            child: SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
       errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.red),
     );
+
   }
 
   @override

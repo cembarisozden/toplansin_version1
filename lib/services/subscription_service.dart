@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:toplansin/core/errors/app_error_handler.dart';
 import 'package:toplansin/data/entitiy/subscription.dart';
 import 'package:toplansin/services/firebase_functions_service.dart';
+import 'package:toplansin/services/reservation_remote_service.dart';
 import 'package:toplansin/services/time_service.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/app_snackbar/app_snackbar.dart';
 import 'package:toplansin/ui/user_views/shared/widgets/loading_spinner/loading_spinner.dart';
@@ -115,78 +116,155 @@ Future<void> approveSubscription(BuildContext context, String subscriptionId) as
 
 
 
-
 Future<void> userCancelSubscription(
-    BuildContext context, String subscriptionId) async {
+    BuildContext context,
+    String subscriptionId,
+    ) async {
   showLoader(context);
+  final db = FirebaseFirestore.instance;
+  final remote = ReservationRemoteService();
+
   try {
-    final batch = FirebaseFirestore.instance.batch();
+    final batch = db.batch();
 
     // 1) Aboneliği sona erdir
-    final subRef = FirebaseFirestore.instance.collection('subscriptions').doc(subscriptionId);
+    final subRef = db.collection('subscriptions').doc(subscriptionId);
     batch.update(subRef, {
       'status': 'Sona Erdi',
       'lastUpdatedBy': 'user',
     });
 
-    // 2) İlgili rezervasyonları bul ve iptal et
-    final reservationsSnap = await FirebaseFirestore.instance
+    // 2) İlgili "Onaylandı" rezervasyonları bul
+    final reservationsSnap = await db
         .collection('reservations')
         .where('subscriptionId', isEqualTo: subscriptionId)
-        .where('status', isEqualTo: 'Onaylandı')
+        .where('status', whereIn: ['Onaylandı', 'Beklemede'])
         .get();
 
+    // 3) Hepsini iptal et (DB tarafı)
+    final slotCancelFutures = <Future<bool>>[];
     for (final doc in reservationsSnap.docs) {
+      final data = doc.data();
+
+      // UI/raporlama için statüyü iptal olarak işaretle
       batch.update(doc.reference, {
         'status': 'İptal Edildi',
         'lastUpdatedBy': 'user',
+        'cancelReason': 'subscription_ended',
       });
+
+      // 4) bookedSlots temizliği (Cloud Function callables)
+      final haliSahaId = data['haliSahaId'] as String?;
+      final bookingString = data['reservationDateTime'] as String?;
+
+      // callable'a yalnızca gerekli veriler varsa git
+      if (haliSahaId != null && bookingString != null) {
+        slotCancelFutures.add(remote.cancelSlot(
+          haliSahaId: haliSahaId,
+          bookingString: bookingString,
+        ));
+      }
     }
 
+    // 5) Batch’i tek seferde yaz
     await batch.commit();
 
-    AppSnackBar.success(context,"Abonelik başarıyla sona erdirildi");
+    // 6) bookedSlots’tan kaldırmaları paralel çalıştır (best-effort)
+    int failed = 0;
+    if (slotCancelFutures.isNotEmpty) {
+      final results = await Future.wait(slotCancelFutures, eagerError: false);
+      failed = results.where((ok) => ok != true).length;
+    }
+
+    if (failed == 0) {
+      AppSnackBar.success(context, "Abonelik başarıyla sona erdirildi!");
+    } else {
+      AppSnackBar.success(
+        context,
+        "Abonelik sona erdi. $failed slot kaldırılamadı, tekrar denemeyi düşünebilirsin.",
+      );
+    }
   } catch (e) {
     final msg = AppErrorHandler.getMessage(e);
-    AppSnackBar.error(context, msg);
+    AppSnackBar.error(context, "Abonelik iptal edilemedi daha sonra tekrar dene!");
   } finally {
     hideLoader();
   }
 }
 
 
-Future<void> ownerCancelSubscription(
-    BuildContext context, String subscriptionId) async {
-  showLoader(context);
-  try {
-    final batch = FirebaseFirestore.instance.batch();
 
-    // 1) Aboneliği sona erdir
-    final subRef = FirebaseFirestore.instance.collection('subscriptions').doc(subscriptionId);
+Future<void> ownerCancelSubscription(
+    BuildContext context,
+    String subscriptionId,
+    ) async {
+  showLoader(context);
+  final db = FirebaseFirestore.instance;
+  final remote = ReservationRemoteService();
+
+  try {
+    final batch = db.batch();
+
+    // 1️⃣ Aboneliği sona erdir
+    final subRef = db.collection('subscriptions').doc(subscriptionId);
     batch.update(subRef, {
       'status': 'Sona Erdi',
       'lastUpdatedBy': 'owner',
     });
 
-    // 2) İlgili rezervasyonları bul ve iptal et
-    final reservationsSnap = await FirebaseFirestore.instance
+    // 2️⃣ Abonelikle ilişkili onaylı rezervasyonları bul
+    final reservationsSnap = await db
         .collection('reservations')
         .where('subscriptionId', isEqualTo: subscriptionId)
-        .where('status', isEqualTo: 'Onaylandı')
+        .where('status', whereIn: ['Onaylandı', 'Beklemede'])
         .get();
 
+    // 3️⃣ Batch içinde hepsini iptal et
+    final slotCancelFutures = <Future<bool>>[];
+
     for (final doc in reservationsSnap.docs) {
+      final data = doc.data();
+
       batch.update(doc.reference, {
         'status': 'İptal Edildi',
         'lastUpdatedBy': 'owner',
+        'cancelReason': 'subscription_ended_by_owner',
       });
+
+      final haliSahaId = data['haliSahaId'] as String?;
+      final bookingString = data['reservationDateTime'] as String?;
+
+      // 4️⃣ bookedSlots'tan kaldırmak için callable çağır
+      if (haliSahaId != null && bookingString != null) {
+        slotCancelFutures.add(remote.cancelSlot(
+          haliSahaId: haliSahaId,
+          bookingString: bookingString,
+        ));
+      }
     }
 
+    // 5️⃣ Firestore batch commit
     await batch.commit();
 
-    AppSnackBar.success(context,"Abonelik ve ilgili rezervasyonlar başarıyla sona erdirildi");
+    // 6️⃣ Slot silmelerini paralel çalıştır
+    int failed = 0;
+    if (slotCancelFutures.isNotEmpty) {
+      final results = await Future.wait(slotCancelFutures, eagerError: false);
+      failed = results.where((ok) => ok != true).length;
+    }
+
+    // 7️⃣ Sonuç bildirimi
+    if (failed == 0) {
+      AppSnackBar.success(context, "Abonelik ve ilgili rezervasyonlar başarıyla sona erdirildi.");
+    } else {
+      AppSnackBar.success(
+        context,
+        "Abonelik sona erdi ancak $failed slot kaldırılamadı. Tekrar denemeyi düşünebilirsin.",
+      );
+    }
   } catch (e) {
-    AppSnackBar.error(context,"Abonelik iptal edilemedi!");
+    final msg = AppErrorHandler.getMessage(e);
+    AppSnackBar.error(context, "Abonelik iptali başarısız: $msg");
   } finally {
     hideLoader();
   }
