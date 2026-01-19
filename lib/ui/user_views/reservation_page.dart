@@ -31,11 +31,11 @@ class _ReservationPageState extends State<ReservationPage> {
   String? selectedTime;
   List<String> bookedSlots = [];
 
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _allBookedSlotsSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+      _allBookedSlotsSubscription;
   // 0..6 -> {'startHour': '09:00', 'endHour': '23:00'}
   Map<int, ({String start, String end})> _overrides = {}; // 0..6
   bool _useOverrides = false; // koleksiyon boş mu dolu mu
-
 
   @override
   void initState() {
@@ -43,7 +43,6 @@ class _ReservationPageState extends State<ReservationPage> {
     _initSelectedDate();
     _listenBookedSlots();
     _loadDayHours();
-
   }
 
   @override
@@ -74,13 +73,12 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   DateTime slotToDateTime(DateTime day, String slot) {
-    final start = slot.split('-').first;   // "HH:mm"
+    final start = slot.split('-').first; // "HH:mm"
     final parts = start.split(':').map(int.parse).toList();
     final h = parts[0];
     final m = parts[1];
     return DateTime(day.year, day.month, day.day, h, m);
   }
-
 
   void _listenBookedSlots() {
     _allBookedSlotsSubscription = FirebaseFirestore.instance
@@ -91,7 +89,8 @@ class _ReservationPageState extends State<ReservationPage> {
       final raw = snap.data()?['bookedSlots'] as List<dynamic>? ?? [];
 
       setState(() {
-        bookedSlots = raw.map((e) => e.toString()).toList(); // her eleman String
+        bookedSlots =
+            raw.map((e) => e.toString()).toList(); // her eleman String
       });
     });
   }
@@ -111,22 +110,21 @@ class _ReservationPageState extends State<ReservationPage> {
       if (day < 0 || day > 6) continue;
 
       final s = (data['startHour'] as String? ?? '').trim();
-      final e = (data['endHour']   as String? ?? '').trim();
+      final e = (data['endHour'] as String? ?? '').trim();
       // burada boş bırakılmaması gerektiğini varsayıyoruz
       map[day] = (start: s, end: e);
     }
 
     setState(() {
       _overrides = map;
-      _useOverrides = snap.docs.isNotEmpty; // ✅ bir belge bile varsa tamamen overrides
+      _useOverrides =
+          snap.docs.isNotEmpty; // ✅ bir belge bile varsa tamamen overrides
     });
 
     // Savunmacı: override modu açıksa 0..6 tüm günlerin geldiğini varsayarız.
     assert(!_useOverrides || _overrides.length == 7,
-    'Override modu açık ama günlerden biri eksik gibi görünüyor.');
+        'Override modu açık ama günlerden biri eksik gibi görünüyor.');
   }
-
-
 
   int _toMinutes(String hhmm) {
     final p = hhmm.split(':');
@@ -144,7 +142,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
   ({String start, String end}) _hoursForDay(int dayIdx) {
     final defStart = widget.haliSaha.startHour.trim();
-    final defEnd   = widget.haliSaha.endHour.trim();
+    final defEnd = widget.haliSaha.endHour.trim();
 
     if (_useOverrides) {
       final h = _overrides[dayIdx];
@@ -156,20 +154,19 @@ class _ReservationPageState extends State<ReservationPage> {
     return (start: defStart, end: defEnd);
   }
 
-
   List<String> timeSlotsFor(DateTime date, {int durationMinutes = 60}) {
-    final dIdx    = date.weekday - 1;               // 0=Pt..6=Pz
-    final prevIdx = (dIdx - 1) < 0 ? 6 : dIdx - 1;  // önceki gün
+    final dIdx = date.weekday - 1; // 0=Pt..6=Pz
+    final prevIdx = (dIdx - 1) < 0 ? 6 : dIdx - 1; // önceki gün
     const int DAY = 24 * 60;
 
-    final prev   = _hoursForDay(prevIdx);
-    final today  = _hoursForDay(dIdx);
+    final prev = _hoursForDay(prevIdx);
+    final today = _hoursForDay(dIdx);
 
-    final prevStart    = _toMinutes(prev.start);
-    final prevEndRaw   = _toMinutes(prev.end);
+    final prevStart = _toMinutes(prev.start);
+    final prevEndRaw = _toMinutes(prev.end);
 
-    final todayStart   = _toMinutes(today.start);
-    final todayEndRaw  = _toMinutes(today.end);
+    final todayStart = _toMinutes(today.start);
+    final todayEndRaw = _toMinutes(today.end);
 
     String _fmtWrap(int mins) {
       // 24:00’ı aşan bitişleri 00:xx gibi düzgün göstermek için
@@ -182,13 +179,15 @@ class _ReservationPageState extends State<ReservationPage> {
     // ---- A) D-1 -> D'ye taşan kısım: 00:00..prevEnd (cross-midnight ise)
     if (prevEndRaw <= prevStart) {
       // Önceki günün slot hizasına göre bugünde başlayacak ilk slotu hizala
-      final int mod   = prevStart % durationMinutes;
+      final int mod = prevStart % durationMinutes;
       final int first = (mod == 0) ? 0 : (durationMinutes - mod);
 
-      for (int t = first; t + durationMinutes <= prevEndRaw; t += durationMinutes) {
-        final a = _fmt(t);                           // örn 00:30
-        final b = _fmt(t + durationMinutes);         // örn 01:30
-        slots.add('$a-$b');                          // ✅ 00:30-01:30 (bugüne ait)
+      for (int t = first;
+          t + durationMinutes <= prevEndRaw;
+          t += durationMinutes) {
+        final a = _fmt(t); // örn 00:30
+        final b = _fmt(t + durationMinutes); // örn 01:30
+        slots.add('$a-$b'); // ✅ 00:30-01:30 (bugüne ait)
       }
     }
 
@@ -198,13 +197,15 @@ class _ReservationPageState extends State<ReservationPage> {
       // ÖNEMLİ: Koşul t < DAY; çünkü bitiş 24:00’ı geçebilir (örn 23:30->00:30)
       for (int t = todayStart; t < DAY; t += durationMinutes) {
         final start = _fmt(t);
-        final end   = _fmtWrap(t + durationMinutes); // 24:30 -> 00:30 olarak yaz
-        slots.add('$start-$end');                    // ✅ 23:30-00:30 artık görünür
+        final end = _fmtWrap(t + durationMinutes); // 24:30 -> 00:30 olarak yaz
+        slots.add('$start-$end'); // ✅ 23:30-00:30 artık görünür
       }
       // 00:00..todayEnd kısmı yarına ait; onu yarın oluşturacağız (başlangıcı yarın)
     } else {
       // Normal gün: start..end (bitiş gün içinde kaldığı için <= kontrolü doğru)
-      for (int t = todayStart; t + durationMinutes <= todayEndRaw; t += durationMinutes) {
+      for (int t = todayStart;
+          t + durationMinutes <= todayEndRaw;
+          t += durationMinutes) {
         final a = _fmt(t);
         final b = _fmt(t + durationMinutes);
         slots.add('$a-$b');
@@ -216,14 +217,10 @@ class _ReservationPageState extends State<ReservationPage> {
     return slots.where(seen.add).toList();
   }
 
-
-
-
   bool isSlotBooked(DateTime day, String slot) {
     final slotString = '${DateFormat('yyyy-MM-dd').format(day)} $slot';
     return bookedSlots.contains(slotString);
   }
-
 
   void handleDateClick(int day) {
     setState(() {
@@ -233,8 +230,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void handleTimeClick(String time) {
-    if (!isSlotBooked(selectedDate, time))
-      setState(() => selectedTime = time);
+    if (!isSlotBooked(selectedDate, time)) setState(() => selectedTime = time);
   }
 
   void handlePrevMonth() {
@@ -243,14 +239,14 @@ class _ReservationPageState extends State<ReservationPage> {
     setState(() => selectedDate = fixed);
   }
 
-
   Future<void> handleNextMonth() async {
     // 1 haftalık rezervasyon penceresi
     final today = TimeService.now();
     final bookingWindowEnd = today.add(const Duration(days: 7));
 
     // Seçili ayın son günü
-    final currentMonthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+    final currentMonthEnd =
+        DateTime(selectedDate.year, selectedDate.month + 1, 0);
 
     // Rezervasyon penceresi sonraki aya taşıyor mu?
     final extendsToNextMonth = bookingWindowEnd.isAfter(currentMonthEnd);
@@ -268,12 +264,11 @@ class _ReservationPageState extends State<ReservationPage> {
       AppSnackBar.warning(
         context,
         "Şu an için sadece ${DateFormat.yMMMd('tr_TR').format(today)} - "
-            "${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
+        "${DateFormat.yMMMd('tr_TR').format(bookingWindowEnd)} arası rezervasyon yapılabilir.",
         d: const Duration(seconds: 3),
       );
     }
   }
-
 
 // Yardımcı fonksiyon: İlk geçerli tarihe güncelle
   DateTime _updateToFirstValidDateSync(DateTime selected) {
@@ -281,7 +276,9 @@ class _ReservationPageState extends State<ReservationPage> {
     final today = DateTime(now.year, now.month, now.day);
     var newSelected = selected;
 
-    if (selected.year == now.year && selected.month == now.month && selected.day < now.day) {
+    if (selected.year == now.year &&
+        selected.month == now.month &&
+        selected.day < now.day) {
       // bugün uygun mu?
       if (hasFreeSlotOnDay(today)) {
         newSelected = today;
@@ -290,7 +287,10 @@ class _ReservationPageState extends State<ReservationPage> {
         DateTime? next;
         for (int d = today.day + 1; d <= daysInMonth; d++) {
           final day = DateTime(today.year, today.month, d);
-          if (hasFreeSlotOnDay(day)) { next = day; break; }
+          if (hasFreeSlotOnDay(day)) {
+            next = day;
+            break;
+          }
         }
         newSelected = next ?? today;
       }
@@ -301,21 +301,18 @@ class _ReservationPageState extends State<ReservationPage> {
     return newSelected;
   }
 
-
   bool _isToday(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-
   String? _openingHoursLabelFor(DateTime date) {
     if (!_useOverrides) return null; // sadece özel saatler varsa göster
-    final idx = date.weekday - 1;    // 0..6
+    final idx = date.weekday - 1; // 0..6
     final h = _overrides[idx];
     if (h == null) return null;
-    if (h.start.trim().isEmpty || h.end.trim().isEmpty) return null; // kapalı ise yazma
+    if (h.start.trim().isEmpty || h.end.trim().isEmpty)
+      return null; // kapalı ise yazma
     return '${h.start} - ${h.end}';
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -332,7 +329,6 @@ class _ReservationPageState extends State<ReservationPage> {
 
     final hoursLabel = _openingHoursLabelFor(selectedDate);
 
-
     // Eğer seçili gün bugüne eşitse, geçmiş saatleri listeden çıkar
     if (_isToday(selectedDate, now)) {
       final now = TimeService.now();
@@ -340,10 +336,11 @@ class _ReservationPageState extends State<ReservationPage> {
         final start = slot.split('-').first; // "HH:mm"
         final parts = start.split(':').map(int.parse).toList();
         final sh = parts[0], sm = parts[1];
-        final startDt = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, sh, sm);
-        return startDt.isBefore(DateTime(now.year, now.month, now.day, now.hour, now.minute));
+        final startDt = DateTime(
+            selectedDate.year, selectedDate.month, selectedDate.day, sh, sm);
+        return startDt.isBefore(
+            DateTime(now.year, now.month, now.day, now.hour, now.minute));
       });
-
     }
 
     // Saatleri sıralıyoruz.
@@ -352,7 +349,6 @@ class _ReservationPageState extends State<ReservationPage> {
       final bp = b.split('-').first.split(':').map(int.parse).toList();
       return (ap[0] * 60 + ap[1]).compareTo(bp[0] * 60 + bp[1]);
     });
-
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -389,16 +385,12 @@ class _ReservationPageState extends State<ReservationPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (selectedDate.month == TimeService
-                          .now()
-                          .month)
+                      if (selectedDate.month == TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: null,
                             color: Colors.grey[300]),
-                      if (selectedDate.month != TimeService
-                          .now()
-                          .month)
+                      if (selectedDate.month != TimeService.now().month)
                         IconButton(
                             icon: Icon(Icons.chevron_left),
                             onPressed: handlePrevMonth),
@@ -428,17 +420,17 @@ class _ReservationPageState extends State<ReservationPage> {
                       final day = index - firstDayOfMonth + 1;
                       final isSelected = day == selectedDate.day;
                       final currentDay =
-                      DateTime(selectedDate.year, selectedDate.month, day);
+                          DateTime(selectedDate.year, selectedDate.month, day);
                       final isPastDay = currentDay
                           .isBefore(DateTime(now.year, now.month, now.day));
 
                       // Bugünden itibaren maksimum 7 gün ilerisi için rezervasyon yapılabilir
                       final DateTime maxDate =
-                      TimeService.now().add(Duration(days: 7));
+                          TimeService.now().add(Duration(days: 7));
 
                       // Ve takvim gösteriminde bu kontrolü ekleriz
                       final bool isInBookingWindow =
-                      !currentDay.isAfter(maxDate);
+                          !currentDay.isAfter(maxDate);
 
                       // Tasarımsal değişiklikler
                       BoxDecoration dayDecoration;
@@ -497,8 +489,8 @@ class _ReservationPageState extends State<ReservationPage> {
                                 color: isSelected
                                     ? Colors.white
                                     : (isPastDay
-                                    ? Colors.grey.shade700
-                                    : Colors.black87),
+                                        ? Colors.grey.shade700
+                                        : Colors.black87),
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.w500,
@@ -544,7 +536,8 @@ class _ReservationPageState extends State<ReservationPage> {
                             color: Color(0xFFE6F4EA),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.access_time, color: Colors.green.shade800, size: 20),
+                          child: Icon(Icons.access_time,
+                              color: Colors.green.shade800, size: 20),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -558,7 +551,8 @@ class _ReservationPageState extends State<ReservationPage> {
                         const Spacer(),
                         if (hoursLabel != null) // sadece özel saat varsa göster
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.transparent,
                               border: Border.all(color: Colors.green.shade200),
@@ -607,7 +601,7 @@ class _ReservationPageState extends State<ReservationPage> {
                         ),
                       )
                     else
-                    // Müsait saatler varsa, saatleri göster
+                      // Müsait saatler varsa, saatleri göster
                       Expanded(
                         child: LayoutBuilder(
                           builder: (context, constraints) {
@@ -624,17 +618,17 @@ class _ReservationPageState extends State<ReservationPage> {
                                       duration: Duration(milliseconds: 200),
                                       width: itemWidth,
                                       padding:
-                                      EdgeInsets.symmetric(vertical: 10),
+                                          EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
                                         gradient: isSelected
                                             ? LinearGradient(
-                                          colors: [
-                                            Colors.green.shade500,
-                                            Colors.green.shade700
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )
+                                                colors: [
+                                                  Colors.green.shade500,
+                                                  Colors.green.shade700
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              )
                                             : null,
                                         color: isSelected
                                             ? null
@@ -642,22 +636,22 @@ class _ReservationPageState extends State<ReservationPage> {
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: isSelected
                                             ? [
-                                          BoxShadow(
-                                            color: Colors.green.shade200,
-                                            blurRadius: 6,
-                                            offset: Offset(0, 3),
-                                          )
-                                        ]
+                                                BoxShadow(
+                                                  color: Colors.green.shade200,
+                                                  blurRadius: 6,
+                                                  offset: Offset(0, 3),
+                                                )
+                                              ]
                                             : [],
                                         border: isSelected
                                             ? null
                                             : Border.all(
-                                            color: Colors.green.shade100),
+                                                color: Colors.green.shade100),
                                       ),
                                       child: Center(
                                         child: Row(
                                           mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                              MainAxisAlignment.center,
                                           children: [
                                             Icon(
                                               Icons.access_time,
@@ -700,14 +694,14 @@ class _ReservationPageState extends State<ReservationPage> {
             ElevatedButton(
               onPressed: selectedTime != null
                   ? () {
-                _showConfirmationDialog(context);
-              }
+                      _showConfirmationDialog(context);
+                    }
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: selectedTime != null
                     ? Colors.green.shade700
                     : Colors.grey.shade300,
-                padding: EdgeInsets.symmetric(vertical: 16,horizontal: 24),
+                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -730,12 +724,10 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-
-
   Future<bool> _hasReachedDailyCancelLimit() async {
     final todayStr = DateFormat('yyyy-MM-dd').format(TimeService.now());
     final start = Timestamp.fromDate(DateTime.parse('$todayStr 00:00:00Z'));
-    final end   = Timestamp.fromDate(DateTime.parse('$todayStr 23:59:59Z'));
+    final end = Timestamp.fromDate(DateTime.parse('$todayStr 23:59:59Z'));
     final snap = await FirebaseFirestore.instance
         .collection('reservation_logs')
         .where('userId', isEqualTo: _auth.currentUser!.uid)
@@ -751,8 +743,8 @@ class _ReservationPageState extends State<ReservationPage> {
     /* Beklemede olan bütün rezervasyon belgelerini çek */
     final snap = await FirebaseFirestore.instance
         .collection('reservations')
-        .where('userId',  isEqualTo: _auth.currentUser!.uid)
-        .where('status',  isEqualTo: 'Beklemede')
+        .where('userId', isEqualTo: _auth.currentUser!.uid)
+        .where('status', isEqualTo: 'Beklemede')
         .get();
 
     final now = TimeService.now();
@@ -763,7 +755,7 @@ class _ReservationPageState extends State<ReservationPage> {
       final raw = doc['reservationDateTime'] as String?;
       if (raw == null) continue;
       try {
-        final datePart  = raw.split(' ').first;          // "2024‑12‑18"
+        final datePart = raw.split(' ').first; // "2024‑12‑18"
         final timeStart = raw.split(' ').last.split('-').first; // "17:00"
         final dt = DateTime.parse('$datePart $timeStart');
         if (dt.isAfter(now)) futureCount++;
@@ -774,7 +766,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
   Future<void> _makeReservation(String slot) async {
     /* 1) Rezervasyonun başlangıç DateTime’i   */
-    final start   = slotToDateTime(selectedDate, slot);
+    final start = slotToDateTime(selectedDate, slot);
 
     /* 2) Sınır kontrolleri ------------------------------------------------- */
     if (await _hasReachedDailyCancelLimit()) {
@@ -783,72 +775,69 @@ class _ReservationPageState extends State<ReservationPage> {
       return;
     }
     if (await _hasReachedInstantReservationLimit()) {
-      AppSnackBar.warning(context,
-          'Aynı anda en fazla 2 bekleyen rezervasyonunuz olabilir.');
+      AppSnackBar.warning(
+          context, 'Aynı anda en fazla 2 bekleyen rezervasyonunuz olabilir.');
       return;
     }
 
 // 1) bookingString
-    final dayStr        = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final dayStr = DateFormat('yyyy-MM-dd').format(selectedDate);
     final bookingString = '$dayStr $slot'; // "2025-07-29 20:00-21:00"
 
     DateTime parseStartTimeUtc(String bookingString) {
-      final parts    = bookingString.split(' ');
-      final datePart = parts[0];                   // "2025-07-29"
-      final startStr = parts[1].split('-').first;  // "22:00"
-      final ymd      = datePart.split('-').map(int.parse).toList();
-      final hm       = startStr.split(':').map(int.parse).toList();
+      final parts = bookingString.split(' ');
+      final datePart = parts[0]; // "2025-07-29"
+      final startStr = parts[1].split('-').first; // "22:00"
+      final ymd = datePart.split('-').map(int.parse).toList();
+      final hm = startStr.split(':').map(int.parse).toList();
 
       // önce normal UTC DateTime
       final dtUtc = DateTime.utc(
-        ymd[0],  // year
-        ymd[1],  // month
-        ymd[2],  // day
-        hm[0],   // hour
-        hm[1],   // minute
+        ymd[0], // year
+        ymd[1], // month
+        ymd[2], // day
+        hm[0], // hour
+        hm[1], // minute
       );
 
       // sonra sadece saatten 3 çıkar:
       return dtUtc.subtract(const Duration(hours: 3));
     }
 
-    final startTime     = parseStartTimeUtc(bookingString);
+    final startTime = parseStartTimeUtc(bookingString);
     print(bookingString);
     print(startTime.toString());
 
-
-
     final success = await ReservationRemoteService().reserveSlot(
-        haliSahaId: widget.haliSaha.id,
-        bookingString: bookingString,
-      );
-      if (!success) {
-        AppSnackBar.error(context,
-            'Slot rezerve edilemedi, lütfen başka bir saat deneyin.');
-        return;
-      }
+      haliSahaId: widget.haliSaha.id,
+      bookingString: bookingString,
+    );
+    if (!success) {
+      AppSnackBar.error(
+          context, 'Slot rezerve edilemedi, lütfen başka bir saat deneyin.');
+      return;
+    }
 
+    /* 4) Firestore’a rezervasyon belgesi yaz ----------------------------- */
+    final docRef = FirebaseFirestore.instance.collection('reservations').doc();
 
-      /* 4) Firestore’a rezervasyon belgesi yaz ----------------------------- */
-      final docRef = FirebaseFirestore.instance.collection('reservations').doc();
-
-      final reservation = Reservation(
-        id:                  docRef.id,
-        userId:              _auth.currentUser!.uid,
-        haliSahaId:          widget.haliSaha.id,
-        haliSahaName:        widget.haliSaha.name,
-        haliSahaLocation:    widget.haliSaha.location,
-        haliSahaPrice:       widget.haliSaha.price,
-        reservationDateTime: bookingString,          // ← TEK ALAN KALDI
-        startTime: startTime,
-        status:              'Beklemede',
-        type: "manual",
-        createdAt:           TimeService.nowUtc(),
-        userName:            widget.currentUser.name,
-        userEmail:           widget.currentUser.email,
-        userPhone:           _auth.currentUser!.phoneNumber ?? '',
-        lastUpdatedBy:       widget.currentUser.role,
-      );
+    final reservation = Reservation(
+      id: docRef.id,
+      userId: _auth.currentUser!.uid,
+      haliSahaId: widget.haliSaha.id,
+      haliSahaName: widget.haliSaha.name,
+      haliSahaLocation: widget.haliSaha.location,
+      haliSahaPrice: widget.haliSaha.price,
+      reservationDateTime: bookingString, // ← TEK ALAN KALDI
+      startTime: startTime,
+      status: 'Beklemede',
+      type: "manual",
+      createdAt: TimeService.nowUtc(),
+      userName: widget.currentUser.name,
+      userEmail: widget.currentUser.email,
+      userPhone: _auth.currentUser!.phoneNumber ?? '',
+      lastUpdatedBy: widget.currentUser.role,
+    );
 
     try {
       await docRef.set(reservation.toMap(), SetOptions(merge: false));
@@ -870,8 +859,6 @@ class _ReservationPageState extends State<ReservationPage> {
 
     AppSnackBar.success(context, 'Rezervasyon isteğiniz gönderildi.');
   }
-
-
 
   Future<void> _showConfirmationDialog(BuildContext context) async {
     return showDialog<void>(
@@ -991,8 +978,9 @@ class _ReservationPageState extends State<ReservationPage> {
         return Dialog(
           backgroundColor: Colors.white,
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(

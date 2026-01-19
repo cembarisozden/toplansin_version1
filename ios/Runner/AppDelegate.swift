@@ -10,6 +10,9 @@ import FirebaseCore
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // ⚠️ Firebase init Flutter tarafında yapılıyor (main.dart)
+    // Native'de tekrar init yapmıyoruz - race condition önlenir
+    
     // Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyDCGHaPLh0xtssZETBIq6MnyQbwV0rzKVM")
     

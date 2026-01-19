@@ -14,6 +14,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "450679317964-2lvhahbpvec7lkj8afaafjesdjlmmmjd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toplansin.toplansin",
+            "certificate_hash": "efa105b74aed8b4da9bba47d0759d48e3b43119e"
+          }
+        },
+        {
+          "client_id": "450679317964-4btgopm2auq5driagiof3uhrcqb01786.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toplansin.toplansin",
+            "certificate_hash": "04cb94adf4d55821279f71a73b82ada11abedd63"
+          }
+        },
+        {
+          "client_id": "450679317964-l2t7pdq1240m3dr3q4q9titceksn0qb7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toplansin.toplansin",
+            "certificate_hash": "29e68d0f028f052257492a46a45446f3a2d2a710"
+          }
+        },
+        {
           "client_id": "450679317964-lotlj5m3ak8h8d84c3f379iu9pr90a53.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +53,13 @@
             {
               "client_id": "450679317964-lotlj5m3ak8h8d84c3f379iu9pr90a53.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "450679317964-5e123pqroj0ocpmnori0r65u62nnv0kg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.toplansin.toplansin"
+              }
             }
           ]
         }

@@ -45,7 +45,7 @@ class HaliSahaDetailPage extends StatefulWidget {
   HaliSahaDetailPage({
     super.key,
     required this.haliSaha,
-     this.currentUser,
+    this.currentUser,
   });
 
   @override
@@ -62,11 +62,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   bool _resLoading = false;
   bool isSending = false;
 
-
   bool get isAuth => widget.currentUser != null;
-
-
-
 
   @override
   void initState() {
@@ -86,9 +82,8 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
           .orderBy('datetime', descending: true)
           .get(const GetOptions(source: Source.serverAndCache));
 
-      final items = snap.docs
-          .map((d) => Reviews.fromDocument(d))
-          .toList(growable: false);
+      final items =
+          snap.docs.map((d) => Reviews.fromDocument(d)).toList(growable: false);
 
       final String? uid = widget._auth.currentUser?.uid;
 
@@ -122,8 +117,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     }
   }
 
-
-
   Future<void> _onSubmitReview() async {
     if (isSending) return; // Çift tıklamayı engelle
     if (_currentRating == 0) {
@@ -142,9 +135,6 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       if (mounted) setState(() => isSending = false); // ⬅️ TAM BURADA FALSE
     }
   }
-
-
-
 
   Future<void> _addReview(
       String newComment, double newRating, String userName) async {
@@ -261,21 +251,21 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             onDelete: _deleteReview,
                           ),
                           const SizedBox(height: 28),
-                          if(isAuth)
-                          _AddReviewSection(
-                            controller: _comment,
-                            currentRate: _currentRating,
-                            onRate: (v) => setState(() => _currentRating = v),
-                            isLoading: isSending,
-                            onSubmit: () {
-                              if (_currentRating == 0) {
-                                AppSnackBar.warning(
-                                    context, "Lütfen bir puanlama yapınız!");
-                              } else {
-                                _onSubmitReview();
-                              }
-                            },
-                          ),
+                          if (isAuth)
+                            _AddReviewSection(
+                              controller: _comment,
+                              currentRate: _currentRating,
+                              onRate: (v) => setState(() => _currentRating = v),
+                              isLoading: isSending,
+                              onSubmit: () {
+                                if (_currentRating == 0) {
+                                  AppSnackBar.warning(
+                                      context, "Lütfen bir puanlama yapınız!");
+                                } else {
+                                  _onSubmitReview();
+                                }
+                              },
+                            ),
                         ],
                       ),
                     ),
@@ -350,47 +340,53 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                           ),
                         ),
 
-
                         const SizedBox(width: 12),
 
                         if (!isAuth)
                           Flexible(
                             flex: 7,
                             child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 1, vertical: 2),
                               padding: const EdgeInsets.all(6.5),
                               decoration: BoxDecoration(
                                 color: Colors.blue.shade50,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.blue.shade400, width: 1),
+                                border: Border.all(
+                                    color: Colors.blue.shade400, width: 1),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.info_outline, color: Colors.blue, size: 24),
+                                  const Icon(Icons.info_outline,
+                                      color: Colors.blue, size: 24),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: RichText(
                                       text: TextSpan(
-                                        style: AppTextStyles.bodyMedium.copyWith(
+                                        style:
+                                            AppTextStyles.bodyMedium.copyWith(
                                           color: Colors.blue.shade900,
                                           fontWeight: FontWeight.w600,
                                         ),
                                         children: [
                                           const TextSpan(
                                             text:
-                                            'Rezervasyon veya abonelik yapabilmek için lütfen ',
+                                                'Rezervasyon veya abonelik yapabilmek için lütfen ',
                                           ),
                                           TextSpan(
                                             text: 'kaydolun',
                                             style: const TextStyle(
                                               color: Colors.blue,
-                                              decoration: TextDecoration.underline,
+                                              decoration:
+                                                  TextDecoration.underline,
                                             ),
                                             recognizer: TapGestureRecognizer()
                                               ..onTap = () {
                                                 Navigator.push(
                                                   context,
-                                                  MaterialPageRoute(builder: (_) =>  SignUpPage()),
+                                                  MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          SignUpPage()),
                                                 );
                                               },
                                           ),
@@ -399,13 +395,16 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                                             text: 'giriş yapın',
                                             style: const TextStyle(
                                               color: Colors.blue,
-                                              decoration: TextDecoration.underline,
+                                              decoration:
+                                                  TextDecoration.underline,
                                             ),
                                             recognizer: TapGestureRecognizer()
                                               ..onTap = () {
                                                 Navigator.push(
                                                   context,
-                                                  MaterialPageRoute(builder: (_) =>  LoginPage()),
+                                                  MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          LoginPage()),
                                                 );
                                               },
                                           ),
@@ -419,142 +418,159 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
                             ),
                           ),
 
-
-
                         // Abone Ol Butonu
                         if (isAuth)
-                        Expanded(
-                          flex: 3,
-                          child: ElevatedButton(
-                            onPressed: (isPhone && !_subLoading)
-                                ? () {
-                              _runWithLoading(
-                                getFlag: () => _subLoading,
-                                setFlag: (v) => setState(() => _subLoading = v),
-                                action: () async {
-                                  await handleAccessThen(
-                                    context,
-                                    saha: s,
-                                    currentUser: widget.currentUser!,
-                                    actionLabel: "Abonelik",
-                                    onSuccess: () async {
-                                      await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => SubscribePage(
-                                            halisaha: s,
-                                            user: widget.currentUser!,
-                                          ),
-                                        ),
+                          Expanded(
+                            flex: 3,
+                            child: ElevatedButton(
+                              onPressed: (isPhone && !_subLoading)
+                                  ? () {
+                                      _runWithLoading(
+                                        getFlag: () => _subLoading,
+                                        setFlag: (v) =>
+                                            setState(() => _subLoading = v),
+                                        action: () async {
+                                          await handleAccessThen(
+                                            context,
+                                            saha: s,
+                                            currentUser: widget.currentUser!,
+                                            actionLabel: "Abonelik",
+                                            onSuccess: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => SubscribePage(
+                                                    halisaha: s,
+                                                    user: widget.currentUser!,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            onGoAccessCodes: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        const UserAccessCodePage()),
+                                              );
+                                            },
+                                          );
+                                        },
                                       );
-                                    },
-                                    onGoAccessCodes: () async {
-                                      await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const UserAccessCodePage()),
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isPhone
-                                  ? Colors.indigo.shade600
-                                  : Colors.indigo.shade200,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _subLoading
-                                ? const SizedBox(
-                              height: 22, width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                                : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Abone Ol",
-                                  style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600,color: Colors.white),
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isPhone
+                                    ? Colors.indigo.shade600
+                                    : Colors.indigo.shade200,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              ],
+                              ),
+                              child: _subLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Abone Ol",
+                                          style: AppTextStyles.labelMedium
+                                              .copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
                             ),
-
                           ),
-                        ),
 
                         const SizedBox(width: 10),
 
                         // Rezervasyon Butonu
                         if (isAuth)
-                        Expanded(
-                          flex: 3,
-                          child: ElevatedButton(
-                            onPressed: (isPhone && !_resLoading)
-                                ? () {
-                              _runWithLoading(
-                                getFlag: () => _resLoading,
-                                setFlag: (v) => setState(() => _resLoading = v),
-                                action: () async {
-                                  await handleAccessThen(
-                                    context,
-                                    saha: s,
-                                    currentUser: widget.currentUser!,
-                                    actionLabel: "Rezervasyon",
-                                    onSuccess: () async {
-                                      await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ReservationPage(
-                                            haliSaha: s,
+                          Expanded(
+                            flex: 3,
+                            child: ElevatedButton(
+                              onPressed: (isPhone && !_resLoading)
+                                  ? () {
+                                      _runWithLoading(
+                                        getFlag: () => _resLoading,
+                                        setFlag: (v) =>
+                                            setState(() => _resLoading = v),
+                                        action: () async {
+                                          await handleAccessThen(
+                                            context,
+                                            saha: s,
                                             currentUser: widget.currentUser!,
-                                          ),
-                                        ),
+                                            actionLabel: "Rezervasyon",
+                                            onSuccess: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ReservationPage(
+                                                    haliSaha: s,
+                                                    currentUser:
+                                                        widget.currentUser!,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            onGoAccessCodes: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        const UserAccessCodePage()),
+                                              );
+                                            },
+                                          );
+                                        },
                                       );
-                                    },
-                                    onGoAccessCodes: () async {
-                                      await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const UserAccessCodePage()),
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }
-                                : null,
-
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isPhone
-                                  ? Colors.green.shade600
-                                  : Colors.grey.shade200,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _resLoading
-                                ? const SizedBox(
-                              height: 22, width: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                                : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Rezervasyon Yap",
-                                  style: AppTextStyles.labelMedium.copyWith(fontWeight: FontWeight.w600,color: Colors.white),
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isPhone
+                                    ? Colors.green.shade600
+                                    : Colors.grey.shade200,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              ],
+                              ),
+                              child: _resLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Rezervasyon Yap",
+                                          style: AppTextStyles.labelMedium
+                                              .copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white),
+                                        ),
+                                      ],
+                                    ),
                             ),
-
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -566,6 +582,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
       ),
     );
   }
+
   Future<void> _runWithLoading({
     required bool Function() getFlag,
     required void Function(bool) setFlag,
@@ -574,14 +591,12 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
     if (getFlag()) return; // çifte tıklamayı önle
     setFlag(true);
     try {
-      await action();       // dialog / push vs burada await edilir
+      await action(); // dialog / push vs burada await edilir
     } finally {
       if (!mounted) return;
       setFlag(false);
     }
   }
-
-
 
   Future<void> handleAccessThen(
     BuildContext context, {
@@ -594,7 +609,7 @@ class _HaliSahaDetailPageState extends State<HaliSahaDetailPage> {
   }) async {
     final hasAccess = await context
         .read<AccessCodeProvider>()
-        .hasMatchingAccessCode(saha.id,context);
+        .hasMatchingAccessCode(saha.id, context);
 
     if (!hasAccess) {
       await showAccessCodeRequiredDialog(
@@ -1003,7 +1018,9 @@ class _FeaturesTab extends StatelessWidget {
   Widget _feat(IconData ic, String lbl) => Column(children: [
         Icon(ic, color: kPrimary, size: 24),
         const SizedBox(height: 4),
-        Text(lbl, style: AppTextStyles.bodyMedium.copyWith(color: Colors.grey.shade700,fontSize: 12)),
+        Text(lbl,
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: Colors.grey.shade700, fontSize: 12)),
       ]);
 
   @override
@@ -1024,7 +1041,6 @@ class _FeaturesTab extends StatelessWidget {
       if (s.hasPlayground) _feat(Icons.child_care, "Oyun Alanı"),
       if (s.hasPrayerRoom) _feat(Icons.self_improvement, "İbadet Alanı"),
       if (s.hasInternet) _feat(Icons.wifi, "İnternet"),
-
     ];
     if (feats.isEmpty) {
       return Center(
@@ -1353,94 +1369,93 @@ class _AddReviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        "Yorum Yaz",
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-      ),
-      const SizedBox(height: 10),
-
-      // Yazı alanı (loading'de kilitli)
-      TextField(
-        controller: controller,
-        enabled: !isLoading,
-        maxLines: 4,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: InputDecoration(
-          hintText: "Deneyiminizi paylaşın...",
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(kCardRadius / 2),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-        ),
-      ),
-      const SizedBox(height: 14),
-
-      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Rating (loading'de kilitli)
-          AbsorbPointer(
-            absorbing: isLoading,
-            child: RatingBar.builder(
-              initialRating: currentRate,
-              minRating: 1, // 0 puan destekleyeceksen 0 yap
-              allowHalfRating: true,
-              itemSize: 28,
-              unratedColor: Colors.grey.shade300,
-              itemBuilder: (_, __) =>
-              const Icon(Icons.star_rounded, color: Colors.amber),
-              onRatingUpdate: onRate,
+          const Text(
+            "Yorum Yaz",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+
+          // Yazı alanı (loading'de kilitli)
+          TextField(
+            controller: controller,
+            enabled: !isLoading,
+            maxLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: "Deneyiminizi paylaşın...",
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(kCardRadius / 2),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 14),
 
-          // Gönder butonu (loading'de disabled + spinner)
-          ElevatedButton(
-            onPressed: isLoading
-                ? null
-                : () {
-              // klavyeyi kapat
-              FocusScope.of(context).unfocus();
-              onSubmit();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(kCardRadius / 2),
-              ),
-              padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              transitionBuilder: (child, anim) =>
-                  FadeTransition(opacity: anim, child: child),
-              child: isLoading
-                  ? const SizedBox(
-                key: ValueKey('sending'),
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-                  : const Text(
-                key: ValueKey('send'),
-                "Gönder",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              // Rating (loading'de kilitli)
+              AbsorbPointer(
+                absorbing: isLoading,
+                child: RatingBar.builder(
+                  initialRating: currentRate,
+                  minRating: 1, // 0 puan destekleyeceksen 0 yap
+                  allowHalfRating: true,
+                  itemSize: 28,
+                  unratedColor: Colors.grey.shade300,
+                  itemBuilder: (_, __) =>
+                      const Icon(Icons.star_rounded, color: Colors.amber),
+                  onRatingUpdate: onRate,
                 ),
               ),
-            ),
+              const Spacer(),
+
+              // Gönder butonu (loading'de disabled + spinner)
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        // klavyeyi kapat
+                        FocusScope.of(context).unfocus();
+                        onSubmit();
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kCardRadius / 2),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: isLoading
+                      ? const SizedBox(
+                          key: ValueKey('sending'),
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          key: ValueKey('send'),
+                          "Gönder",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-    ],
-  );
+      );
 }
-
 
 // ───────────────────────── FULLSCREEN IMAGE VIEWER ─────────────────────────
 class _ImageViewer extends StatelessWidget {

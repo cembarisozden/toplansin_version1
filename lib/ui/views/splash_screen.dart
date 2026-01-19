@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 🔽 EKLEDİK: RC + servis + diyalog
-import 'package:firebase_core/firebase_core.dart';
+// 🔽 RC + servis + diyalog
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:toplansin/core/update/update_service.dart';
 import 'package:toplansin/core/update/update_dialog.dart';
@@ -53,13 +52,12 @@ class _SplashScreenState extends State<SplashScreen>
     // En az 3 sn splash kalsın
     final splashMin = Future.delayed(const Duration(seconds: 3));
     final info = await PackageInfo.fromPlatform();
-    print('BUILD NUMBER = ${info.buildNumber}');
-
+    debugPrint('BUILD NUMBER = ${info.buildNumber}');
 
     // Güncelleme kontrolü (diyalog gerekiyorsa gösterecek)
-     await _checkAndMaybeShowUpdate();
+    await _checkAndMaybeShowUpdate();
 
-    // 3 sn’yi garanti et
+    // 3 sn'yi garanti et
     await splashMin;
 
     if (!mounted) return;
@@ -95,10 +93,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   /// RC'den min/latest değerlerini alır, gerekiyorsa update diyalogunu açar.
   Future<void> _checkAndMaybeShowUpdate() async {
-    try {
-      // main.dart’ta initialize ettiyseniz de try/catch ile güvenli.
-      await Firebase.initializeApp();
-    } catch (_) {}
+    // ✅ Firebase zaten main.dart'ta initialize edildi, tekrar gerek yok
 
     final decision = await UpdateService.evaluate();
     if (!mounted || decision.kind == UpdateKind.none) return;
@@ -127,8 +122,8 @@ class _SplashScreenState extends State<SplashScreen>
       onLater: mandatory
           ? null
           : () => UpdateService.snoozeSoft(
-        (decision.snoozeHours <= 0) ? 24 : decision.snoozeHours,
-      ),
+                (decision.snoozeHours <= 0) ? 24 : decision.snoozeHours,
+              ),
     );
   }
 

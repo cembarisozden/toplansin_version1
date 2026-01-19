@@ -1,6 +1,6 @@
 // main.dart
 import 'dart:async';
-import 'dart:isolate'; // 🔹 EKLENDİ
+import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,28 +38,43 @@ import 'package:toplansin/ui/user_views/shared/widgets/banner/pro_connectivity_b
 import 'package:toplansin/ui/views/splash_screen.dart';
 import 'package:toplansin/core/providers/PhoneVerificationProvider.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
+    }
 
-    // 🔧 Ekleyin: background izolat için de App Check
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttestWithDeviceCheckFallback,
-    );
+    // 🔧 Background izolat için App Check (try-catch ile güvenli)
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider:
+            kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        appleProvider:
+            kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+      );
+    } catch (_) {
+      // App Check başarısız olsa bile devam et
+    }
 
     await UserNotificationService.showLocal(message);
   } catch (e, st) {
-    await FirebaseCrashlytics.instance.recordError(e, st,
-        reason: 'FCM background handler', fatal: false);
+    await FirebaseCrashlytics.instance
+        .recordError(e, st, reason: 'FCM background handler', fatal: false);
   }
 }
 
-Future<bool> _hasNetwork() async =>
-    (await Connectivity().checkConnectivity()) != ConnectivityResult.none;
+Future<bool> _hasNetwork() async {
+  try {
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  } catch (e) {
+    debugPrint('⚠️ Connectivity check failed: $e');
+    return true; // Hata durumunda online varsay, sonra düzeltilir
+  }
+}
 
 bool _onlineServicesReady = false;
 
@@ -89,105 +104,131 @@ Future<void> _updateServerTime() async {
 /* ─────────────────────────────────────────────────────────────── */
 
 Future<void> main() async {
-  // ❗ Zone mismatch olmaması için TÜM init işlemlerini aynı zone’da yapıyoruz:
-  runZonedGuarded(() async {
-    // 🔁 TAŞINDI: ensureInitialized ve tüm init’ler bu bloğa alındı
-    WidgetsFlutterBinding.ensureInitialized();
-    tz.initializeTimeZones();
+  // ✅ KRİTİK: Tüm init ve runApp aynı zone'da olmalı
+  WidgetsFlutterBinding.ensureInitialized();
 
-    // 1) Firebase + offline cache
+  // ✅ Timezone init
+  tz.initializeTimeZones();
+
+  // ✅ Firebase init (native tarafta zaten configure edildiyse tekrar yapma)
+  if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    FirebaseFirestore.instance.settings =
-    const Settings(persistenceEnabled: true);
+  }
+  FirebaseFirestore.instance.settings =
+      const Settings(persistenceEnabled: true);
 
-    // 2) App Check
+  // ✅ App Check - try-catch içinde (iOS keychain sorunları için)
+  try {
     await FirebaseAppCheck.instance.activate(
       androidProvider:
-      kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: kDebugMode
-          ? AppleProvider.debug
-          : AppleProvider.appAttestWithDeviceCheckFallback,
+          kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider:
+          kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
     );
+  } catch (e) {
+    debugPrint('⚠️ App Check activation failed: $e');
+  }
 
-    // 3) Lokal formatter ve portre kilidi
-    await initializeDateFormatting('tr');
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // ✅ Crashlytics setup - runZonedGuarded KULLANMADAN
+  await FirebaseCrashlytics.instance
+      .setCrashlyticsCollectionEnabled(!kDebugMode);
 
-    // 🔹 EKLENDİ: Crashlytics tam kapsamlı başlatma
-    await FirebaseCrashlytics.instance
-        .setCrashlyticsCollectionEnabled(!kDebugMode);
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+  // Flutter framework hataları
+  FlutterError.onError = (details) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  };
 
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
+  // Async/Platform hataları
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
 
-    Isolate.current.addErrorListener(RawReceivePort((pair) async {
-      final List<dynamic> errorAndStacktrace = pair;
-      final error = errorAndStacktrace.first;
-      final stack = StackTrace.fromString(errorAndStacktrace.last as String);
-      await FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    }).sendPort);
-
-    await setup();
-
-    // Uygulama
-    runApp(
-      DevicePreview(
-        enabled: !kReleaseMode,
-        builder: (previewContext) {
-          return MultiProvider(
-            providers: [
-              ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
-              ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
-              ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
-              ChangeNotifierProvider(create: (_) => HomeProvider()),
-              ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-              ChangeNotifierProvider(create: (_) => StatsProvider()),
-              ChangeNotifierProvider(create: (_) => BottomNavProvider()),
-              ChangeNotifierProvider(create: (_) => AccessCodeProvider()),
-              ChangeNotifierProvider(
-                  create: (_) => OwnerActivateCodeWithUsersProvider()),
-            ],
-            child: ScreenUtilInit(
-              designSize: const Size(411.42857142857144, 914.2857142857143),
-              useInheritedMediaQuery: true,
-              minTextAdapt: true,
-              builder: (context, child) => const MyApp(),
-              child: const SizedBox.shrink(),
-            ),
-          );
-        },
-      ),
-    );
-
-    // ——————————————————————————
-    // 6) App açıldıktan sonra arka işler
-    final onlineAtLaunch = await _hasNetwork();
-    if (onlineAtLaunch) {
-      await _initOnlineServices(); // FCM, local notifications vs.
-      await _updateServerTime(); // Sunucu saati
-    } else {
-      FirebaseFirestore.instance.disableNetwork(); // Firestore çökmesin
-    }
-
-    // 7) TimeService init (offline toleranslı)
-    try {
-      await TimeService.init();
-    } catch (e) {
-      debugPrint('⚠️ TimeService.init hata (offline?): $e');
-    }
-
-    // 8) Ağa bağlanınca otomatik tekrar dene
-    Connectivity().onConnectivityChanged.listen((result) async {
-      if (result != ConnectivityResult.none) {
-        await _initOnlineServices();
-        await _updateServerTime();
-      }
-    });
-  }, (error, stack) async {
+  // Isolate hataları
+  Isolate.current.addErrorListener(RawReceivePort((pair) async {
+    final List<dynamic> errorAndStacktrace = pair;
+    final error = errorAndStacktrace.first;
+    final stack = StackTrace.fromString(errorAndStacktrace.last as String);
     await FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  }).sendPort);
+
+  // ✅ Lokal formatter ve portre kilidi
+  await initializeDateFormatting('tr');
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // 🔹 Edge-to-Edge Mode
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  // ✅ DI setup
+  await setup();
+
+  // ✅ Uygulama - aynı zone'da
+  runApp(
+    DevicePreview(
+      enabled: false,
+      builder: (previewContext) {
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => OwnerNotificationProvider()),
+            ChangeNotifierProvider(create: (_) => UserNotificationProvider()),
+            ChangeNotifierProvider(create: (_) => PhoneVerificationProvider()),
+            ChangeNotifierProvider(create: (_) => HomeProvider()),
+            ChangeNotifierProvider(create: (_) => FavoritesProvider()),
+            ChangeNotifierProvider(create: (_) => StatsProvider()),
+            ChangeNotifierProvider(create: (_) => BottomNavProvider()),
+            ChangeNotifierProvider(create: (_) => AccessCodeProvider()),
+            ChangeNotifierProvider(
+                create: (_) => OwnerActivateCodeWithUsersProvider()),
+          ],
+          child: ScreenUtilInit(
+            designSize: const Size(411.42857142857144, 914.2857142857143),
+            useInheritedMediaQuery: true,
+            minTextAdapt: true,
+            builder: (context, child) => const MyApp(),
+            child: const SizedBox.shrink(),
+          ),
+        );
+      },
+    ),
+  );
+
+  // ——————————————————————————
+  // App açıldıktan sonra arka işler (async, runApp'tan sonra)
+  _initBackgroundTasks();
+}
+
+/// Arka plan görevlerini başlat (runApp'tan sonra çağrılır)
+Future<void> _initBackgroundTasks() async {
+  final onlineAtLaunch = await _hasNetwork();
+  if (onlineAtLaunch) {
+    await _initOnlineServices();
+    await _updateServerTime();
+  } else {
+    FirebaseFirestore.instance.disableNetwork();
+  }
+
+  // TimeService init (offline toleranslı)
+  try {
+    await TimeService.init();
+  } catch (e) {
+    debugPrint('⚠️ TimeService.init hata (offline?): $e');
+  }
+
+  // Ağa bağlanınca otomatik tekrar dene
+  Connectivity().onConnectivityChanged.listen((result) async {
+    if (result != ConnectivityResult.none) {
+      await _initOnlineServices();
+      await _updateServerTime();
+    }
   });
 }
 

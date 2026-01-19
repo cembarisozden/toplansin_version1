@@ -38,14 +38,14 @@ class _MainPageState extends State<MainPage> {
 
   final sl = GetIt.instance;
 
-
-  Future<void> tokenResult()async{
-    final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
-    print('FirebaseToken oluşturuldu: ${TimeService.formatTr(idTokenResult.issuedAtTime)}');
-    print('FirebaseToken geçerli bitiş: ${TimeService.formatTr(idTokenResult.expirationTime)}');
+  Future<void> tokenResult() async {
+    final idTokenResult =
+        await FirebaseAuth.instance.currentUser!.getIdTokenResult();
+    print(
+        'FirebaseToken oluşturuldu: ${TimeService.formatTr(idTokenResult.issuedAtTime)}');
+    print(
+        'FirebaseToken geçerli bitiş: ${TimeService.formatTr(idTokenResult.expirationTime)}');
   }
-
-
 
   @override
   void initState() {
@@ -57,7 +57,6 @@ class _MainPageState extends State<MainPage> {
         currentUser: widget.currentUser,
       ),
       ComingSoonPage(),
-
     ];
 
     Future.microtask(() {
@@ -92,7 +91,7 @@ class _MainPageState extends State<MainPage> {
     final notificationCount =
         context.watch<UserNotificationProvider>().unreadCount;
 
-    final selectedIndex=context.watch<BottomNavProvider>().index;
+    final selectedIndex = context.watch<BottomNavProvider>().index;
     return Scaffold(
       endDrawer: ModernDrawer(
           currentUser: widget.currentUser, firebaseUser: widget.user),
@@ -104,98 +103,100 @@ class _MainPageState extends State<MainPage> {
         index: selectedIndex,
         children: sayfalar,
       ),
-      bottomNavigationBar: Container(
-        width: 12,
-        height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black12, blurRadius: 8, offset: Offset(0, -2))
-          ],
-          borderRadius: BorderRadius.vertical(
-              top: Radius.circular(0), bottom: Radius.circular(0)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: GNav(
-          rippleColor: AppColors.primaryLight,
-          // bastığında dalga efekti
-          hoverColor: Colors.green.shade50,
-          // hover rengi
-          haptic: true,
-          // titreşimli geri bildirim
-
-          gap: 6,
-          // ikon–metin arası boşluk
-          iconSize: 28,
-          // ikon boyutu
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 14,
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          width: 12,
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black12, blurRadius: 8, offset: Offset(0, -2))
+            ],
+            borderRadius: BorderRadius.vertical(
+                top: Radius.circular(0), bottom: Radius.circular(0)),
           ),
-          // buton iç padding
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: GNav(
+            rippleColor: AppColors.primaryLight,
+            // bastığında dalga efekti
+            hoverColor: Colors.green.shade50,
+            // hover rengi
+            haptic: true,
+            // titreşimli geri bildirim
 
-          curve: Curves.easeInOut,
-          // animasyon eğrisi
-          duration: const Duration(milliseconds: 100),
-          // animasyon süresi
+            gap: 6,
+            // ikon–metin arası boşluk
+            iconSize: 28,
+            // ikon boyutu
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 14,
+            ),
+            // buton iç padding
 
-          tabBorderRadius: 16,
-          // köşe yarıçapı
-          tabBorder: Border.all(color: Colors.transparent),
-          // inaktif tab kenarlığı
-          tabActiveBorder: Border.all(
-            color: Colors.green.shade700,
-            width: 1.5,
+            curve: Curves.easeInOut,
+            // animasyon eğrisi
+            duration: const Duration(milliseconds: 100),
+            // animasyon süresi
+
+            tabBorderRadius: 16,
+            // köşe yarıçapı
+            tabBorder: Border.all(color: Colors.transparent),
+            // inaktif tab kenarlığı
+            tabActiveBorder: Border.all(
+              color: Colors.green.shade700,
+              width: 1.5,
+            ),
+            // aktif tab kenarlığı
+            tabBackgroundColor: Colors.green.shade700.withOpacity(0.15),
+            // seçili tab arka planı
+            activeColor: AppColors.primary,
+            // seçili ikon & metin
+            color: AppColors.primary,
+            // seçilmemiş ikon rengi
+            backgroundColor: Colors.white,
+            // nav bar arkası
+
+            tabs: [
+              GButton(
+                icon: Ionicons.home_outline,
+                text: 'Anasayfa',
+              ),
+              GButton(
+                icon: Ionicons.search_outline,
+                text: 'Keşfet',
+              ),
+              GButton(
+                icon: Ionicons.people_outline,
+                text: 'Oyuncu Bul',
+              ),
+            ],
+
+            selectedIndex: selectedIndex,
+            onTabChange: (index) =>
+                context.read<BottomNavProvider>().setIndex(index),
           ),
-          // aktif tab kenarlığı
-          tabBackgroundColor: Colors.green.shade700.withOpacity(0.15),
-          // seçili tab arka planı
-          activeColor: AppColors.primary,
-          // seçili ikon & metin
-          color: AppColors.primary,
-          // seçilmemiş ikon rengi
-          backgroundColor: Colors.white,
-          // nav bar arkası
-
-          tabs: [
-            GButton(
-              icon: Ionicons.home_outline,
-              text: 'Anasayfa',
-            ),
-            GButton(
-              icon: Ionicons.search_outline,
-              text: 'Keşfet',
-            ),
-            GButton(
-              icon: Ionicons.people_outline,
-              text: 'Oyuncu Bul',
-            ),
-          ],
-
-          selectedIndex: selectedIndex,
-          onTabChange: (index) =>
-              context.read<BottomNavProvider>().setIndex(index),
-
         ),
       ),
     );
-
   }
+
   void _openNotificationPage(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (_, __, ___) =>  UserNotificationPage(currentUser:widget.currentUser,),
+        pageBuilder: (_, __, ___) => UserNotificationPage(
+          currentUser: widget.currentUser,
+        ),
         transitionsBuilder: (_, animation, __, child) {
           final offset =
-          Tween(begin: const Offset(1, 0), end: Offset.zero)  // sağdan
-              .chain(CurveTween(curve: Curves.easeOutCubic))
-              .animate(animation);
+              Tween(begin: const Offset(1, 0), end: Offset.zero) // sağdan
+                  .chain(CurveTween(curve: Curves.easeOutCubic))
+                  .animate(animation);
           return SlideTransition(position: offset, child: child);
         },
       ),
     );
   }
-
 }

@@ -52,7 +52,8 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
         backgroundColor: primaryBlue,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon:
+              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -90,7 +91,8 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
           Expanded(
             // 🔒 AUTH GUARD: Oturum yoksa aktifler için boş liste döner
             child: StreamBuilder<List<Subscription>>(
-              stream: FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+              stream:
+                  FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
                 if (user == null) {
                   return Stream.value(const <Subscription>[]);
                 }
@@ -100,11 +102,11 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                     .where('status', whereIn: const ['Aktif', 'Beklemede'])
                     .snapshots()
                     .map((snap) => snap.docs
-                    .map((d) => Subscription.fromMap(
-                  d.data(),
-                  d.id,
-                ))
-                    .toList());
+                        .map((d) => Subscription.fromMap(
+                              d.data(),
+                              d.id,
+                            ))
+                        .toList());
               }),
               builder: (context, activeSnap) {
                 if (!activeSnap.hasData) {
@@ -122,16 +124,19 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                   children: [
                     // 🔹 AKTİF/BEKLEMEDE
                     activeSubs.isEmpty
-                        ? _buildEmptyState('Aktif aboneliğiniz bulunmamaktadır.')
-                        : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: activeSubs.length,
-                      itemBuilder: (context, index) {
-                        final sub = activeSubs[index];
-                        return AbonelikCard(sub: sub);
-                      },
-                    ),
+                        ? _buildEmptyState(
+                            'Aktif aboneliğiniz bulunmamaktadır.')
+                        : SafeArea(
+                            child: ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.all(16),
+                              itemCount: activeSubs.length,
+                              itemBuilder: (context, index) {
+                                final sub = activeSubs[index];
+                                return AbonelikCard(sub: sub);
+                              },
+                            ),
+                          ),
 
                     // 🔹 GEÇMİŞ: AUTH GUARD’lı tek seferlik sorgu
                     FutureBuilder<List<Subscription>>(
@@ -143,21 +148,22 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                             .collection('subscription_logs')
                             .where('userId', isEqualTo: widget.currentUser.id)
                             .where('newStatus',
-                            whereIn: const ['Sona Erdi', 'İptal Edildi'])
+                                whereIn: const ['Sona Erdi', 'İptal Edildi'])
                             .orderBy('createdAt', descending: true)
                             .get();
 
                         return qs.docs
                             .map((d) => Subscription.fromMap(
-                          d.data(),
-                          d.id,
-                        ))
+                                  d.data(),
+                                  d.id,
+                                ))
                             .toList();
                       }(),
                       builder: (context, pastSnap) {
                         if (!pastSnap.hasData) {
                           return Center(
-                            child: CircularProgressIndicator(color: primaryBlue),
+                            child:
+                                CircularProgressIndicator(color: primaryBlue),
                           );
                         }
                         final past = pastSnap.data!;
@@ -165,13 +171,15 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
                           return _buildEmptyState(
                               'Geçmiş aboneliğiniz bulunmamaktadır.');
                         }
-                        return ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: past.length,
-                          itemBuilder: (context, index) {
-                            final sub = past[index];
-                            return AbonelikCard(sub: sub);
-                          },
+                        return SafeArea(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: past.length,
+                            itemBuilder: (context, index) {
+                              final sub = past[index];
+                              return AbonelikCard(sub: sub);
+                            },
+                          ),
                         );
                       },
                     ),
@@ -183,7 +191,6 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
         ],
       ),
     );
-
   }
 
   Widget _buildEmptyState(String message) {
@@ -210,7 +217,6 @@ class _SubscriptionDetailPageState extends State<SubscriptionDetailPage>
     );
   }
 }
-
 
 class AbonelikCard extends StatefulWidget {
   final Subscription sub;
@@ -300,7 +306,8 @@ class _AbonelikCardState extends State<AbonelikCard> {
                 Expanded(
                   child: Text(
                     title,
-                    style: AppTextStyles.bodyMedium.copyWith(fontWeight:FontWeight.w600,color: Colors.white),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ),
               ],
@@ -444,9 +451,11 @@ class _AbonelikCardState extends State<AbonelikCard> {
                         Divider(),
                         SizedBox(height: 8),
                         FutureBuilder<DateTime?>(
-                          future: fetchPastSubscriptionsCreatedAt(widget.sub.docId),
+                          future:
+                              fetchPastSubscriptionsCreatedAt(widget.sub.docId),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return const Text(
                                 'İptal Edilme: yükleniyor...',
                                 style: TextStyle(color: Colors.grey),
@@ -467,22 +476,25 @@ class _AbonelikCardState extends State<AbonelikCard> {
                               );
                             }
 
-                            final formatted = TimeService.formatTr(snapshot.data!);
+                            final formatted =
+                                TimeService.formatTr(snapshot.data!);
                             return Text(
                               'İptal Edilme: $formatted',
-                              style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade600),
+                              style: AppTextStyles.bodySmall
+                                  .copyWith(color: Colors.grey.shade600),
                             );
                           },
                         ),
                       ],
-
                       if (status == "Sona Erdi") ...[
                         Divider(),
                         SizedBox(height: 8),
                         FutureBuilder<DateTime?>(
-                          future: fetchPastSubscriptionsCreatedAt(widget.sub.docId),
+                          future:
+                              fetchPastSubscriptionsCreatedAt(widget.sub.docId),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return const Text(
                                 'Sona Erme: yükleniyor...',
                                 style: TextStyle(color: Colors.grey),
@@ -496,19 +508,20 @@ class _AbonelikCardState extends State<AbonelikCard> {
                               );
                             }
 
-                            final formatted = TimeService.formatTr(snapshot.data!);
+                            final formatted =
+                                TimeService.formatTr(snapshot.data!);
                             return Row(
                               children: [
                                 Text(
                                   'Sona Erme: $formatted',
-                                  style: AppTextStyles.bodySmall.copyWith(color: Colors.grey.shade600),
+                                  style: AppTextStyles.bodySmall
+                                      .copyWith(color: Colors.grey.shade600),
                                 ),
                               ],
                             );
                           },
                         ),
                       ],
-
                     ],
                   ),
                 ),
@@ -576,10 +589,9 @@ class _AbonelikCardState extends State<AbonelikCard> {
                         border: Border.all(
                             color: statusColor.withOpacity(0.5), width: 1),
                       ),
-                      child: Text(
-                        status,
-                        style: AppTextStyles.bodySmall.copyWith(color: statusColor)
-                      ),
+                      child: Text(status,
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: statusColor)),
                     ),
 
                     // 🔹 Butonlar
@@ -587,11 +599,13 @@ class _AbonelikCardState extends State<AbonelikCard> {
                       Builder(
                         builder: (context) {
                           final now = TimeService.now();
-                          final nextDate =_parseVisibleStart(widget.sub.visibleSession);
+                          final nextDate =
+                              _parseVisibleStart(widget.sub.visibleSession);
 
                           final bool canCancelThisWeek = nextDate != null &&
                               nextDate.isAfter(now) &&
-                              nextDate.isBefore(now.add(const Duration(days: 7)));
+                              nextDate
+                                  .isBefore(now.add(const Duration(days: 7)));
 
                           debugPrint("Next date: $nextDate");
                           debugPrint("Now: $now");
@@ -624,7 +638,8 @@ class _AbonelikCardState extends State<AbonelikCard> {
                               if (canCancelThisWeek) SizedBox(width: 8),
                               TextButton(
                                 onPressed: () async {
-                                  final confirm = await ShowStyledConfirmDialog.show(
+                                  final confirm =
+                                      await ShowStyledConfirmDialog.show(
                                     context,
                                     title: "Aboneliği İptal Et",
                                     message:
@@ -636,7 +651,10 @@ class _AbonelikCardState extends State<AbonelikCard> {
                                         context, widget.sub.docId);
                                   }
                                 },
-                                child: Text('Aboneliği İptal Et',style: AppTextStyles.bodySmall,),
+                                child: Text(
+                                  'Aboneliği İptal Et',
+                                  style: AppTextStyles.bodySmall,
+                                ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Color(0xFFE53935),
                                   side: BorderSide(color: Color(0xFFE53935)),
@@ -660,7 +678,10 @@ class _AbonelikCardState extends State<AbonelikCard> {
                                 context, widget.sub.docId);
                           }
                         },
-                        child: Text('Abonelik İsteğini İptal Et',style: AppTextStyles.bodySmall,),
+                        child: Text(
+                          'Abonelik İsteğini İptal Et',
+                          style: AppTextStyles.bodySmall,
+                        ),
                         style: TextButton.styleFrom(
                           foregroundColor: Color(0xFF5C6BC0),
                           side: BorderSide(color: Color(0xFF5C6BC0)),
@@ -684,15 +705,14 @@ class _AbonelikCardState extends State<AbonelikCard> {
     final m = re.firstMatch(s);
     if (m == null) return null;
 
-    final year  = int.parse(m.group(1)!);
+    final year = int.parse(m.group(1)!);
     final month = int.parse(m.group(2)!);
-    final day   = int.parse(m.group(3)!);
-    final hour  = int.parse(m.group(4)!);
-    final min   = int.parse(m.group(5)!);
+    final day = int.parse(m.group(3)!);
+    final hour = int.parse(m.group(4)!);
+    final min = int.parse(m.group(5)!);
 
     return DateTime(year, month, day, hour, min).toLocal();
   }
-
 
   Future<DateTime?> fetchPastSubscriptionsCreatedAt(String logId) async {
     try {
@@ -707,7 +727,6 @@ class _AbonelikCardState extends State<AbonelikCard> {
       }
 
       final data = doc.data()!;
-
 
       final ts = data['createdAt'];
 
@@ -724,9 +743,4 @@ class _AbonelikCardState extends State<AbonelikCard> {
       return null;
     }
   }
-
-
-  }
-
-
-
+}

@@ -264,86 +264,88 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryDark],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            // Arama kutusu
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: RepaintBoundary(
-                // header stabilize
-                key: _searchHeaderKey,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
+          child: Column(
+            children: [
+              // Arama kutusu
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: RepaintBoundary(
+                  // header stabilize
+                  key: _searchHeaderKey,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: Material(
+                            elevation: 2,
+                            borderRadius: BorderRadius.circular(25),
+                            child: TextField(
+                              key: const ValueKey('search_field'),
+                              controller: _searchController,
+                              focusNode: _searchFocus,
+                              textInputAction: TextInputAction.search,
+                              // İSİM ARAMASI: sadece ValueNotifier'ı güncelle
+                              onSubmitted: (_) =>
+                                  _searchText.value = _searchController.text,
+                              // onTapOutside: (_) => _searchFocus.unfocus(), // istersen kapalı kalsın
+                              decoration: InputDecoration(
+                                hintText: 'Halı saha ara...',
+                                hintStyle: AppTextStyles.bodyLarge,
+                                prefixIcon: Icon(
+                                  Ionicons.search_outline,
+                                  color: Colors.grey.shade600,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
                         height: 50,
                         child: Material(
-                          elevation: 2,
-                          borderRadius: BorderRadius.circular(25),
-                          child: TextField(
-                            key: const ValueKey('search_field'),
-                            controller: _searchController,
-                            focusNode: _searchFocus,
-                            textInputAction: TextInputAction.search,
-                            // İSİM ARAMASI: sadece ValueNotifier'ı güncelle
-                            onSubmitted: (_) =>
-                                _searchText.value = _searchController.text,
-                            // onTapOutside: (_) => _searchFocus.unfocus(), // istersen kapalı kalsın
-                            decoration: InputDecoration(
-                              hintText: 'Halı saha ara...',
-                              hintStyle: AppTextStyles.bodyLarge,
-                              prefixIcon: Icon(
-                                Ionicons.search_outline,
-                                color: Colors.grey.shade600,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      height: 50,
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: Ink(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(15),
-                            splashColor: AppColors.primary.withOpacity(0.3),
-                            onTap: () => _showFilterPanel(context),
-                            child: const Padding(
-                              padding: EdgeInsets.all(15),
-                              child: Icon(
-                                Ionicons.options_sharp,
-                                color: Colors.white,
-                                size: 25,
+                          type: MaterialType.transparency,
+                          child: Ink(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(15),
+                              splashColor: AppColors.primary.withOpacity(0.3),
+                              onTap: () => _showFilterPanel(context),
+                              child: const Padding(
+                                padding: EdgeInsets.all(15),
+                                child: Icon(
+                                  Ionicons.options_sharp,
+                                  color: Colors.white,
+                                  size: 25,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            Expanded(child: _buildHaliSahaList()),
-          ],
+              Expanded(child: _buildHaliSahaList()),
+            ],
+          ),
         ),
       ),
     );
@@ -757,130 +759,131 @@ class _HaliSahaPageState extends State<HaliSahaPage> {
                   .map((h) => '${h.toString().padLeft(2, '0')}:00')
                   .toList();
 
-              return Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        20,
-                        24,
-                        20,
-                        MediaQuery.of(ctx).viewInsets.bottom + 100,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Filtreler',
-                                  style: AppTextStyles.titleLarge
-                                      .copyWith(color: AppColors.primaryDark)),
-                              IconButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                icon: Icon(Ionicons.close_outline, size: 28),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // ————— Şehir Seçimi —————
-                          _buildCitySelector(setInner),
-                          const SizedBox(height: 20),
-
-                          // ————— Tarih Seçimi —————
-                          _buildDateSelector(context),
-                          const SizedBox(height: 20),
-
-                          // ————— Saat Seçimi —————
-                          _buildTimeSelector(setInner),
-                          const SizedBox(height: 40),
-                          _buildFacilitiesSelector(setInner),
-                          const SizedBox(height: 40),
-                          _buildPriceSelector(setInner),
-                          const SizedBox(height: 40),
-                          _buildRatingSelector(setInner),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    color: Colors.white,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              return Padding(
+                padding: EdgeInsets.fromLTRB(20, 24, 20, 0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _recomputeBaseFiltered();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFFF7043),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: Text(
-                            'Uygula',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            setState(() {
-                              _selectedCity = null;
-                              _selectedDate = null;
-                              _startHour = null;
-                              _endHour = null;
-                              hasParking = false;
-                              hasShowers = false;
-                              hasShoeRental = false;
-                              hasCafeteria = false;
-                              hasNightLighting = false;
-                              hasMaleToilet = false;
-                              hasFemaleToilet = false;
-                              hasFoodService = false;
-                              acceptsCreditCard = false;
-                              hasFoosball = false;
-                              hasCameras = false;
-                              hasGoalkeeper = false;
-                              hasPlayground = false;
-                              hasPrayerRoom = false;
-                              hasInternet = false;
-                              _selectedMinPrice = _minPrice;
-                              _selectedMaxPrice = _maxPrice;
-                              _priceFilterActive = false;
-                              _selectedRating = 0;
-                            });
-                            _recomputeBaseFiltered();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.white),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: Text(
-                            'Temizle',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.primaryDark,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                        Text('Filtreler',
+                            style: AppTextStyles.titleLarge
+                                .copyWith(color: AppColors.primaryDark)),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: Icon(Ionicons.close_outline, size: 28),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 24),
+
+                            // ————— Şehir Seçimi —————
+                            _buildCitySelector(setInner),
+                            const SizedBox(height: 20),
+
+                            // ————— Tarih Seçimi —————
+                            _buildDateSelector(context),
+                            const SizedBox(height: 20),
+
+                            // ————— Saat Seçimi —————
+                            _buildTimeSelector(setInner),
+                            const SizedBox(height: 40),
+                            _buildFacilitiesSelector(setInner),
+                            const SizedBox(height: 40),
+                            _buildPriceSelector(setInner),
+                            const SizedBox(height: 40),
+                            _buildRatingSelector(setInner),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                        color: Colors.white,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _recomputeBaseFiltered();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFF7043),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: Text(
+                                'Uygula',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                setState(() {
+                                  _selectedCity = null;
+                                  _selectedDate = null;
+                                  _startHour = null;
+                                  _endHour = null;
+                                  hasParking = false;
+                                  hasShowers = false;
+                                  hasShoeRental = false;
+                                  hasCafeteria = false;
+                                  hasNightLighting = false;
+                                  hasMaleToilet = false;
+                                  hasFemaleToilet = false;
+                                  hasFoodService = false;
+                                  acceptsCreditCard = false;
+                                  hasFoosball = false;
+                                  hasCameras = false;
+                                  hasGoalkeeper = false;
+                                  hasPlayground = false;
+                                  hasPrayerRoom = false;
+                                  hasInternet = false;
+                                  _selectedMinPrice = _minPrice;
+                                  _selectedMaxPrice = _maxPrice;
+                                  _priceFilterActive = false;
+                                  _selectedRating = 0;
+                                });
+                                _recomputeBaseFiltered();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.white),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: Text(
+                                'Temizle',
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),

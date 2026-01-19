@@ -1,25 +1,10 @@
 import 'dart:io' show Platform;
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
-import '../../firebase_options.dart';
-
-/// 🔹 BACKGROUND / TERMINATED mesajlar için zorunlu top-level handler
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // Sadece data-only ise local bildirim göster
-  if (message.notification == null) {
-    UserNotificationService.showLocal(message);
-  }
-}
 
 class UserNotificationService {
   /* ---------- Singleton ---------- */
@@ -29,10 +14,10 @@ class UserNotificationService {
   /* ---------- Alanlar ---------- */
   final FirebaseMessaging _fm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _local =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
 
   static const AndroidNotificationChannel _androidChannel =
-  AndroidNotificationChannel(
+      AndroidNotificationChannel(
     'high_importance_channel',
     'High Importance Notifications',
     description: 'Toplansın için kritik bildirim kanalı',
@@ -41,9 +26,7 @@ class UserNotificationService {
 
   /* ---------- Init (main() içinde bir kez çağır) ---------- */
   static Future<void> init() async {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // ✅ Firebase zaten main.dart'ta initialize edildi, tekrar gerek yok
 
     // 1️⃣ İzin iste (Android 13+, iOS)
     final settings = await I._fm.requestPermission(
@@ -74,13 +57,12 @@ class UserNotificationService {
     );
 
     // 4️⃣ Android kanal
-    await I
-        ._local
+    await I._local
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_androidChannel);
 
-    // 5️⃣ İlk token’i kaydet
+    // 5️⃣ İlk token'i kaydet
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       await I.saveTokenToFirestore();
     }
@@ -88,7 +70,7 @@ class UserNotificationService {
     // 6️⃣ Dinleyiciler
     FirebaseMessaging.onMessage.listen(_onMessageForeground);
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // ✅ Background handler main.dart'ta tanımlı
 
     // 7️⃣ Token yenileme
     FirebaseMessaging.instance.onTokenRefresh.listen(I._updateToken);
@@ -109,7 +91,7 @@ class UserNotificationService {
         // APNs hazır değil -> simülatör / erken aşama
       }
 
-      // Hâlâ null ise APNS token’ı deneyelim (gerçek cihazda gelebilir)
+      // Hâlâ null ise APNS token'ı deneyelim (gerçek cihazda gelebilir)
       token ??= await _fm.getAPNSToken();
       if (token == null) return; // Token sonra onTokenRefresh ile gelecek
     } else {
@@ -122,6 +104,7 @@ class UserNotificationService {
         .doc(user.uid)
         .set({'fcmToken': token}, SetOptions(merge: true));
   }
+
   Future<void> _updateToken(String newToken) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -132,7 +115,7 @@ class UserNotificationService {
     }
   }
 
-  /* ---------- Mesaj callback’leri ---------- */
+  /* ---------- Mesaj callback'leri ---------- */
   static void _onMessageForeground(RemoteMessage m) {
     if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
         m.notification != null) {

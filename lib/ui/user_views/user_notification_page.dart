@@ -66,87 +66,89 @@ class UserNotificationPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<UserNotificationProvider>(
-        builder: (_, prov, __) {
-          final items = prov.notifications;
-          if (items.isEmpty) {
-            return Center(
-              child: Text('Yeni bildirim yok',
-                  style:
-                  AppTextStyles.bodyLarge.copyWith(color: kTextSecondary)),
-            );
-          }
-
-          /*──────── 4 Başlıklı Gruplama ────────*/
-          final today = TimeService.nowUtc();
-          final todayStart = DateTime(today.year, today.month, today.day);
-          final yesterdayStart = todayStart.subtract(const Duration(days: 1));
-          final weekStart = todayStart.subtract(const Duration(days: 7));
-
-          final List<_SectionItem> sectioned = [];
-          bool addedToday = false;
-          bool addedYesterday = false;
-          bool addedWeek = false;
-          bool addedOlder = false;
-
-          for (final n in items) {
-            if (n.createdAt.isAfter(todayStart) && !addedToday) {
-              sectioned.add(_SectionItem.header('Bugün'));
-              addedToday = true;
-            } else if (n.createdAt.isAfter(yesterdayStart) &&
-                n.createdAt.isBefore(todayStart) &&
-                !addedYesterday) {
-              sectioned.add(_SectionItem.header('Dün'));
-              addedYesterday = true;
-            } else if (n.createdAt.isAfter(weekStart) &&
-                n.createdAt.isBefore(yesterdayStart) &&
-                !addedWeek) {
-              sectioned.add(_SectionItem.header('Bu hafta'));
-              addedWeek = true;
-            } else if (n.createdAt.isBefore(weekStart) && !addedOlder) {
-              sectioned.add(_SectionItem.header('Daha önce'));
-              addedOlder = true;
-            }
-            sectioned.add(_SectionItem.notification(n));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: sectioned.length,
-            itemBuilder: (_, i) {
-              final s = sectioned[i];
-              if (s.isHeader) {
-                return Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        s.header!,
-                        style: AppTextStyles.titleSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: kTextSecondary,
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 8,
-                      ),
-                      Expanded(
-                          child: Divider(
-                              color: kTextSecondary.withOpacity(.25),
-                              thickness: 0.8,
-                              height: 0)),
-                    ],
-                  ),
-                );
-              }
-              return _NotificationTile(
-                notification: s.notification!,
-                unreadBg: unreadBg,
-                currentUser: currentUser,
+      body: SafeArea(
+        child: Consumer<UserNotificationProvider>(
+          builder: (_, prov, __) {
+            final items = prov.notifications;
+            if (items.isEmpty) {
+              return Center(
+                child: Text('Yeni bildirim yok',
+                    style:
+                    AppTextStyles.bodyLarge.copyWith(color: kTextSecondary)),
               );
-            },
-          );
-        },
+            }
+        
+            /*──────── 4 Başlıklı Gruplama ────────*/
+            final today = TimeService.nowUtc();
+            final todayStart = DateTime(today.year, today.month, today.day);
+            final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+            final weekStart = todayStart.subtract(const Duration(days: 7));
+        
+            final List<_SectionItem> sectioned = [];
+            bool addedToday = false;
+            bool addedYesterday = false;
+            bool addedWeek = false;
+            bool addedOlder = false;
+        
+            for (final n in items) {
+              if (n.createdAt.isAfter(todayStart) && !addedToday) {
+                sectioned.add(_SectionItem.header('Bugün'));
+                addedToday = true;
+              } else if (n.createdAt.isAfter(yesterdayStart) &&
+                  n.createdAt.isBefore(todayStart) &&
+                  !addedYesterday) {
+                sectioned.add(_SectionItem.header('Dün'));
+                addedYesterday = true;
+              } else if (n.createdAt.isAfter(weekStart) &&
+                  n.createdAt.isBefore(yesterdayStart) &&
+                  !addedWeek) {
+                sectioned.add(_SectionItem.header('Bu hafta'));
+                addedWeek = true;
+              } else if (n.createdAt.isBefore(weekStart) && !addedOlder) {
+                sectioned.add(_SectionItem.header('Daha önce'));
+                addedOlder = true;
+              }
+              sectioned.add(_SectionItem.notification(n));
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: sectioned.length,
+              itemBuilder: (_, i) {
+                final s = sectioned[i];
+                if (s.isHeader) {
+                  return Padding(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          s.header!,
+                          style: AppTextStyles.titleSmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: kTextSecondary,
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 8,
+                        ),
+                        Expanded(
+                            child: Divider(
+                                color: kTextSecondary.withOpacity(.25),
+                                thickness: 0.8,
+                                height: 0)),
+                      ],
+                    ),
+                  );
+                }
+                return _NotificationTile(
+                  notification: s.notification!,
+                  unreadBg: unreadBg,
+                  currentUser: currentUser,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

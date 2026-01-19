@@ -28,12 +28,10 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
   bool showEmailVerifyBanner = false;
   bool canResendEmail = false;
   int resendCountdown = 30;
   Timer? _timer;
-
 
   Future<void> _handleSubmit() async {
     FocusScope.of(context).unfocus();
@@ -65,7 +63,6 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-
       /* ───── 2) Firestore’dan role = owner/user zorunlu ───── */
       Person person = await _fetchPerson(uid);
 
@@ -74,18 +71,16 @@ class _LoginPageState extends State<LoginPage> {
         await UserNotificationService.I.saveTokenToFirestore();
       }
 
-
       /* ───── 5) Yönlendirme ───── */
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-          person.role == 'owner'
+          builder: (_) => person.role == 'owner'
               ? OwnerMainPage(currentOwner: person)
               : MainPage(currentUser: person),
         ),
-        (route)=>false,
+        (route) => false,
       );
     }
 
@@ -98,7 +93,7 @@ class _LoginPageState extends State<LoginPage> {
       final msg = AppErrorHandler.getMessage(e);
       AppSnackBar.error(context, msg);
       await _auth.signOut();
-    }finally{
+    } finally {
       hideLoader();
     }
   }
@@ -108,11 +103,10 @@ class _LoginPageState extends State<LoginPage> {
   /// Firestore’dan sadece sunucu verisini getirir; rol eksikse
   /// 300 ms sonra bir kez daha dener. Eksik kalırsa 'unknown' kabul edilir.
   Future<Person> _fetchPerson(String uid) async {
-    Future<DocumentSnapshot<Map<String, dynamic>>> getServer() =>
-        _firestore
-            .collection('users')
-            .doc(uid)
-            .get(const GetOptions(source: Source.server));
+    Future<DocumentSnapshot<Map<String, dynamic>>> getServer() => _firestore
+        .collection('users')
+        .doc(uid)
+        .get(const GetOptions(source: Source.server));
 
     var snap = await getServer();
 
@@ -153,13 +147,14 @@ class _LoginPageState extends State<LoginPage> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.white,
-                  child: Icon(
-                      Icons.sports_soccer, color: AppColors.primary, size: 50),
+                  child: Icon(Icons.sports_soccer,
+                      color: AppColors.primary, size: 50),
                 ),
                 SizedBox(height: 16),
                 Text(
                   "Toplansın'a Hoş Geldiniz",
-                  style: TextStyle(fontSize: 28,
+                  style: TextStyle(
+                      fontSize: 28,
                       color: Colors.white,
                       fontWeight: FontWeight.bold),
                 ),
@@ -188,7 +183,8 @@ class _LoginPageState extends State<LoginPage> {
                             onChanged: (_) => _clearEmailWarningIfVisible(),
                             onSaved: (value) => email = value!,
                             validator: (value) {
-                              if (value == null || value.isEmpty ||
+                              if (value == null ||
+                                  value.isEmpty ||
                                   !value.contains('@')) {
                                 return 'Lütfen geçerli bir e-posta giriniz';
                               }
@@ -204,17 +200,16 @@ class _LoginPageState extends State<LoginPage> {
                             onChanged: (_) => _clearEmailWarningIfVisible(),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                showPassword ? Icons.visibility_off : Icons
-                                    .visibility,
+                                showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
-                              onPressed: () =>
-                                  setState(() {
-                                    showPassword = !showPassword;
-                                  }),
+                              onPressed: () => setState(() {
+                                showPassword = !showPassword;
+                              }),
                             ),
                           ),
                           SizedBox(height: 16),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -234,16 +229,19 @@ class _LoginPageState extends State<LoginPage> {
                               decoration: BoxDecoration(
                                 color: Colors.orange.shade50,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange.shade300),
+                                border:
+                                    Border.all(color: Colors.orange.shade300),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                                  Icon(Icons.warning_amber_rounded,
+                                      color: Colors.orange, size: 28),
                                   SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           "E-posta doğrulaması gerekiyor!",
@@ -267,22 +265,29 @@ class _LoginPageState extends State<LoginPage> {
                                         if (!canResendEmail)
                                           Text(
                                             "Tekrar göndermek için $resendCountdown saniye bekleyin.",
-                                            style: TextStyle(fontSize: 12.5, color: Colors.grey[800]),
+                                            style: TextStyle(
+                                                fontSize: 12.5,
+                                                color: Colors.grey[800]),
                                           )
                                         else
                                           ElevatedButton.icon(
                                             onPressed: resendVerificationEmail,
-                                            icon: Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                                            icon: Icon(Icons.send_rounded,
+                                                size: 18, color: Colors.white),
                                             label: Text(
                                               "E-postayı tekrar gönder",
-                                              style: TextStyle(color: Colors.white),
+                                              style: TextStyle(
+                                                  color: Colors.white),
                                             ),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.orange.shade400,
+                                              backgroundColor:
+                                                  Colors.orange.shade400,
                                               elevation: 0,
-                                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 10),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                             ),
                                           ),
@@ -318,14 +323,16 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(height: 16),
                           TextButton(
                             onPressed: () {
-                              Navigator.pushReplacement(context,
+                              Navigator.pushReplacement(
+                                  context,
                                   MaterialPageRoute(
                                       builder: (context) => SignUpPage()));
                             },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.person_add, color: AppColors.primary),
+                                Icon(Icons.person_add,
+                                    color: AppColors.primary),
                                 SizedBox(width: 8),
                                 Text(
                                   'Yeni Hesap Oluştur',
@@ -386,7 +393,6 @@ class _LoginPageState extends State<LoginPage> {
       });
     }
   }
-
 
   void _showChangePasswordDialog() {
     TextEditingController emailController = TextEditingController();
@@ -465,20 +471,22 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
               onPressed: () async {
                 final email = emailController.text.trim().toLowerCase();
-                await resetPasswordSafe(context, email);     // 🔑 yeni fonksiyon
-                Navigator.pop(ctx);                      // işlem sonrası diyalogu kapat
+                await resetPasswordSafe(context, email); // 🔑 yeni fonksiyon
+                Navigator.pop(ctx); // işlem sonrası diyalogu kapat
               },
               child: const Text(
                 "Onayla",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
-
           ],
         );
       },
@@ -490,14 +498,13 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await sendPasswordResetEmail(email);
-
     } catch (_) {
       // user-not-found dahil tüm hataları yutarız → enumeration koruması
     }
 
-    AppSnackBar.show(context,"Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi.");
+    AppSnackBar.show(context,
+        "Şifre sıfırlama bağlantısı, sistemde kayıtlıysa $email adresine gönderildi.");
   }
-
 
   Future<void> sendPasswordResetEmail(String email) async {
     // Bölgeyi mutlaka seninkiyle aynı ver: "europe-west1"
@@ -511,7 +518,8 @@ class _LoginPageState extends State<LoginPage> {
     } on FirebaseFunctionsException catch (e) {
       final msg = switch (e.code) {
         'invalid-argument' => 'E-posta adresi geçersiz.',
-        'failed-precondition' => 'Sunucu yapılandırması eksik (RESEND_API_KEY vb.).',
+        'failed-precondition' =>
+          'Sunucu yapılandırması eksik (RESEND_API_KEY vb.).',
         _ => e.message ?? 'Beklenmeyen bir hata oluştu.'
       };
       rethrow; // ya da kullanıcıya göster
@@ -520,8 +528,6 @@ class _LoginPageState extends State<LoginPage> {
       rethrow;
     }
   }
-
-
 
   void startCountdown() {
     canResendEmail = false;
@@ -545,13 +551,12 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await sendVerificationEmail(email);
       startCountdown();
-      AppSnackBar.show(context,"Doğrulama e-postası tekrar gönderildi.");
+      AppSnackBar.show(context, "Doğrulama e-postası tekrar gönderildi.");
     } catch (e) {
       final msg = AppErrorHandler.getMessage(e);
       AppSnackBar.error(context, msg);
     }
   }
-
 
   Future<void> sendVerificationEmail(String email) async {
     try {
@@ -559,11 +564,9 @@ class _LoginPageState extends State<LoginPage> {
       await callable.call({'email': email});
       // başarı
     } on FirebaseFunctionsException catch (e) {
-      final msg=AppErrorHandler.getMessage(e);
+      final msg = AppErrorHandler.getMessage(e);
       AppSnackBar.error(context, "Hata: $msg");
       rethrow;
     }
   }
-
-
 }

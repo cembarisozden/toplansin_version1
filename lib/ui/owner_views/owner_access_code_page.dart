@@ -86,7 +86,6 @@ class _OwnerAccessCodePageState extends State<OwnerAccessCodePage> {
         '${adjusted.minute.toString().padLeft(2, '0')}';
   }
 
-
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<AccessCodeProvider>();
@@ -111,258 +110,270 @@ class _OwnerAccessCodePageState extends State<OwnerAccessCodePage> {
         elevation: 0,
         backgroundColor: const Color(0xFFE65100),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.warning, width: 2),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Dikkat! Kullanıcılar bu kod ile sahanıza rezervasyon yapabilir, kodu paylaşırken dikkatli olun. '
-                      'Kod değişikliğinde eski kod devre dışı kalır; işlemlerde '
-                      'lütfen emin olun.',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textPrimary,
-                        height: 1.4,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.warning, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Dikkat! Kullanıcılar bu kod ile sahanıza rezervasyon yapabilir, kodu paylaşırken dikkatli olun. '
+                        'Kod değişikliğinde eski kod devre dışı kalır; işlemlerde '
+                        'lütfen emin olun.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textPrimary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            // Aktif kod kartı
-            GestureDetector(
-              onTap: () => _copyToClipboard(displayCode),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 20, horizontal: 28),
+              // Aktif kod kartı
+              GestureDetector(
+                onTap: () => _copyToClipboard(displayCode),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 20, horizontal: 28),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    border:
+                        Border.all(color: const Color(0xFFE65100), width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 12,
+                          offset: Offset(0, 6)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SelectableText(
+                        displayCode,
+                        style: AppTextStyles.titleMedium.copyWith(
+                            fontSize: 32,
+                            letterSpacing: 4,
+                            fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(Icons.copy,
+                          color: AppColors.secondaryDark, size: 24),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Yeni kod butonu
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : () => _generateNewCode(context),
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : const Icon(Icons.autorenew,
+                        color: Colors.white, size: 24),
+                label: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    _isLoading ? 'Oluşturuluyor...' : 'Yeni Kod Oluştur',
+                    style: AppTextStyles.titleSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18),
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE65100),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24)),
+                  elevation: 6,
+                  shadowColor: Colors.deepOrange.withOpacity(0.4),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Text(
+                'Paylaştığınız kod yalnızca size ait sahada geçerlidir ve güncellendiğinde eski kod devre dışı kalır.',
+                textAlign: TextAlign.center,
+                style:
+                    AppTextStyles.bodyMedium.copyWith(color: Colors.grey[700]),
+              ),
+
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OwnerShowUsersWithActiveCodes(
+                        haliSahaId: widget.haliSahaId,
+                      ),
+                    ),
+                  );
+                },
+                icon:
+                    const Icon(Icons.touch_app, color: Colors.white, size: 22),
+                label: const Text(
+                  "Saha Erişim Koduna Sahip Kullanıcılar",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      Colors.blue, // Burayı istediğin renkle değiştir
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 3,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Geçmiş Kodlar',
+                  style: AppTextStyles.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Geçmiş Kodlar Listesi
+              Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE65100), width: 2),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: const [
                     BoxShadow(
                         color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 6)),
+                        blurRadius: 8,
+                        offset: Offset(0, 4))
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SelectableText(
-                      displayCode,
-                      style: AppTextStyles.titleMedium.copyWith(
-                          fontSize: 32,
-                          letterSpacing: 4,
-                          fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.copy, color: AppColors.secondaryDark, size: 24),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Yeni kod butonu
-            ElevatedButton.icon(
-              onPressed: _isLoading ? null : () => _generateNewCode(context),
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5),
-                    )
-                  : const Icon(Icons.autorenew, color: Colors.white, size: 24),
-              label: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  _isLoading ? 'Oluşturuluyor...' : 'Yeni Kod Oluştur',
-                  style: AppTextStyles.titleSmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE65100),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24)),
-                elevation: 6,
-                shadowColor: Colors.deepOrange.withOpacity(0.4),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Text(
-              'Paylaştığınız kod yalnızca size ait sahada geçerlidir ve güncellendiğinde eski kod devre dışı kalır.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: Colors.grey[700]),
-            ),
-
-            const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => OwnerShowUsersWithActiveCodes(
-                    haliSahaId: widget.haliSahaId,
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.touch_app, color: Colors.white, size: 22),
-            label: const Text(
-              "Saha Erişim Koduna Sahip Kullanıcılar",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue, // Burayı istediğin renkle değiştir
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 3,
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Geçmiş Kodlar',
-                style: AppTextStyles.titleMedium.copyWith(
-                    fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Geçmiş Kodlar Listesi
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 8,
-                      offset: Offset(0, 4))
-                ],
-              ),
-              child: prov.inactiveCodes.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(
-                        child: Text(
-                          'Henüz geçmiş kod yok.',
-                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                child: prov.inactiveCodes.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                          child: Text(
+                            'Henüz geçmiş kod yok.',
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black54),
+                          ),
                         ),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(12),
-                      itemCount: prov.inactiveCodes.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (ctx, i) {
-                        final code = prov.inactiveCodes[i];
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        code.code,
-                                        style: AppTextStyles.titleSmall
-                                            .copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.textPrimary),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Oluşturma: ${_formatDate(code.createdAt)}',
-                                        style: AppTextStyles.bodySmall,
-                                      ),
-                                      if (code.deactivatedAt != null) ...[
-                                        const SizedBox(height: 2),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(12),
+                        itemCount: prov.inactiveCodes.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (ctx, i) {
+                          final code = prov.inactiveCodes[i];
+                          return Card(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
                                         Text(
-                                          'Pasif: ${_formatDate(code.deactivatedAt!)}',
+                                          code.code,
+                                          style: AppTextStyles.titleSmall
+                                              .copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppColors.textPrimary),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Oluşturma: ${_formatDate(code.createdAt)}',
                                           style: AppTextStyles.bodySmall,
                                         ),
+                                        if (code.deactivatedAt != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Pasif: ${_formatDate(code.deactivatedAt!)}',
+                                            style: AppTextStyles.bodySmall,
+                                          ),
+                                        ],
                                       ],
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 20),
-                                  color: AppColors.secondaryDark,
-                                  onPressed: () => _copyToClipboard(code.code),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () => context
-                                      .read<AccessCodeProvider>()
-                                      .activateCodeAgain(
-                                        context: context,
-                                        haliSahaId: widget.haliSahaId,
-                                        codeId: code.id,
-                                      ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
                                   ),
-                                  child: Text(
-                                    'Aktifleştir',
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy, size: 20),
+                                    color: AppColors.secondaryDark,
+                                    onPressed: () =>
+                                        _copyToClipboard(code.code),
                                   ),
-                                ),
-                              ],
+                                  ElevatedButton(
+                                    onPressed: () => context
+                                        .read<AccessCodeProvider>()
+                                        .activateCodeAgain(
+                                          context: context,
+                                          haliSahaId: widget.haliSahaId,
+                                          codeId: code.id,
+                                        ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                    ),
+                                    child: Text(
+                                      'Aktifleştir',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

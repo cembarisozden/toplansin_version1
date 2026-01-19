@@ -567,27 +567,29 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
             ),
           ),
         ),
-        body: Stack(
-          children: [
-            TabBarView(
-              children: [
-                _buildGenelBakisTab(context),
-                _buildSahaBilgileriTab(context),
-                _buildRezervasyonlarTab(),
-                _buildAboneliklerTab(),
-              ],
-            ),
-            if (_isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.4),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.green.shade700),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              TabBarView(
+                children: [
+                  _buildGenelBakisTab(context),
+                  _buildSahaBilgileriTab(context),
+                  _buildRezervasyonlarTab(),
+                  _buildAboneliklerTab(),
+                ],
+              ),
+              if (_isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.4),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.green.shade700),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -2587,17 +2589,19 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
 
     // 1) Gün bazlı karşılaştırmayı "duvar saati"ne indir
     final today = DateTime(now.year, now.month, now.day);
-    final sel   = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final sel =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
 
     // Debug
     // print('now=$now | start=$start | sel=$sel');
 
-    if (sel.isBefore(today)) return true;   // dünkü tüm slotlar geçti
-    if (sel.isAfter(today))  return false;  // yarın/ilerisi geçmedi
+    if (sel.isBefore(today)) return true; // dünkü tüm slotlar geçti
+    if (sel.isAfter(today)) return false; // yarın/ilerisi geçmedi
 
     // 2) Bugünse: her iki tarafı da timezone’suz anahtar haline getir
-    final nowKey   = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-    final startKey = DateTime(sel.year, sel.month, sel.day, start.hour, start.minute);
+    final nowKey = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final startKey =
+        DateTime(sel.year, sel.month, sel.day, start.hour, start.minute);
 
     // Başlangıç anında geçmiş saymak istersen >= kullan
     return nowKey.isAfter(startKey);
@@ -2931,22 +2935,26 @@ class _OwnerHalisahaPageState extends State<OwnerHalisahaPage> {
                                         child: reservation.type ==
                                                 "subscription"
                                             ? ElevatedButton.icon(
-                                          onPressed: () async {
-                                            final confirm =
-                                            await ShowStyledConfirmDialog.show(
-                                              context,
-                                              title: "Bu Haftaki Seansı İptal Et",
-                                              message:
-                                              "Bu bir abonelik rezervasyonudur ve işlem geri alınamaz. Emin misiniz?",
-                                              confirmText: "Evet, İptal Et",
-                                            );
-                                            if (confirm == true) {
-
-                                              await cancelThisWeekSlot(
-                                                  reservation.subscriptionId!, context);
-                                              Navigator.pop(context);
-                                            }
-                                          },
+                                                onPressed: () async {
+                                                  final confirm =
+                                                      await ShowStyledConfirmDialog
+                                                          .show(
+                                                    context,
+                                                    title:
+                                                        "Bu Haftaki Seansı İptal Et",
+                                                    message:
+                                                        "Bu bir abonelik rezervasyonudur ve işlem geri alınamaz. Emin misiniz?",
+                                                    confirmText:
+                                                        "Evet, İptal Et",
+                                                  );
+                                                  if (confirm == true) {
+                                                    await cancelThisWeekSlot(
+                                                        reservation
+                                                            .subscriptionId!,
+                                                        context);
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
                                                 label: Text(
                                                     "Bu Haftaki Seansı İptal Et",
                                                     style: AppTextStyles
