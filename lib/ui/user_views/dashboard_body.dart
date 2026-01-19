@@ -346,28 +346,30 @@ class _DashboardBodyState extends State<DashboardBody> {
                 ],
               ),
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const UserAccessCodePage(), // HaliSahaAccessCodesPage(),
+              SafeArea(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const UserAccessCodePage(), // HaliSahaAccessCodesPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Ionicons.key_outline, size: 18),
+                    label: const Text("Erişim Kodlarım’a Git"),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      minimumSize: const Size.fromHeight(46),
+                      backgroundColor: AppColors.accessOrange,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  },
-                  icon: const Icon(Ionicons.key_outline, size: 18),
-                  label: const Text("Erişim Kodlarım’a Git"),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    minimumSize: const Size.fromHeight(46),
-                    backgroundColor: AppColors.accessOrange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                 ),

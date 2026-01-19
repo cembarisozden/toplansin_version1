@@ -691,30 +691,32 @@ class _ReservationPageState extends State<ReservationPage> {
             SizedBox(height: 20),
 
 // Onay Butonu
-            ElevatedButton(
-              onPressed: selectedTime != null
-                  ? () {
-                      _showConfirmationDialog(context);
-                    }
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: selectedTime != null
-                    ? Colors.green.shade700
-                    : Colors.grey.shade300,
-                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            SafeArea(
+              child: ElevatedButton(
+                onPressed: selectedTime != null
+                    ? () {
+                        _showConfirmationDialog(context);
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selectedTime != null
+                      ? Colors.green.shade700
+                      : Colors.grey.shade300,
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: selectedTime != null ? 3 : 0,
                 ),
-                elevation: selectedTime != null ? 3 : 0,
-              ),
-              child: Text(
-                selectedTime != null
-                    ? "Rezervasyon Yap"
-                    : "Lütfen bir tarih ve saat seçin",
-                style: TextStyle(
-                  color: selectedTime != null ? Colors.white : Colors.grey[600],
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                child: Text(
+                  selectedTime != null
+                      ? "Rezervasyon Yap"
+                      : "Lütfen bir tarih ve saat seçin",
+                  style: TextStyle(
+                    color: selectedTime != null ? Colors.white : Colors.grey[600],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),

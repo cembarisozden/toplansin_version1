@@ -371,13 +371,15 @@ class _OwnerAddHaliSahaState extends State<OwnerAddHaliSaha> {
             ),
             SizedBox(height: 24),
 
-            Center(
-              child: ElevatedButton(
-                onPressed: _kaydet,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Text('Kaydet', style: TextStyle(fontSize: 16, color: Colors.white)),
+            SafeArea(
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: _kaydet,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Text('Kaydet', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  ),
                 ),
               ),
             ),
